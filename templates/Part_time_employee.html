@@ -116,8 +116,8 @@
   </div>
 </div>
 
-<!-- Roster Table Ledger -->
-<div class="glass-panel overflow-hidden">
+<!-- Roster Table Ledger (Desktop View) -->
+<div class="glass-panel overflow-hidden desktop-only">
   <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <i class="bi bi-journal-text text-primary"></i>
@@ -236,6 +236,94 @@
     </table>
   </div>
 </div>
+
+<!-- Mobile-Only List View (Visible only on mobile) -->
+<div class="mobile-only space-y-4" style="margin-bottom: 24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
+    <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);">
+      <i class="bi bi-journal-text text-primary"></i> Freelance Ledger
+    </h3>
+    <span class="badge badge-primary">{{ records|length }} Entries</span>
+  </div>
+
+  {% for r in records %}
+  <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <span style="font-weight:700;font-size:14px;display:block;color:var(--text);">{{ r['worker_name'] }}</span>
+        <span class="text-xs text-muted font-mono" style="color:var(--text3);"><i class="bi bi-briefcase text-[10px] mr-1"></i>Client: {{ r['client_name'] }}</span>
+      </div>
+      <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% else %}badge-warning{% endif %}" id="status-mob-{{ r['id'] }}">
+        <span class="badge-dot" style="background:{% if r['payment_status'] == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
+        {{ r['payment_status'] }}
+      </span>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--card-border);border-bottom:1px solid var(--card-border);font-size:12px;">
+      <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Date / Location</span>
+        <span class="font-mono" style="color:var(--text2);">{{ r['working_date'] }}</span>
+        <div class="text-muted text-[10px] mt-0.5" style="color:var(--text3);"><i class="bi bi-geo-alt text-[9px]"></i> {{ r['delivery_location'] }}</div>
+      </div>
+      <div style="text-align:right;">
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Volume & Price</span>
+        <span class="font-semibold" style="color:var(--text2);">{{ r['slab_quantity'] }} slabs</span>
+        <div class="text-muted font-mono text-[10px] mt-0.5" style="color:var(--text3);">@ ₹{{ "{:,.2f}".format(r['slab_price']) }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding-top:4px;">
+      <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Total Amount</span>
+        <span class="mono font-bold" style="font-size:14px;color:var(--text);">₹{{ "{:,.2f}".format(r['total_price']) }}</span>
+      </div>
+      <div style="text-align:right;">
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Net Payable</span>
+        <span id="net-mob-{{ r['id'] }}">
+          {% set true_net = r['total_price'] - r['advance_paid'] %}
+          {% if true_net < 0 %}
+            <span class="mono font-bold text-amber-500">−₹{{ "{:,.2f}".format(true_net|abs) }}</span>
+            <div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹{{ "{:,.2f}".format(true_net|abs) }}</div>
+          {% elif true_net == 0 %}
+            <span class="mono font-bold text-muted">₹0.00</span>
+            <div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>
+          {% else %}
+            <span class="mono font-bold" style="color:var(--success);font-size:13px;">₹{{ "{:,.2f}".format(true_net) }}</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Advance input & Mark paid button on mobile -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px dashed var(--card-border);">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="text-muted text-[10px] uppercase font-bold" style="color:var(--text3);">Adv:</span>
+        <input type="number" step="0.01" min="0" value="{{ r['advance_paid'] or 0 }}"
+               id="advance-input-mob-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
+               placeholder="0.00"
+               style="width:74px;font-family:monospace;font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
+        <button onclick="setAdvancePart(this)" data-record-id="{{ r['id'] }}"
+                class="btn-saas btn-saas-icon" style="color:var(--primary);padding:4px;" title="Save advance">
+          <i class="bi bi-save" style="font-size:12px;"></i>
+        </button>
+      </div>
+      
+      {% if r['payment_status'] != 'Paid' %}
+      <button onclick="markPartTimePaid(this)" id="pay-btn-mob-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
+              class="btn-saas btn-saas-xs btn-saas-success" style="font-size:11px;padding:4px 10px;border-radius:8px;">
+        <i class="bi bi-check2-circle"></i> Mark Paid
+      </button>
+      {% endif %}
+    </div>
+    <div id="advance-msg-mob-{{ r['id'] }}" style="font-size:9px;font-family:monospace;color:var(--text3);text-align:left;margin-top:2px;"></div>
+  </div>
+  {% else %}
+  <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    <i class="bi bi-clipboard-x text-2xl text-muted block mb-2"></i>
+    No slab work entries found.
+  </div>
+  {% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -255,13 +343,14 @@
 
   function setAdvancePart(button) {
     var recordId = button.dataset.recordId;
-    var input = document.getElementById('advance-input-' + recordId);
+    var input = document.getElementById('advance-input-' + recordId) || document.getElementById('advance-input-mob-' + recordId);
     var msg = document.getElementById('advance-msg-' + recordId);
-    if (!input || !msg) return;
+    var msgMob = document.getElementById('advance-msg-mob-' + recordId);
+    if (!input) return;
 
     var value = parseFloat(input.value) || 0;
-    msg.style.color = 'var(--primary)';
-    msg.textContent = 'Saving...';
+    if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'Saving...'; }
+    if (msgMob) { msgMob.style.color = 'var(--primary)'; msgMob.textContent = 'Saving...'; }
 
     fetch('/part-time/set_advance', {
       method: 'POST',
@@ -271,55 +360,83 @@
     .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
     .then(function(res) {
       if (res.ok && res.data.success) {
-        msg.style.color = 'var(--success)';
-        msg.textContent = 'Saved ✓';
+        if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'Saved ✓'; }
+        if (msgMob) { msgMob.style.color = 'var(--success)'; msgMob.textContent = 'Saved ✓'; }
 
         var bal = res.data.remaining_balance || 0;
         var fmt = function(n){ return '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:2}); };
 
-        // Update Net Payable cell
+        // Update Net Payable cell (Desktop)
         var netCell = document.getElementById('net-' + recordId);
+        var netTrue = res.data.net_payable !== undefined ? res.data.net_payable : bal;
+        var netLabel, netColor;
+        if (netTrue < 0) {
+          netColor = 'var(--warning)';
+          netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">−₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>'
+                   + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</div>';
+        } else if (netTrue === 0) {
+          netColor = 'var(--text3)';
+          netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹0.00</span>'
+                   + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
+        } else {
+          netColor = 'var(--success)';
+          netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹' + netTrue.toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
+        }
+        var advHtml = value > 0
+          ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−' + fmt(value) + ' advance</div>'
+          : '';
         if (netCell) {
-          var netTrue = res.data.net_payable !== undefined ? res.data.net_payable : bal;
-          var netLabel, netColor;
-          if (netTrue < 0) {
-            netColor = 'var(--warning)';
-            netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">−₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>'
-                     + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</div>';
-          } else if (netTrue === 0) {
-            netColor = 'var(--text3)';
-            netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹0.00</span>'
-                     + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
-          } else {
-            netColor = 'var(--success)';
-            netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹' + netTrue.toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
-          }
-          var advHtml = value > 0
-            ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−' + fmt(value) + ' advance</div>'
-            : '';
           netCell.innerHTML = netLabel + advHtml;
         }
 
-        // Update payment status badge
+        // Update Net Payable (Mobile)
+        var netCellMob = document.getElementById('net-mob-' + recordId);
+        if (netCellMob) {
+          var netLabelMob;
+          if (netTrue < 0) {
+            netLabelMob = '<span class="mono font-bold text-amber-500">−₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>'
+                        + '<div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</div>';
+          } else if (netTrue === 0) {
+            netLabelMob = '<span class="mono font-bold text-muted">₹0.00</span>'
+                        + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
+          } else {
+            netLabelMob = '<span class="mono font-bold" style="color:var(--success);font-size:13px;">₹' + netTrue.toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
+          }
+          var advHtmlMob = value > 0
+            ? '<div style="font-size:9px;color:var(--danger);font-family:monospace;margin-top:1px;">−' + fmt(value) + ' advance</div>'
+            : '';
+          netCellMob.innerHTML = netLabelMob + advHtmlMob;
+        }
+
+        // Update payment status badge (Desktop)
         var statusBadge = document.getElementById('status-' + recordId);
+        var paid = res.data.payment_status === 'Paid';
         if (statusBadge) {
-          var paid = res.data.payment_status === 'Paid';
           statusBadge.className = 'badge ' + (paid ? 'badge-success' : 'badge-warning');
           statusBadge.innerHTML =
             '<span class="badge-dot" style="background:' + (paid ? 'var(--success)' : 'var(--warning)') + ';"></span> ' +
             res.data.payment_status;
         }
 
+        // Update payment status badge (Mobile)
+        var statusBadgeMob = document.getElementById('status-mob-' + recordId);
+        if (statusBadgeMob) {
+          statusBadgeMob.className = 'badge ' + (paid ? 'badge-success' : 'badge-warning');
+          statusBadgeMob.innerHTML =
+            '<span class="badge-dot" style="background:' + (paid ? 'var(--success)' : 'var(--warning)') + ';"></span> ' +
+            res.data.payment_status;
+        }
+
         showToast('Advance ' + fmt(value) + ' saved — Net Payable: ' + fmt(bal), 'success');
       } else {
-        msg.style.color = 'var(--danger)';
-        msg.textContent = res.data.message ? res.data.message : 'Failed';
+        if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = res.data.message ? res.data.message : 'Failed'; }
+        if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = res.data.message ? res.data.message : 'Failed'; }
         showToast(res.data.message || 'Validation failed', 'danger');
       }
     })
     .catch(function() {
-      msg.style.color = 'var(--danger)';
-      msg.textContent = 'Connection failed';
+      if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Connection failed'; }
+      if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = 'Connection failed'; }
       showToast('Failed to connect to server', 'danger');
     });
   }
@@ -337,7 +454,7 @@
     .then(function(r){ return r.json(); })
     .then(function(data) {
       if (data && data.success) {
-        // Update Net Payable cell to be settled (0 remaining)
+        // Update Net Payable cell (Desktop)
         var netCell = document.getElementById('net-' + recordId);
         if (netCell) {
           var netColor = 'var(--text3)';
@@ -345,15 +462,33 @@
                             + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
         }
 
-        // Update status badge
+        // Update Net Payable cell (Mobile)
+        var netCellMob = document.getElementById('net-mob-' + recordId);
+        if (netCellMob) {
+          netCellMob.innerHTML = '<span class="mono font-bold text-muted">₹0.00</span>'
+                            + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
+        }
+
+        // Update status badge (Desktop)
         var statusBadge = document.getElementById('status-' + recordId);
         if (statusBadge) {
           statusBadge.className = 'badge badge-success';
           statusBadge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
         }
 
-        // Remove the mark paid button
-        button.remove();
+        // Update status badge (Mobile)
+        var statusBadgeMob = document.getElementById('status-mob-' + recordId);
+        if (statusBadgeMob) {
+          statusBadgeMob.className = 'badge badge-success';
+          statusBadgeMob.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
+        }
+
+        // Remove the mark paid buttons
+        var desktopBtn = document.getElementById('pay-btn-' + recordId);
+        if (desktopBtn) desktopBtn.remove();
+        var mobileBtn = document.getElementById('pay-btn-mob-' + recordId);
+        if (mobileBtn) mobileBtn.remove();
+
         showToast('Work entry marked as paid!', 'success');
       } else {
         button.disabled = false;

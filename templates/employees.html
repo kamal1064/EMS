@@ -26,8 +26,8 @@
   </form>
 </div>
 
-<!-- Employees Table -->
-<div class="card overflow-hidden">
+<!-- Employees Table (Desktop View) -->
+<div class="card overflow-hidden desktop-only">
   <div class="card-header">
     <span class="card-title">
       <i class="bi bi-table"></i>
@@ -107,6 +107,67 @@
     </table>
   </div>
 </div>
+
+<!-- Mobile-Only List View (Visible only on mobile) -->
+<div class="mobile-only space-y-4" style="margin-bottom: 24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);">
+      <i class="bi bi-people-fill text-primary"></i> Directory Index
+    </h3>
+    <span class="badge badge-primary">{{ employees|length }} Active</span>
+  </div>
+
+  {% for e in employees %}
+  <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="avatar" style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg, var(--primary), var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;">
+          {{ e['name'][0].upper() }}
+        </div>
+        <div>
+          <span style="font-weight:700;font-size:14px;display:block;color:var(--text);">{{ e['name'] }}</span>
+          <span class="text-xs text-muted font-mono" style="color:var(--text3);"><i class="bi bi-telephone text-[10px] mr-1"></i>{{ e['phone'] or '—' }}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <a href="{{ url_for('edit_employee', emp_id=e['id']) }}" class="btn-saas btn-saas-icon" style="padding:6px;font-size:13px;" title="Edit">
+          <i class="bi bi-pencil"></i>
+        </a>
+        <button onclick="confirmDelete('{{ e['id'] }}', '{{ e['name'] }}')" class="btn-saas btn-saas-icon" style="padding:6px;font-size:13px;color:var(--danger);" title="Delete">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:10px;border-top:1px solid var(--card-border);font-size:12px;">
+      <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Age / Gender</span>
+        <span class="font-medium" style="color:var(--text2);">
+          {{ e['age'] or '—' }} yrs / 
+          {% set gender = e['gender']|lower %}
+          {% if gender == 'male' %}
+            Male
+          {% elif gender == 'female' %}
+            Female
+          {% else %}
+            Other
+          {% endif %}
+        </span>
+      </div>
+      <div style="text-align:right;">
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Monthly Wage</span>
+        <span class="mono font-extrabold" style="color:var(--primary);font-size:13px;">₹{{ "{:,.2f}".format(e['salary']) }}</span>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    <i class="bi bi-people-fill text-2xl text-muted block mb-2"></i>
+    No employees found.
+  </div>
+  {% endfor %}
+</div>
+
 
 <!-- Add Employee Modal -->
 <div class="modal fade" id="addEmpModal" tabindex="-1" aria-hidden="true">

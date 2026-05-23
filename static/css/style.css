@@ -1295,4 +1295,14 @@ body.modal-open { overflow:hidden; }
   .grid-7-5 {
     gap: 14px !important;
   }
+  
+  /* Mobile-only visibility utility */
+  .desktop-only { display: none !important; }
+  .mobile-only { display: block !important; }
+}
+
+@media (min-width: 768px) {
+  /* Desktop-only visibility utility */
+  .desktop-only { display: block !important; }
+  .mobile-only { display: none !important; }
 }
