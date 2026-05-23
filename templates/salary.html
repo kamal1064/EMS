@@ -248,7 +248,7 @@
                placeholder="0.00"
                {% if s.payment_status == 'Paid' %}disabled{% endif %}
                style="width:74px;font-family:monospace;font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
-        <button onclick="setAdvanceMob(this)" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
+        <button onclick="setAdvance(this)" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
                 id="advance-btn-mob-{{ s.id }}"
                 {% if s.payment_status == 'Paid' %}disabled{% endif %}
                 class="btn-saas btn-saas-icon" style="color:var(--primary);padding:4px;" title="Save advance">
@@ -257,7 +257,7 @@
       </div>
       
       {% if s.payment_status != 'Paid' %}
-      <button onclick="markPaidMob(this)" id="pay-btn-mob-{{ s.id }}" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
+      <button onclick="markPaid(this)" id="pay-btn-mob-{{ s.id }}" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
               class="btn-saas btn-saas-xs btn-saas-success" style="font-size:11px;padding:4px 10px;border-radius:8px;">
         <i class="bi bi-check2-circle"></i> Mark Paid
       </button>
@@ -292,144 +292,69 @@ function markPaid(button) {
     setLoaderState(false);
     if (data && data.success) {
       showToast('Salary marked as paid', 'success');
-      var badge = document.getElementById('pay-badge-' + empId);
-      badge.className = 'badge badge-success';
-      badge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
-      document.getElementById('paid-date-' + empId).textContent = 'Paid: ' + (data.paid_at || '').slice(0, 10);
-      document.getElementById('pay-btn-' + empId).outerHTML = '<span class="text-muted mono" id="pay-btn-' + empId + '">—</span>';
-      var advInput = document.getElementById('advance-input-' + empId);
-      var advBtn = document.getElementById('advance-btn-' + empId);
-      if (advInput) advInput.disabled = true;
-      if (advBtn) advBtn.disabled = true;
-    } else {
-      showToast(data.message || 'Failed', 'danger');
-    }
-  }).catch(function(){ setLoaderState(false); showToast('Request failed', 'danger'); });
-}
-
-function setAdvance(button) {
-  var empId = button.dataset.empId;
-  var month = button.dataset.month;
-  var input = document.getElementById('advance-input-' + empId);
-  var msg = document.getElementById('advance-msg-' + empId);
-  var netCell = document.getElementById('net-' + empId);
-  var value = parseFloat(input ? input.value : 0) || 0;
-
-  msg.style.color = 'var(--primary)';
-  msg.textContent = 'Saving...';
-
-  fetch('/salary/set_advance', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ emp_id: empId, month: month, advance_amount_paid: value })
-  })
-  .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
-  .then(function(res) {
-    if (res.ok && res.data && res.data.success) {
-      var when = res.data.advance_paid_at ? res.data.advance_paid_at.slice(0,10) : '';
-      msg.style.color = 'var(--success)';
-      msg.textContent = when ? 'Saved: ' + when : 'Saved';
-
-      // Update Net Payable cell live
-      var net = res.data.net_payable !== undefined ? res.data.net_payable : 0;
-      var color, label;
-      if (net < 0) {
-        color = 'var(--warning)';
-        label = '<span class="mono" style="font-size:16px;font-weight:800;color:' + color + ';">−₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>'
-              + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</div>';
-      } else if (net === 0) {
-        color = 'var(--text3)';
-        label = '<span class="mono" style="font-size:16px;font-weight:800;color:' + color + ';">₹0.00</span>'
-              + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
-      } else {
-        color = 'var(--success)';
-        label = '<span class="mono" style="font-size:16px;font-weight:800;color:' + color + ';">₹' + net.toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>';
-      }
-      var advHtml = value > 0 ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−₹' + value.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' advance</div>' : '';
-      netCell.innerHTML = label + advHtml;
-
-      showToast('Advance of ₹' + value.toLocaleString('en-IN') + ' saved. Net: ₹' + net.toLocaleString('en-IN'), 'success');
-    } else {
-      msg.style.color = 'var(--danger)';
-      msg.textContent = (res.data && res.data.message) ? res.data.message : 'Save failed';
-      showToast('Save failed', 'danger');
-    }
-  })
-  .catch(function(){
-    msg.style.color = 'var(--danger)';
-    msg.textContent = 'Request failed';
-    showToast('Request failed', 'danger');
-  });
-}
-
-function markPaidMob(button) {
-  var empId = button.dataset.empId;
-  var month = button.dataset.month;
-  setLoaderState(true);
-  fetch('/salary/mark_paid', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ emp_id: empId, month: month })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    setLoaderState(false);
-    if (data && data.success) {
-      showToast('Salary marked as paid', 'success');
       
-      // Update Mobile Badge
-      var badgeMob = document.getElementById('pay-badge-mob-' + empId);
-      if (badgeMob) {
-        badgeMob.className = 'badge badge-success';
-        badgeMob.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
-      }
-      
-      // Update Mobile Msg
-      var msgMob = document.getElementById('advance-msg-mob-' + empId);
-      if (msgMob) {
-        msgMob.textContent = 'Paid: ' + (data.paid_at || '').slice(0, 10);
-      }
-      
-      // Update Mobile Inputs
-      var advInputMob = document.getElementById('advance-input-mob-' + empId);
-      var advBtnMob = document.getElementById('advance-btn-mob-' + empId);
-      if (advInputMob) advInputMob.disabled = true;
-      if (advBtnMob) advBtnMob.disabled = true;
+      var paidDateStr = 'Paid: ' + (data.paid_at || '').slice(0, 10);
 
-      // Remove button
-      button.remove();
-
-      // Also update Desktop view if it exists
+      // 1. Update Desktop elements
       var badge = document.getElementById('pay-badge-' + empId);
       if (badge) {
         badge.className = 'badge badge-success';
         badge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
       }
       var dateEl = document.getElementById('paid-date-' + empId);
-      if (dateEl) dateEl.textContent = 'Paid: ' + (data.paid_at || '').slice(0, 10);
+      if (dateEl) {
+        dateEl.textContent = paidDateStr;
+      }
       var payBtn = document.getElementById('pay-btn-' + empId);
-      if (payBtn) payBtn.outerHTML = '<span class="text-muted mono" id="pay-btn-' + empId + '">—</span>';
+      if (payBtn) {
+        payBtn.outerHTML = '<span class="text-muted mono" id="pay-btn-' + empId + '">—</span>';
+      }
       var advInput = document.getElementById('advance-input-' + empId);
-      var advBtn = document.getElementById('advance-btn-' + empId);
       if (advInput) advInput.disabled = true;
+      var advBtn = document.getElementById('advance-btn-' + empId);
       if (advBtn) advBtn.disabled = true;
+
+      // 2. Update Mobile elements
+      var badgeMob = document.getElementById('pay-badge-mob-' + empId);
+      if (badgeMob) {
+        badgeMob.className = 'badge badge-success';
+        badgeMob.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
+      }
+      var msgMob = document.getElementById('advance-msg-mob-' + empId);
+      if (msgMob) {
+        msgMob.textContent = paidDateStr;
+      }
+      var advInputMob = document.getElementById('advance-input-mob-' + empId);
+      if (advInputMob) advInputMob.disabled = true;
+      var advBtnMob = document.getElementById('advance-btn-mob-' + empId);
+      if (advBtnMob) advBtnMob.disabled = true;
+      var payBtnMob = document.getElementById('pay-btn-mob-' + empId);
+      if (payBtnMob) payBtnMob.remove();
 
     } else {
       showToast(data.message || 'Failed', 'danger');
     }
-  }).catch(function(){ setLoaderState(false); showToast('Request failed', 'danger'); });
+  })
+  .catch(function(){ 
+    setLoaderState(false); 
+    showToast('Request failed', 'danger'); 
+  });
 }
 
-function setAdvanceMob(button) {
+function setAdvance(button) {
   var empId = button.dataset.empId;
   var month = button.dataset.month;
-  var input = document.getElementById('advance-input-mob-' + empId);
-  var msg = document.getElementById('advance-msg-mob-' + empId);
-  var netCell = document.getElementById('net-mob-' + empId);
-  var value = parseFloat(input ? input.value : 0) || 0;
+  var isMobile = button.closest('.mobile-only') !== null;
+  var inputId = isMobile ? 'advance-input-mob-' + empId : 'advance-input-' + empId;
+  var input = document.getElementById(inputId);
+  if (!input) return;
 
-  msg.style.color = 'var(--primary)';
-  msg.textContent = 'Saving...';
+  var msg = document.getElementById('advance-msg-' + empId);
+  var msgMob = document.getElementById('advance-msg-mob-' + empId);
+  var value = parseFloat(input.value) || 0;
+
+  if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'Saving...'; }
+  if (msgMob) { msgMob.style.color = 'var(--primary)'; msgMob.textContent = 'Saving...'; }
 
   fetch('/salary/set_advance', {
     method: 'POST',
@@ -440,61 +365,78 @@ function setAdvanceMob(button) {
   .then(function(res) {
     if (res.ok && res.data && res.data.success) {
       var when = res.data.advance_paid_at ? res.data.advance_paid_at.slice(0,10) : '';
-      msg.style.color = 'var(--success)';
-      msg.textContent = when ? 'Saved: ' + when : 'Saved';
+      if (msg) {
+        msg.style.color = 'var(--success)';
+        msg.textContent = when ? 'Saved: ' + when : 'Saved';
+      }
+      if (msgMob) {
+        msgMob.style.color = 'var(--success)';
+        msgMob.textContent = when ? 'Saved: ' + when : 'Saved';
+      }
 
-      // Update Net Payable cell live
+      // Update Net Payable cells live
       var net = res.data.net_payable !== undefined ? res.data.net_payable : 0;
-      var color, label;
-      if (net < 0) {
-        color = 'var(--warning)';
-        label = '<span class="mono font-bold text-amber-500">−₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>'
-              + '<div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</div>';
-      } else if (net === 0) {
-        color = 'var(--text3)';
-        label = '<span class="mono font-bold text-muted">₹0.00</span>'
-              + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
-      } else {
-        color = 'var(--success)';
-        label = '<span class="mono font-bold" style="color:var(--success);font-size:13px;">₹' + net.toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>';
-      }
-      var advHtml = value > 0 ? '<div style="font-size:9px;color:var(--danger);font-family:monospace;margin-top:1px;">−₹' + value.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' advance</div>' : '';
-      netCell.innerHTML = label + advHtml;
+      
+      // Helper function to format INR currency
+      var fmt = function(n) {
+        return n.toLocaleString('en-IN', {minimumFractionDigits: 2});
+      };
 
-      // Update Desktop view if it exists
-      var deskNet = document.getElementById('net-' + empId);
-      if (deskNet) {
-        var deskLabel;
+      // 1. Update Desktop view elements
+      var netCell = document.getElementById('net-' + empId);
+      if (netCell) {
+        var label;
         if (net < 0) {
-          deskLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--warning);">−₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>'
-                    + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</div>';
+          label = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--warning);">−₹' + fmt(Math.abs(net)) + '</span>'
+                + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + fmt(Math.abs(net)) + '</div>';
         } else if (net === 0) {
-          deskLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>'
-                    + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
+          label = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>'
+                + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
         } else {
-          deskLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹' + net.toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>';
+          label = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹' + fmt(net) + '</span>';
         }
-        var deskAdvHtml = value > 0 ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−₹' + value.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' advance</div>' : '';
-        deskNet.innerHTML = deskLabel + deskAdvHtml;
+        var advHtml = value > 0 ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−₹' + fmt(value) + ' advance</div>' : '';
+        netCell.innerHTML = label + advHtml;
       }
-      var deskMsg = document.getElementById('advance-msg-' + empId);
-      if (deskMsg) {
-        deskMsg.style.color = 'var(--success)';
-        deskMsg.textContent = when ? 'Saved: ' + when : 'Saved';
-      }
+      
       var deskInput = document.getElementById('advance-input-' + empId);
-      if (deskInput) deskInput.value = value;
+      if (deskInput) {
+        deskInput.value = value;
+      }
+
+      // 2. Update Mobile view elements
+      var netCellMob = document.getElementById('net-mob-' + empId);
+      if (netCellMob) {
+        var labelMob;
+        if (net < 0) {
+          labelMob = '<span class="mono font-bold text-amber-500">−₹' + fmt(Math.abs(net)) + '</span>'
+                   + '<div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹' + fmt(Math.abs(net)) + '</div>';
+        } else if (net === 0) {
+          labelMob = '<span class="mono font-bold text-muted">₹0.00</span>'
+                   + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
+        } else {
+          labelMob = '<span class="mono font-bold" style="color:var(--success);font-size:13px;">₹' + fmt(net) + '</span>';
+        }
+        var advHtmlMob = value > 0 ? '<div style="font-size:9px;color:var(--danger);font-family:monospace;margin-top:1px;">−₹' + fmt(value) + ' advance</div>' : '';
+        netCellMob.innerHTML = labelMob + advHtmlMob;
+      }
+      
+      var mobInput = document.getElementById('advance-input-mob-' + empId);
+      if (mobInput) {
+        mobInput.value = value;
+      }
 
       showToast('Advance of ₹' + value.toLocaleString('en-IN') + ' saved. Net: ₹' + net.toLocaleString('en-IN'), 'success');
     } else {
-      msg.style.color = 'var(--danger)';
-      msg.textContent = (res.data && res.data.message) ? res.data.message : 'Save failed';
-      showToast('Save failed', 'danger');
+      var failMsg = (res.data && res.data.message) ? res.data.message : 'Save failed';
+      if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = failMsg; }
+      if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = failMsg; }
+      showToast('Save failed: ' + failMsg, 'danger');
     }
   })
   .catch(function(){
-    msg.style.color = 'var(--danger)';
-    msg.textContent = 'Request failed';
+    if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Request failed'; }
+    if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = 'Request failed'; }
     showToast('Request failed', 'danger');
   });
 }

@@ -343,7 +343,9 @@
 
   function setAdvancePart(button) {
     var recordId = button.dataset.recordId;
-    var input = document.getElementById('advance-input-' + recordId) || document.getElementById('advance-input-mob-' + recordId);
+    var isMobile = button.closest('.mobile-only') !== null;
+    var inputId = isMobile ? 'advance-input-mob-' + recordId : 'advance-input-' + recordId;
+    var input = document.getElementById(inputId);
     var msg = document.getElementById('advance-msg-' + recordId);
     var msgMob = document.getElementById('advance-msg-mob-' + recordId);
     if (!input) return;
