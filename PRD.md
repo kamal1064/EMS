@@ -252,7 +252,7 @@ erDiagram
 | This Month Present | Aggregated attendance |
 | This Month Absent | Aggregated attendance |
 
-**Charts:** Chart.js bar chart — present vs absent per employee for selected month. Data via `/api/chart/attendance?month=YYYY-MM`.
+**Charts:** Chart.js bar chart — present vs absent per employee for selected month. Data via `/api/v1/chart/attendance?month=YYYY-MM`.
 
 **Activity Feed:** Last 10 attendance events.
 
@@ -324,10 +324,10 @@ Triggered by clicking navbar avatar + chevron.
 | Feature | Implementation |
 |---|---|
 | Avatar | Gradient circle, first letter of name |
-| User info | Fetched from `/api/profile-info` |
+| User info | Fetched from `/api/v1/profile-info` |
 | Last Login | Stored in session on each successful login |
 | Edit Profile | Display name → `localStorage` |
-| Change Password | POST to `/api/change-password` (rate limited 5/hr) |
+| Change Password | POST to `/api/v1/change-password` (rate limited 5/hr) |
 | Theme Toggle | Animated pill, synced with navbar button |
 | Sign Out | Clears session |
 | Close | Click outside / Esc / × button |
@@ -385,9 +385,9 @@ Downloads `employee_data_YYYY-MM-DD.csv` with three sections:
 | `/salary/mark_paid` | POST | — | Mark salary paid |
 | `/salary/set_advance` | POST | — | Set salary advance |
 | `/part-time/set_advance` | POST | — | Set part-time advance |
-| `/api/chart/attendance` | GET | — | Chart data |
-| `/api/profile-info` | GET | — | Current user info |
-| `/api/change-password` | POST | 5/hr | Change password |
+| `/api/v1/chart/attendance` | GET | — | Chart data |
+| `/api/v1/profile-info` | GET | — | Current user info |
+| `/api/v1/change-password` | POST | 5/hr | Change password |
 
 #### Sample Payloads
 
@@ -400,11 +400,11 @@ Downloads `employee_data_YYYY-MM-DD.csv` with three sections:
 { "emp_id": 12, "month": "2026-05", "advance_amount_paid": 1500.00 }
 → { "success": true, "advance_amount_paid": 1500.0, "advance_paid_at": "2026-05-23 06:40:00" }
 
-// POST /api/change-password
+// POST /api/v1/change-password
 { "current_password": "old123", "new_password": "new1234!", "confirm_password": "new1234!" }
 → { "ok": true, "message": "Password changed successfully." }
 
-// GET /api/chart/attendance?month=2026-05
+// GET /api/v1/chart/attendance?month=2026-05
 → { "labels": ["Kamal", "Rajesh", "Priya"], "present": [28, 25, 30], "absent": [2, 5, 0] }
 ```
 
@@ -414,15 +414,21 @@ Downloads `employee_data_YYYY-MM-DD.csv` with three sections:
 
 | Layer | Implementation |
 |---|---|
-| Password Hashing | SHA-256 (never plaintext) |
+| Password Hashing | `bcrypt` rounds=12 (with legacy SHA-256 fallback & auto-migration) |
+| Security Headers | `flask-talisman` enforcing CSP, X-Frame-Options, X-Content-Type-Options |
+| CORS | `flask-cors` utilizing explicit origins with supports_credentials |
 | Email Verification | `secrets.token_urlsafe(32)`, consumed on use |
 | Password Reset | Cryptographic token, 1-hour expiry |
-| Session | Flask encrypted cookies (`SECRET_KEY`) |
+| Session Security | Flask encrypted sessions with `SameSite=Strict`, `HttpOnly`, `Secure` |
 | Route Guards | `@login_required` decorator |
 | Multi-Tenancy | All queries filter `WHERE user_id = ?` |
 | 2FA | RFC-6238 TOTP, 30s window, `pyotp` |
 | Rate Limiting | `flask-limiter` per IP |
 | User Enumeration | Forgot password always shows success |
+| Payload Size Limit | Restricts body size to 1MB (`MAX_CONTENT_LENGTH` limit) |
+| Liveness/Readiness | `/health` and `/ready` endpoints |
+| Error Monitoring | `sentry-sdk` integration with header key scrubbing |
+| Logging | Structured JSON logger output |
 
 ### Rate Limits Table
 
@@ -432,7 +438,7 @@ Downloads `employee_data_YYYY-MM-DD.csv` with three sections:
 | `POST /signup` | 5 per hour |
 | `POST /forgot-password` | 5 per hour |
 | `POST /resend-verification` | 3 per hour |
-| `POST /api/change-password` | 5 per hour |
+| `POST /api/v1/change-password` | 5 per hour |
 | Global fallback | 300/day, 60/hour |
 
 ---

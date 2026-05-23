@@ -207,7 +207,7 @@
   function loadAttChart(){
     var month=document.getElementById('attMonth').value;
     setLoaderState(true);
-    fetch('/api/chart/attendance?month='+month)
+    fetch('/api/v1/chart/attendance?month='+month)
       .then(function(r){return r.json();})
       .then(function(d){
         setLoaderState(false);
@@ -221,7 +221,7 @@
   function loadEmpAttChart(){
     var month=document.getElementById('empAttMonth').value;
     setLoaderState(true);
-    fetch('/api/chart/attendance?month='+month)
+    fetch('/api/v1/chart/attendance?month='+month)
       .then(function(r){return r.json();})
       .then(function(d){
         setLoaderState(false);

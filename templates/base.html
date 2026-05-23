@@ -896,7 +896,7 @@ function closeProfilePopup() {
 
 /* Fetch user info from server */
 function loadProfileInfo() {
-  fetch('/api/profile-info')
+  fetch('/api/v1/profile-info')
     .then(function(r){ return r.json(); })
     .then(function(d) {
       var nameEl  = document.getElementById('pp-name');
@@ -965,7 +965,7 @@ function ppChangePassword() {
   btn.disabled = true;
   btn.innerHTML = '<span style="opacity:.7">Updating\u2026</span>';
 
-  fetch('/api/change-password', {
+  fetch('/api/v1/change-password', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ current_password: curPw, new_password: newPw, confirm_password: conPw })

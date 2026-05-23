@@ -1,6 +1,6 @@
 """
-Employee Management System - Flask Backend (SQLite)
-===================================================
+Employee Management System - Flask Backend (MongoDB Atlas)
+===========================================================
 Run with: python app.py
 """
 
@@ -11,16 +11,26 @@ try:
 except ImportError:
     pass  # dotenv optional; env vars may be set by the OS/host
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, Blueprint
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import sqlite3
+from flask_talisman import Talisman
+from flask_cors import CORS
+from pymongo import MongoClient
+import pymongo.errors
+from bson.objectid import ObjectId
+
 import hashlib
 import secrets
 import os
 import csv
 import io
 import calendar
+import bcrypt
+import logging
+import json
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 from datetime import datetime, date, timedelta
 from functools import wraps
 import pyotp
@@ -29,8 +39,100 @@ import base64
 from io import BytesIO
 from utils.mailer import send_verification_email, send_reset_email
 
+# ─────────────────────────────────────────
+# SECURITY & MONITORING INIT
+# ─────────────────────────────────────────
+
+# Initialize Sentry Error Monitoring (if DSN provided)
+sentry_dsn = os.environ.get('SENTRY_DSN')
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.1,
+        # Scrub header keys and potentially sensitive info
+        before_send=lambda event, hint: {
+            **event,
+            'request': {**event.get('request', {}), 'headers': '[REDACTED]'}
+        } if event else None,
+    )
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'emp_mgmt_secret_key_2024_change_in_prod')
+
+# Enforce SECRET_KEY crash on startup if missing
+secret = os.environ.get('SECRET_KEY')
+if not secret:
+    raise RuntimeError("SECRET_KEY environment variable is not set. Refusing to start.")
+app.secret_key = secret
+
+# Structured JSON Logging
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            "level": record.levelname,
+            "msg": record.getMessage(),
+            "time": self.formatTime(record),
+            "module": record.module,
+        }
+        if record.exc_info:
+            log_entry["exc"] = self.formatException(record.exc_info)
+        return json.dumps(log_entry)
+
+app.logger.handlers.clear()
+handler = logging.StreamHandler()
+handler.setFormatter(JSONFormatter())
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
+
+# Flask-Cors configuration
+cors_origins_env = os.environ.get('CORS_ORIGINS', 'http://127.0.0.1:5000')
+CORS(app,
+     origins=cors_origins_env.split(','),
+     supports_credentials=True,
+     methods=['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'])
+
+# Flask-Talisman Security Headers
+is_prod = os.environ.get('FLASK_ENV', 'production') == 'production'
+Talisman(app,
+    force_https=is_prod,
+    content_security_policy={
+        'default-src': "'self'",
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net", "cdn.tailwindcss.com"],
+        'style-src':  ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "cdn.jsdelivr.net"],
+        'font-src':   ["'self'", "fonts.gstatic.com", "cdn.jsdelivr.net"],
+        'img-src':    ["'self'", "data:", "*"],
+    },
+    frame_options='DENY',
+    referrer_policy='strict-origin-when-cross-origin',
+)
+
+# Session Cookie Security
+app.config.update(
+    SESSION_COOKIE_SAMESITE='Strict',
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=is_prod,
+)
+
+# Request size limits (1MB max payload)
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
+
+@app.errorhandler(413)
+def request_too_large(e):
+    app.logger.warning("Payload size limit exceeded (413 error)")
+    return jsonify({
+        "success": False,
+        "error": {
+            "code": "PAYLOAD_TOO_LARGE",
+            "message": "Request payload exceeds 1MB limit."
+        }
+    }), 413
+
+
+# ─────────────────────────────────────────
+# API V1 BLUEPRINT DECLARATION
+# ─────────────────────────────────────────
+api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
+
 
 
 DB_PATH = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__), 'database.db'))
@@ -82,233 +184,93 @@ def rate_limit_exceeded(e):
 
 
 # ─────────────────────────────────────────
-# DATABASE SETUP
+# DATABASE SETUP (MONGODB ATLAS)
 # ─────────────────────────────────────────
 
-def get_db():
-    """Connect to SQLite database."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # allows dict-like access
-    return conn
+mongo_uri = os.environ.get('MONGO_URI')
+if not mongo_uri:
+    raise RuntimeError("MONGO_URI environment variable is not set. Refusing to start.")
+
+try:
+    mongo_client = MongoClient(mongo_uri)
+    # Ping database to check connection
+    mongo_client.admin.command('ping')
+    db = mongo_client.get_default_database()
+except Exception as e:
+    try:
+        db = mongo_client['ems_db']
+    except Exception:
+        raise RuntimeError(f"Failed to initialize MongoDB connection: {e}")
 
 
 def init_db():
-    """Create all tables if they don't exist and perform migrations."""
-    conn = get_db()
-    c = conn.cursor()
-
-    # Users table (owners/admins)
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            otp_secret TEXT,
-            otp_enabled BOOLEAN DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
-    # Add auth columns to existing users table (safe migrations)
-    for col_def in [
-        ('otp_secret',         'TEXT'),
-        ('otp_enabled',        'BOOLEAN DEFAULT 0'),
-        ('is_verified',        'BOOLEAN DEFAULT 1'),   # default 1 so existing accounts stay valid
-        ('verify_token',       'TEXT'),
-        ('reset_token',        'TEXT'),
-        ('reset_token_expiry', 'TEXT'),
-    ]:
-        try:
-            c.execute(f'ALTER TABLE users ADD COLUMN {col_def[0]} {col_def[1]}')
-        except sqlite3.OperationalError:
-            pass  # column already exists
-
-    # Employees table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            phone TEXT,
-            age INTEGER,
-            gender TEXT,
-            salary REAL,
-            leaves INTEGER DEFAULT 0,
-            working_hours REAL DEFAULT 40,
-            user_id INTEGER,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Attendance table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS attendance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id INTEGER NOT NULL,
-            date TEXT NOT NULL,
-            status TEXT NOT NULL,
-            UNIQUE(emp_id, date),
-            FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Salary records table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS salary_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id INTEGER NOT NULL,
-            month TEXT NOT NULL,
-            present_days INTEGER DEFAULT 0,
-            total_salary REAL DEFAULT 0,
-            advance_amount_paid REAL DEFAULT 0,
-            advance_paid_at TEXT,
-            payment_status TEXT DEFAULT 'Unpaid',
-            paid_at TEXT,
-            FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Ensure advance columns exist in salary_records for older databases
+    """Initialize MongoDB collections and create unique indexes."""
     try:
-        c.execute('ALTER TABLE salary_records ADD COLUMN advance_amount_paid REAL DEFAULT 0')
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        c.execute('ALTER TABLE salary_records ADD COLUMN advance_paid_at TEXT')
-    except sqlite3.OperationalError:
-        pass
-
-    # Part-time workers table (completely decoupled from salaried employees)
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS part_time_workers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            user_id INTEGER,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Part-time work logs table (linked to part_time_workers)
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS part_time_work_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            worker_id INTEGER NOT NULL,
-            client_name TEXT NOT NULL,
-            working_date TEXT NOT NULL,
-            slab_quantity INTEGER NOT NULL,
-            slab_price REAL NOT NULL,
-            total_price REAL NOT NULL,
-            delivery_location TEXT NOT NULL,
-            advance_paid REAL DEFAULT 0,
-            payment_status TEXT DEFAULT 'Unpaid',
-            remaining_balance REAL DEFAULT 0,
-            notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (worker_id) REFERENCES part_time_workers(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Legacy part_time_employee table retained for migrations
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS part_time_employee (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            employee_name TEXT NOT NULL,
-            working_date TEXT NOT NULL,
-            slab_quantity INTEGER NOT NULL,
-            slab_price REAL NOT NULL,
-            total_price REAL NOT NULL,
-            delivery_location TEXT NOT NULL,
-            user_id INTEGER,
-            advance_amount_paid REAL DEFAULT 0,
-            advance_paid_at TEXT
-        )
-    ''')
-
-    # Migration from employees/logs to decoupled part_time_workers table
-    try:
-        c.execute("SELECT COUNT(*) FROM part_time_workers")
-        pt_workers_count = c.fetchone()[0]
-        if pt_workers_count == 0:
-            c.execute("SELECT * FROM part_time_work_logs")
-            logs = c.fetchall()
-            for log in logs:
-                old_worker_id = log['worker_id']
-                log_id = log['id']
-                
-                # Fetch employee name & user ID from salaried roster
-                c.execute("SELECT name, user_id FROM employees WHERE id = ?", (old_worker_id,))
-                emp_row = c.fetchone()
-                if emp_row:
-                    emp_name = emp_row['name']
-                    user_id = emp_row['user_id']
-                    
-                    # See if this worker already exists in part_time_workers
-                    c.execute("SELECT id FROM part_time_workers WHERE name = ? AND user_id = ? LIMIT 1", (emp_name, user_id))
-                    pw_row = c.fetchone()
-                    if pw_row:
-                        new_worker_id = pw_row['id']
-                    else:
-                        c.execute("INSERT INTO part_time_workers (name, user_id) VALUES (?, ?)", (emp_name, user_id))
-                        new_worker_id = c.lastrowid
-                    
-                    # Point log to the decoupled table
-                    c.execute("UPDATE part_time_work_logs SET worker_id = ? WHERE id = ?", (new_worker_id, log_id))
+        db.users.create_index("email", unique=True)
+        db.users.create_index("username", unique=True)
+        app.logger.info("MongoDB indexes verified successfully.")
     except Exception as e:
-        print(f"Decoupled migration error: {e}")
-
-    # Migration from legacy part_time_employee to modern part_time_work_logs
-    try:
-        c.execute("SELECT COUNT(*) FROM part_time_work_logs")
-        logs_count = c.fetchone()[0]
-        if logs_count == 0:
-            c.execute("SELECT * FROM part_time_employee")
-            old_rows = c.fetchall()
-            if old_rows:
-                for row in old_rows:
-                    emp_name = row['employee_name']
-                    user_id = row['user_id']
-                    
-                    # Try to find employee with similar name
-                    c.execute("SELECT id FROM part_time_workers WHERE name = ? AND user_id = ? LIMIT 1", (emp_name, user_id))
-                    emp_row = c.fetchone()
-                    worker_id = emp_row['id'] if emp_row else None
-                    
-                    if not worker_id:
-                        # Create a matching employee if none exists
-                        c.execute("INSERT INTO part_time_workers (name, user_id) VALUES (?, ?)", (emp_name, user_id))
-                        worker_id = c.lastrowid
-                    
-                    c.execute("""
-                        INSERT INTO part_time_work_logs 
-                        (worker_id, client_name, working_date, slab_quantity, slab_price, total_price, delivery_location, advance_paid, remaining_balance, payment_status)
-                        VALUES (?, 'Unassigned', ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        worker_id,
-                        row['working_date'],
-                        row['slab_quantity'],
-                        row['slab_price'],
-                        row['total_price'],
-                        row['delivery_location'],
-                        row['advance_amount_paid'] or 0,
-                        max(row['total_price'] - (row['advance_amount_paid'] or 0), 0),
-                        'Paid' if (row['advance_amount_paid'] or 0) >= row['total_price'] else 'Unpaid'
-                    ))
-    except Exception as e:
-        print(f"Legacy migration error: {e}")
-
-    conn.commit()
-    conn.close()
+        app.logger.error(f"Error initializing MongoDB: {e}", exc_info=True)
 
 
-# Initialize database schema at import time
 try:
     init_db()
 except Exception as e:
-    print(f"Import time init_db error: {e}")
+    app.logger.error(f"Import time init_db error: {e}")
     pass
+
+
+# ─────────────────────────────────────────
+# HEALTH & READY ENDPOINTS
+# ─────────────────────────────────────────
+
+@app.route('/health')
+def health():
+    """Liveness probe returning simple OK status."""
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route('/ready')
+def ready():
+    """Readiness probe checking MongoDB connection status."""
+    try:
+        db.client.admin.command('ping')
+        return jsonify({"status": "ready", "database": "connected"}), 200
+    except Exception as e:
+        app.logger.error(f"Readiness probe failed: {e}")
+        return jsonify({"status": "not_ready", "error": str(e)}), 503
+
+
+# ─────────────────────────────────────────
+
+# DOCUMENT SERIALIZATION HELPERS
+# ─────────────────────────────────────────
+
+def serialize_doc(doc):
+    """Adds a string 'id' field to a MongoDB document based on its '_id'."""
+    if not doc:
+        return None
+    doc = dict(doc)
+    if '_id' in doc:
+        doc['id'] = str(doc['_id'])
+    return doc
+
+
+def serialize_docs(docs):
+    """Serialize a list of MongoDB documents."""
+    return [serialize_doc(d) for d in docs]
+
+
+def safe_object_id(val):
+    """Safely cast value to ObjectId, returning None if invalid."""
+    if not val:
+        return None
+    try:
+        return ObjectId(str(val))
+    except Exception:
+        return None
+
+
 
 
 # ─────────────────────────────────────────
@@ -316,22 +278,58 @@ except Exception as e:
 # ─────────────────────────────────────────
 
 def hash_password(password):
-    """Hash password using SHA-256."""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt (rounds=12)."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(12)).decode('utf-8')
+
+
+def verify_and_migrate_password(user_id, password, stored_hash):
+    """
+    Verify password using bcrypt. If stored_hash is a legacy SHA-256 hash
+    (64 chars, not starting with '$'), verify using SHA-256, and if successful,
+    automatically upgrade/re-hash using bcrypt and update the database.
+    """
+    is_legacy = len(stored_hash) == 64 and not stored_hash.startswith('$')
+    
+    if is_legacy:
+        sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        if sha256_hash == stored_hash:
+            new_bcrypt_hash = hash_password(password)
+            db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"password": new_bcrypt_hash}})
+            app.logger.info("Automatically migrated user password from SHA-256 to bcrypt", extra={"user_id": str(user_id)})
+            return True
+        return False
+    else:
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+        except Exception as e:
+            app.logger.error("Bcrypt check failed", exc_info=True)
+            return False
+
 
 
 def login_required(f):
     """Decorator to protect routes that need login."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if 'user_id' not in session:
+        if not get_current_user_id():
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated
 
 
 def get_current_user_id():
-    return session.get('user_id')
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    try:
+        # Validate that uid is a valid hex string of 24 characters (ObjectId)
+        ObjectId(uid)
+        return uid
+    except Exception:
+        # Force logout/clear of legacy SQLite integer user_id or corrupt session
+        session.clear()
+        return None
+
 
 
 # ─────────────────────────────────────────
@@ -365,18 +363,31 @@ def signup():
         if password != confirm:
             return render_template('signup.html', error='Passwords do not match.')
 
-        verify_token = secrets.token_urlsafe(32)
-        conn = get_db()
-        try:
-            conn.execute(
-                'INSERT INTO users (username, email, password, is_verified, verify_token) VALUES (?, ?, ?, 0, ?)',
-                (email.split('@')[0], email, hash_password(password), verify_token)
-            )
-            conn.commit()
-            conn.close()
-        except sqlite3.IntegrityError:
-            conn.close()
+        username = email.split('@')[0]
+        if db.users.find_one({"email": email}):
             return render_template('signup.html', error='An account with this email already exists.')
+        if db.users.find_one({"username": username}):
+            return render_template('signup.html', error='An account with this username already exists.')
+
+        verify_token = secrets.token_urlsafe(32)
+        try:
+            db.users.insert_one({
+                "username": username,
+                "email": email,
+                "password": hash_password(password),
+                "otp_secret": None,
+                "otp_enabled": False,
+                "is_verified": False,
+                "verify_token": verify_token,
+                "reset_token": None,
+                "reset_token_expiry": None,
+                "created_at": datetime.utcnow().isoformat()
+            })
+        except pymongo.errors.DuplicateKeyError as e:
+            # Fallback catch in case of race conditions
+            app.logger.warning(f"Race condition DuplicateKeyError during signup: {e}")
+            return render_template('signup.html', error='An account with this email or username already exists.')
+
 
         send_verification_email(email, verify_token)
         return render_template('signup.html', sent=True, email=email)
@@ -386,18 +397,14 @@ def signup():
 
 @app.route('/verify/<token>')
 def verify_email(token):
-    conn = get_db()
-    user = conn.execute(
-        'SELECT * FROM users WHERE verify_token = ? AND is_verified = 0', (token,)
-    ).fetchone()
+    user = db.users.find_one({"verify_token": token, "is_verified": False})
     if not user:
-        conn.close()
         return render_template('verify_email.html', status='invalid')
-    conn.execute(
-        'UPDATE users SET is_verified = 1, verify_token = NULL WHERE id = ?', (user['id'],)
+    
+    db.users.update_one(
+        {"_id": user['_id']},
+        {"$set": {"is_verified": True, "verify_token": None}}
     )
-    conn.commit()
-    conn.close()
     return render_template('verify_email.html', status='success')
 
 
@@ -407,16 +414,15 @@ def resend_verification():
     email = request.form.get('email', '').strip().lower()
     if not email:
         return redirect(url_for('login'))
-    conn = get_db()
-    user = conn.execute(
-        'SELECT * FROM users WHERE email = ? AND is_verified = 0', (email,)
-    ).fetchone()
+    
+    user = db.users.find_one({"email": email, "is_verified": False})
     if user:
         new_token = secrets.token_urlsafe(32)
-        conn.execute('UPDATE users SET verify_token = ? WHERE id = ?', (new_token, user['id']))
-        conn.commit()
+        db.users.update_one(
+            {"_id": user['_id']},
+            {"$set": {"verify_token": new_token}}
+        )
         send_verification_email(email, new_token)
-    conn.close()
     return render_template('login.html', success='Verification email resent! Check your inbox.')
 
 
@@ -435,23 +441,24 @@ def login():
         if not email or not password:
             return render_template('login.html', error='Email and password are required.')
 
-        conn = get_db()
-        user = conn.execute(
-            'SELECT * FROM users WHERE email = ? AND password = ?',
-            (email, hash_password(password))
-        ).fetchone()
-        conn.close()
+        user = db.users.find_one({"email": email})
+        
+        if user and verify_and_migrate_password(user['_id'], password, user['password']):
+            # Password verification succeeded
+            app.logger.info("User login successful", extra={"user_id": str(user['_id'])})
+        else:
+            user = None
 
         if not user:
             return render_template('login.html', error='Invalid email or password.')
 
         # Block unverified users
-        if not user['is_verified']:
+        if not user.get('is_verified', True):
             return render_template('login.html',
                 error='Please verify your email before logging in.',
                 unverified_email=email)
 
-        session['user_id']  = user['id']
+        session['user_id']  = str(user['_id'])
         session['username'] = user['username']
         session['last_login'] = datetime.now().strftime('%b %d, %Y at %I:%M %p')
         if remember:
@@ -470,18 +477,15 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         if email:
-            conn = get_db()
-            user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+            user = db.users.find_one({"email": email})
             if user:
                 token  = secrets.token_urlsafe(32)
                 expiry = (datetime.utcnow() + timedelta(hours=1)).isoformat()
-                conn.execute(
-                    'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?',
-                    (token, expiry, user['id'])
+                db.users.update_one(
+                    {"_id": user['_id']},
+                    {"$set": {"reset_token": token, "reset_token_expiry": expiry}}
                 )
-                conn.commit()
                 send_reset_email(email, token)
-            conn.close()
         # Always show success (prevents user enumeration)
         return render_template('forgot_password.html', sent=True, email=email)
     return render_template('forgot_password.html')
@@ -489,61 +493,53 @@ def forgot_password():
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    conn = get_db()
-    user = conn.execute(
-        'SELECT * FROM users WHERE reset_token = ?', (token,)
-    ).fetchone()
+    user = db.users.find_one({"reset_token": token})
 
     # Token not found
     if not user:
-        conn.close()
         return render_template('reset_password.html', status='invalid')
 
     # Token expired
-    if user['reset_token_expiry']:
+    if user.get('reset_token_expiry'):
         try:
             expiry = datetime.fromisoformat(user['reset_token_expiry'])
             if datetime.utcnow() > expiry:
-                conn.close()
                 return render_template('reset_password.html', status='expired')
         except ValueError:
-            conn.close()
             return render_template('reset_password.html', status='invalid')
 
     if request.method == 'POST':
         password = request.form.get('password', '')
         confirm  = request.form.get('confirm_password', '')
         if len(password) < 8:
-            conn.close()
             return render_template('reset_password.html', status='form', token=token,
                                    error='Password must be at least 8 characters.')
         if password != confirm:
-            conn.close()
             return render_template('reset_password.html', status='form', token=token,
                                    error='Passwords do not match.')
-        conn.execute(
-            'UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?',
-            (hash_password(password), user['id'])
+        
+        db.users.update_one(
+            {"_id": user['_id']},
+            {"$set": {
+                "password": hash_password(password),
+                "reset_token": None,
+                "reset_token_expiry": None
+            }}
         )
-        conn.commit()
-        conn.close()
         return render_template('reset_password.html', status='success')
 
     # GET — show the form
-    conn.close()
     return render_template('reset_password.html', status='form', token=token)
 
 
 
 
-@app.route('/api/profile-info')
+@api_v1.route('/profile-info')
 @login_required
 def api_profile_info():
     """Return current user info as JSON for the profile popup."""
-    conn = get_db()
-    user = conn.execute('SELECT id, username, email FROM users WHERE id = ?',
-                        (session['user_id'],)).fetchone()
-    conn.close()
+    user = db.users.find_one({"_id": ObjectId(get_current_user_id())})
+    user = serialize_doc(user)
     return jsonify({
         'username':   user['username'] if user else session.get('username', ''),
         'email':      user['email']    if user else '',
@@ -551,7 +547,8 @@ def api_profile_info():
     })
 
 
-@app.route('/api/change-password', methods=['POST'])
+
+@api_v1.route('/change-password', methods=['POST'])
 @login_required
 @limiter.limit("5 per hour")
 def api_change_password():
@@ -568,19 +565,15 @@ def api_change_password():
     if new_pw != confirm_pw:
         return jsonify({'ok': False, 'error': 'New passwords do not match.'}), 400
 
-    conn = get_db()
-    user = conn.execute(
-        'SELECT * FROM users WHERE id = ? AND password = ?',
-        (session['user_id'], hash_password(current_pw))
-    ).fetchone()
-    if not user:
-        conn.close()
+    user = db.users.find_one({"_id": ObjectId(get_current_user_id())})
+    
+    if not user or not verify_and_migrate_password(user['_id'], current_pw, user['password']):
         return jsonify({'ok': False, 'error': 'Current password is incorrect.'}), 403
 
-    conn.execute('UPDATE users SET password = ? WHERE id = ?',
-                 (hash_password(new_pw), session['user_id']))
-    conn.commit()
-    conn.close()
+    db.users.update_one(
+        {"_id": user['_id']},
+        {"$set": {"password": hash_password(new_pw)}}
+    )
     return jsonify({'ok': True, 'message': 'Password changed successfully.'})
 
 
@@ -603,27 +596,25 @@ def logout():
 @login_required
 def dashboard():
     uid = get_current_user_id()
-    conn = get_db()
 
     # Employees
-    employees = [dict(r) for r in conn.execute('SELECT * FROM employees WHERE user_id = ?', (uid,)).fetchall()]
+    employees = list(db.employees.find({"user_id": ObjectId(uid)}))
+    employees = serialize_docs(employees)
+    
     total_emp = len(employees)
-    avg_salary = round(sum(e['salary'] for e in employees) / total_emp, 2) if total_emp else 0
-    avg_age = round(sum(e['age'] for e in employees) / total_emp, 1) if total_emp else 0
-    total_hrs = sum(e['working_hours'] for e in employees)
+    avg_salary = round(sum(e.get('salary', 0.0) for e in employees) / total_emp, 2) if total_emp else 0
+    avg_age = round(sum(e.get('age', 0) for e in employees) / total_emp, 1) if total_emp else 0
+    total_hrs = sum(e.get('working_hours', 40.0) for e in employees)
 
     # Attendance summary
-    emp_ids = [e['id'] for e in employees]
+    emp_ids = [ObjectId(e['id']) for e in employees]
     present_count = 0
     absent_count = 0
+    
     if emp_ids:
-        placeholders = ','.join('?' for _ in emp_ids)
-        att_rows = conn.execute(f'SELECT status, COUNT(*) as cnt FROM attendance WHERE emp_id IN ({placeholders}) GROUP BY status', emp_ids).fetchall()
-        for row in att_rows:
-            if row['status'] == 'Present':
-                present_count = row['cnt']
-            elif row['status'] == 'Absent':
-                absent_count = row['cnt']
+        # In SQLite, missing date = Present, absent rows = Absent.
+        absent_count = db.attendance.count_documents({"emp_id": {"$in": emp_ids}, "status": "Absent"})
+        present_count = db.attendance.count_documents({"emp_id": {"$in": emp_ids}, "status": "Present"})
 
     # Salary distribution for chart
     salary_data = [{'name': e['name'], 'salary': e['salary']} for e in employees]
@@ -631,21 +622,15 @@ def dashboard():
     # Recent attendance (last 10 records)
     recent_att = []
     if emp_ids:
-        placeholders = ','.join('?' for _ in emp_ids)
-        recent_rows = conn.execute(f'''
-            SELECT a.date, a.status, e.name FROM attendance a
-            JOIN employees e ON e.id = a.emp_id
-            WHERE a.emp_id IN ({placeholders})
-            ORDER BY a.date DESC LIMIT 10
-        ''', emp_ids).fetchall()
-        for row in recent_rows:
+        recent_rows = list(db.attendance.find({"emp_id": {"$in": emp_ids}}).sort("date", -1).limit(10))
+        emp_dict = {ObjectId(e['id']): e['name'] for e in employees}
+        for r in recent_rows:
             recent_att.append({
-                'name': row['name'],
-                'date': row['date'],
-                'status': row['status']
+                'name': emp_dict.get(r['emp_id'], 'Unknown'),
+                'date': r['date'],
+                'status': r['status']
             })
 
-    conn.close()
     today = date.today().isoformat()
 
     return render_template('dashboard.html',
@@ -670,19 +655,16 @@ def dashboard():
 def employees():
     uid = get_current_user_id()
     search = request.args.get('q', '').strip()
-    conn = get_db()
 
     if search:
-        emps = [dict(r) for r in conn.execute(
-            'SELECT * FROM employees WHERE user_id = ? AND name LIKE ? ORDER BY name',
-            (uid, f'%{search}%')
-        ).fetchall()]
+        emps = list(db.employees.find({
+            "user_id": ObjectId(uid),
+            "name": {"$regex": search, "$options": "i"}
+        }).sort("name", 1))
     else:
-        emps = [dict(r) for r in conn.execute(
-            'SELECT * FROM employees WHERE user_id = ? ORDER BY name', (uid,)
-        ).fetchall()]
+        emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
 
-    conn.close()
+    emps = serialize_docs(emps)
     return render_template('employees.html', employees=emps, search=search)
 
 
@@ -705,29 +687,38 @@ def add_employee():
         age = int(request.form.get('age') or 0)
     except (TypeError, ValueError):
         age = 0
+    age = max(age, 0)
 
     try:
-        salary = float(request.form.get('salary') or 0)
+        salary = float(request.form.get('salary') or 0.0)
     except (TypeError, ValueError):
-        salary = 0
+        salary = 0.0
+    salary = max(salary, 0.0)
 
     try:
         leaves = int(request.form.get('leaves') or 0)
     except (TypeError, ValueError):
         leaves = 0
+    leaves = max(leaves, 0)
 
     try:
-        hours = float(request.form.get('working_hours') or 40)
+        hours = float(request.form.get('working_hours') or 40.0)
     except (TypeError, ValueError):
-        hours = 40
+        hours = 40.0
+    hours = max(hours, 0.0)
 
-    conn = get_db()
-    conn.execute(
-        'INSERT INTO employees (name, phone, age, gender, salary, leaves, working_hours, user_id) VALUES (?,?,?,?,?,?,?,?)',
-        (name, phone, age, gender, salary, leaves, hours, uid)
-    )
-    conn.commit()
-    conn.close()
+    db.employees.insert_one({
+        "name": name,
+        "phone": phone,
+        "age": age,
+        "gender": gender,
+        "salary": salary,
+        "leaves": leaves,
+        "working_hours": hours,
+        "user_id": ObjectId(uid),
+        "created_at": datetime.utcnow().isoformat()
+    })
+
 
     redirect_to = request.form.get('redirect_to')
     if redirect_to == 'part_time':
@@ -735,50 +726,76 @@ def add_employee():
     return redirect(url_for('employees'))
 
 
-@app.route('/employees/edit/<int:emp_id>', methods=['GET', 'POST'])
+@app.route('/employees/edit/<emp_id>', methods=['GET', 'POST'])
 @limiter.limit("30 per minute")
 @login_required
 def edit_employee(emp_id):
     uid = get_current_user_id()
-    conn = get_db()
-
-    if request.method == 'POST':
-        conn.execute('''
-            UPDATE employees SET name=?, phone=?, age=?, gender=?, salary=?, leaves=?, working_hours=?
-            WHERE id=? AND user_id=?
-        ''', (
-            request.form.get('name'),
-            request.form.get('phone'),
-            int(request.form.get('age', 0)),
-            request.form.get('gender'),
-            float(request.form.get('salary', 0)),
-            int(request.form.get('leaves', 0)),
-            float(request.form.get('working_hours', 40)),
-            emp_id, uid
-        ))
-        conn.commit()
-        conn.close()
+    emp_id_obj = safe_object_id(emp_id)
+    if not emp_id_obj:
         return redirect(url_for('employees'))
 
-    emp = conn.execute('SELECT * FROM employees WHERE id=? AND user_id=?', (emp_id, uid)).fetchone()
-    conn.close()
+    if request.method == 'POST':
+        try:
+            age = int(request.form.get('age') or 0)
+        except (TypeError, ValueError):
+            age = 0
+        age = max(age, 0)
+
+        try:
+            salary = float(request.form.get('salary') or 0.0)
+        except (TypeError, ValueError):
+            salary = 0.0
+        salary = max(salary, 0.0)
+
+        try:
+            leaves = int(request.form.get('leaves') or 0)
+        except (TypeError, ValueError):
+            leaves = 0
+        leaves = max(leaves, 0)
+
+        try:
+            hours = float(request.form.get('working_hours') or 40.0)
+        except (TypeError, ValueError):
+            hours = 40.0
+        hours = max(hours, 0.0)
+
+        db.employees.update_one(
+            {"_id": emp_id_obj, "user_id": ObjectId(uid)},
+            {"$set": {
+                "name": request.form.get('name'),
+                "phone": request.form.get('phone'),
+                "age": age,
+                "gender": request.form.get('gender'),
+                "salary": salary,
+                "leaves": leaves,
+                "working_hours": hours
+            }}
+        )
+        return redirect(url_for('employees'))
+
+    emp = db.employees.find_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    emp = serialize_doc(emp)
     if not emp:
         return redirect(url_for('employees'))
     return render_template('edit_employee.html', emp=emp)
 
 
-@app.route('/employees/delete/<int:emp_id>', methods=['POST'])
+
+@app.route('/employees/delete/<emp_id>', methods=['POST'])
 @limiter.limit("20 per minute")         # prevent rapid deletion attacks
 @login_required
 def delete_employee(emp_id):
     uid = get_current_user_id()
-    conn = get_db()
-    conn.execute('DELETE FROM attendance WHERE emp_id=?', (emp_id,))
-    conn.execute('DELETE FROM salary_records WHERE emp_id=?', (emp_id,))
-    conn.execute('DELETE FROM employees WHERE id=? AND user_id=?', (emp_id, uid))
-    conn.commit()
-    conn.close()
+    emp_id_obj = safe_object_id(emp_id)
+    if not emp_id_obj:
+        return redirect(url_for('employees'))
+
+    db.attendance.delete_many({"emp_id": emp_id_obj})
+    db.salary_records.delete_many({"emp_id": emp_id_obj})
+    db.employees.delete_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
     return redirect(url_for('employees'))
+
 
 
 # ─────────────────────────────────────────
@@ -791,20 +808,20 @@ def delete_employee(emp_id):
 def attendance():
     uid = get_current_user_id()
     selected_date = request.args.get('date', date.today().isoformat())
-    conn = get_db()
 
-    emps = [dict(r) for r in conn.execute('SELECT * FROM employees WHERE user_id=? ORDER BY name', (uid,)).fetchall()]
+    emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    emps = serialize_docs(emps)
     att_map = {e['id']: 'Present' for e in emps}
 
     if emps:
-        emp_ids = [e['id'] for e in emps]
-        placeholders = ','.join('?' for _ in emp_ids)
-        query = f'SELECT emp_id, status FROM attendance WHERE date=? AND emp_id IN ({placeholders})'
-        records = conn.execute(query, [selected_date] + emp_ids).fetchall()
+        emp_ids = [ObjectId(e['id']) for e in emps]
+        records = list(db.attendance.find({
+            "date": selected_date,
+            "emp_id": {"$in": emp_ids}
+        }))
         for r in records:
-            att_map[r['emp_id']] = r['status']
+            att_map[str(r['emp_id'])] = r['status']
 
-    conn.close()
     return render_template(
         'attendance.html',
         employees=emps,
@@ -826,23 +843,19 @@ def mark_attendance():
     if not all([emp_id, att_date, status]):
         return jsonify({'success': False})
 
-    conn = get_db()
     try:
         if status == 'Present':
-            conn.execute('DELETE FROM attendance WHERE emp_id=? AND date=?', (emp_id, att_date))
+            db.attendance.delete_one({"emp_id": ObjectId(emp_id), "date": att_date})
         else:
-            conn.execute('''
-                INSERT INTO attendance (emp_id, date, status)
-                VALUES (?, ?, ?)
-                ON CONFLICT(emp_id, date)
-                DO UPDATE SET status=excluded.status
-            ''', (emp_id, att_date, status))
-        conn.commit()
+            db.attendance.update_one(
+                {"emp_id": ObjectId(emp_id), "date": att_date},
+                {"$set": {"status": status}},
+                upsert=True
+            )
         return jsonify({'success': True, 'status': status})
     except Exception as e:
+        app.logger.error("Failed to mark attendance", exc_info=True)
         return jsonify({'success': False, 'message': str(e)})
-    finally:
-        conn.close()
 
 
 @app.route('/attendance/summary')
@@ -851,20 +864,20 @@ def mark_attendance():
 def attendance_summary():
     uid = get_current_user_id()
     month_filter = request.args.get('month', datetime.now().strftime('%Y-%m'))
-    conn = get_db()
 
-    emps = [dict(r) for r in conn.execute('SELECT * FROM employees WHERE user_id=? ORDER BY name', (uid,)).fetchall()]
+    emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    emps = serialize_docs(emps)
     
     year, month_num = map(int, month_filter.split('-'))
     total_days = calendar.monthrange(year, month_num)[1]
 
     summary = []
     for e in emps:
-        row = conn.execute('''
-            SELECT COUNT(*) as cnt FROM attendance
-            WHERE emp_id=? AND status='Absent' AND date LIKE ?
-        ''', (e['id'], f'{month_filter}%')).fetchone()
-        absent_days = row['cnt'] if row else 0
+        absent_days = db.attendance.count_documents({
+            "emp_id": ObjectId(e['id']),
+            "status": "Absent",
+            "date": {"$regex": f"^{month_filter}"}
+        })
         present_days = total_days - absent_days
         summary.append({
             'name': e['name'],
@@ -873,7 +886,6 @@ def attendance_summary():
             'total': total_days
         })
 
-    conn.close()
     return render_template('attendance_summary.html', summary=summary, month_filter=month_filter)
 
 
@@ -887,52 +899,55 @@ def attendance_summary():
 def salary():
     uid = get_current_user_id()
     month_filter = request.args.get('month', datetime.now().strftime('%Y-%m'))
-    conn = get_db()
 
-    emps = [dict(r) for r in conn.execute('SELECT * FROM employees WHERE user_id=? ORDER BY name', (uid,)).fetchall()]
+    emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    emps = serialize_docs(emps)
     
     year, month_num = map(int, month_filter.split('-'))
     total_days = calendar.monthrange(year, month_num)[1]
 
     salary_details = []
     for e in emps:
-        row = conn.execute('''
-            SELECT COUNT(*) as cnt FROM attendance
-            WHERE emp_id=? AND status='Absent' AND date LIKE ?
-        ''', (e['id'], f'{month_filter}%')).fetchone()
-        absent_days = row['cnt'] if row else 0
+        absent_days = db.attendance.count_documents({
+            "emp_id": ObjectId(e['id']),
+            "status": "Absent",
+            "date": {"$regex": f"^{month_filter}"}
+        })
         present_days = total_days - absent_days
 
-        salary_per_day = e['salary'] / total_days
+        salary_per_day = e.get('salary', 0.0) / total_days
         final_salary = round(salary_per_day * present_days, 2)
 
         # Check existing record
-        rec = conn.execute('SELECT * FROM salary_records WHERE emp_id=? AND month=?', (e['id'], month_filter)).fetchone()
+        rec = db.salary_records.find_one({"emp_id": ObjectId(e['id']), "month": month_filter})
 
         if not rec:
-            conn.execute('''
-                INSERT INTO salary_records (emp_id, month, present_days, total_salary, payment_status)
-                VALUES (?, ?, ?, ?, 'Unpaid')
-            ''', (e['id'], month_filter, present_days, final_salary))
-            conn.commit()
+            db.salary_records.insert_one({
+                "emp_id": ObjectId(e['id']),
+                "month": month_filter,
+                "present_days": present_days,
+                "total_salary": final_salary,
+                "advance_amount_paid": 0.0,
+                "advance_paid_at": None,
+                "payment_status": "Unpaid",
+                "paid_at": None
+            })
             
             payment_status = 'Unpaid'
             paid_at = None
-            advance_amount_paid = 0
+            advance_amount_paid = 0.0
             advance_paid_at = None
         else:
-            if rec['payment_status'] == 'Unpaid':
-                conn.execute('''
-                    UPDATE salary_records
-                    SET present_days=?, total_salary=?
-                    WHERE emp_id=? AND month=? AND payment_status='Unpaid'
-                ''', (present_days, final_salary, e['id'], month_filter))
-                conn.commit()
+            if rec.get('payment_status') == 'Unpaid':
+                db.salary_records.update_one(
+                    {"_id": rec['_id']},
+                    {"$set": {"present_days": present_days, "total_salary": final_salary}}
+                )
             
-            payment_status = rec['payment_status']
-            paid_at = rec['paid_at']
-            advance_amount_paid = rec['advance_amount_paid'] or 0
-            advance_paid_at = rec['advance_paid_at']
+            payment_status = rec.get('payment_status', 'Unpaid')
+            paid_at = rec.get('paid_at')
+            advance_amount_paid = rec.get('advance_amount_paid', 0.0)
+            advance_paid_at = rec.get('advance_paid_at')
 
         net_payable = round(final_salary - advance_amount_paid, 2)
 
@@ -950,7 +965,6 @@ def salary():
             'paid_at': paid_at
         })
 
-    conn.close()
     return render_template('salary.html', salary_details=salary_details, month_filter=month_filter)
 
 
@@ -966,23 +980,23 @@ def part_time():
     search = request.args.get('q', '').strip()
     selected_client = request.args.get('client', '').strip()
     
-    conn = get_db()
     setup_error = None
     
     # Get decoupled part-time workers for the dropdown
-    part_time_workers = [dict(r) for r in conn.execute(
-        'SELECT id, name FROM part_time_workers WHERE user_id = ? ORDER BY name', (uid,)
-    ).fetchall()]
+    pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    worker_names = {str(w['_id']): w['name'] for w in pt_workers}
     
-    # Get part-time logs joined with part_time_workers
-    records = [dict(r) for r in conn.execute('''
-        SELECT r.*, w.name as worker_name FROM part_time_work_logs r
-        JOIN part_time_workers w ON w.id = r.worker_id
-        WHERE w.user_id = ?
-        ORDER BY r.id DESC
-    ''', (uid,)).fetchall()]
+    # Get part-time logs mapped with worker name
+    worker_ids = [ObjectId(wid) for wid in worker_names.keys()]
+    logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}).sort("_id", -1))
+    
+    records = []
+    for log in logs:
+        serialized = serialize_doc(log)
+        serialized['worker_name'] = worker_names.get(str(log['worker_id']), 'Unknown Worker')
+        records.append(serialized)
         
-    conn.close()
+    part_time_workers = serialize_docs(pt_workers)
 
     for record in records:
         record['client_name'] = (record.get('client_name') or 'Unassigned').strip()
@@ -1125,21 +1139,30 @@ def add_part_time_work():
 
     total_price = slab_quantity * slab_price
 
-    conn = get_db()
-    # Verify decoupled worker belongs to this user
-    worker = conn.execute('SELECT id FROM part_time_workers WHERE id = ? AND user_id = ?', (worker_id, uid)).fetchone()
-    if not worker:
-        conn.close()
+    worker_id_obj = safe_object_id(worker_id)
+    if not worker_id_obj:
         return redirect(url_for('part_time'))
 
-    conn.execute('''
-        INSERT INTO part_time_work_logs
-        (worker_id, client_name, working_date, delivery_location, slab_quantity, slab_price, total_price, advance_paid, remaining_balance, payment_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'Unpaid')
-    ''', (worker_id, client_name, working_date, location, slab_quantity, slab_price, total_price, total_price))
-    
-    conn.commit()
-    conn.close()
+    # Verify decoupled worker belongs to this user
+    worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
+    if not worker:
+        return redirect(url_for('part_time'))
+
+    log_doc = {
+        "worker_id": worker_id_obj,
+        "client_name": client_name,
+        "working_date": working_date,
+        "delivery_location": location,
+        "slab_quantity": slab_quantity,
+        "slab_price": slab_price,
+        "total_price": total_price,
+        "advance_paid": 0.0,
+        "remaining_balance": total_price,
+        "payment_status": "Unpaid",
+        "notes": "",
+        "created_at": datetime.now().isoformat()
+    }
+    db.part_time_work_logs.insert_one(log_doc)
 
     return redirect(url_for('part_time'))
 
@@ -1153,10 +1176,11 @@ def add_part_time_worker():
     if not name:
         return redirect(url_for('part_time'))
     
-    conn = get_db()
-    conn.execute('INSERT INTO part_time_workers (name, user_id) VALUES (?, ?)', (name, uid))
-    conn.commit()
-    conn.close()
+    db.part_time_workers.insert_one({
+        "name": name,
+        "user_id": ObjectId(uid),
+        "created_at": datetime.now().isoformat()
+    })
     return redirect(url_for('part_time'))
 
 
@@ -1168,18 +1192,19 @@ def add_part_time_worker():
 @limiter.limit("30 per minute")         # prevent accidental bulk payment triggers
 @login_required
 def mark_paid():
-    data = request.get_json()
+    data = request.get_json() or {}
     emp_id = data.get('emp_id')
     month = data.get('month')
     paid_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    conn = get_db()
-    conn.execute('''
-        UPDATE salary_records SET payment_status='Paid', paid_at=?
-        WHERE emp_id=? AND month=?
-    ''', (paid_at, emp_id, month))
-    conn.commit()
-    conn.close()
+    emp_id_obj = safe_object_id(emp_id)
+    if not emp_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid Employee ID'}), 400
+
+    db.salary_records.update_one(
+        {"emp_id": emp_id_obj, "month": month},
+        {"$set": {"payment_status": "Paid", "paid_at": paid_at}}
+    )
     return jsonify({'success': True, 'paid_at': paid_at})
 
 
@@ -1187,10 +1212,14 @@ def mark_paid():
 @limiter.limit("30 per minute")
 @login_required
 def salary_set_advance():
-    data = request.get_json()
+    data = request.get_json() or {}
     emp_id = data.get('emp_id')
     month = data.get('month')
     advance_amount_paid = data.get('advance_amount_paid')
+
+    emp_id_obj = safe_object_id(emp_id)
+    if not emp_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid Employee ID'}), 400
 
     try:
         advance_amount_paid = float(advance_amount_paid)
@@ -1201,20 +1230,16 @@ def salary_set_advance():
 
     advance_paid_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    conn = get_db()
-    conn.execute('''
-        UPDATE salary_records
-        SET advance_amount_paid=?,
-            advance_paid_at=?
-        WHERE emp_id=? AND month=? AND payment_status IN ('Unpaid','Paid')
-    ''', (advance_amount_paid, advance_paid_at, emp_id, month))
-    conn.commit()
-    conn.close()
+    db.salary_records.update_one(
+        {"emp_id": emp_id_obj, "month": month, "payment_status": {"$in": ["Unpaid", "Paid"]}},
+        {"$set": {
+            "advance_amount_paid": advance_amount_paid,
+            "advance_paid_at": advance_paid_at
+        }}
+    )
 
     # Recalculate net payable from current salary record
-    conn2 = get_db()
-    rec = conn2.execute('SELECT total_salary FROM salary_records WHERE emp_id=? AND month=?', (emp_id, month)).fetchone()
-    conn2.close()
+    rec = db.salary_records.find_one({"emp_id": emp_id_obj, "month": month})
     earned = rec['total_salary'] if rec else 0
     net_payable = round(earned - advance_amount_paid, 2)
 
@@ -1242,34 +1267,33 @@ def part_time_set_advance():
         return jsonify({'success': False, 'message': 'Advance must be a number'}), 400
 
     uid = get_current_user_id()
-    conn = get_db()
     
+    record_id_obj = safe_object_id(record_id)
+    if not record_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid Record ID'}), 400
+        
     # Get record total_price and check ownership
-    record = conn.execute('''
-        SELECT r.total_price, e.user_id FROM part_time_work_logs r
-        JOIN part_time_workers e ON e.id = r.worker_id
-        WHERE r.id = ? AND e.user_id = ?
-    ''', (record_id, uid)).fetchone()
-    
-    if not record:
-        conn.close()
+    log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
+    if not log_record:
         return jsonify({'success': False, 'message': 'Record not found'}), 404
         
-    total_price = record['total_price']
+    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    if not worker:
+        return jsonify({'success': False, 'message': 'Record not found'}), 404
+        
+    total_price = log_record['total_price']
     net_payable = round(total_price - advance_amount_paid, 2)   # can be negative
     remaining_balance = max(net_payable, 0)                     # floored for DB/status
     payment_status = 'Paid' if remaining_balance <= 0 else 'Unpaid'
     
-    conn.execute('''
-        UPDATE part_time_work_logs
-        SET advance_paid = ?,
-            remaining_balance = ?,
-            payment_status = ?
-        WHERE id = ?
-    ''', (advance_amount_paid, remaining_balance, payment_status, record_id))
-    
-    conn.commit()
-    conn.close()
+    db.part_time_work_logs.update_one(
+        {"_id": record_id_obj},
+        {"$set": {
+            "advance_paid": advance_amount_paid,
+            "remaining_balance": remaining_balance,
+            "payment_status": payment_status
+        }}
+    )
 
     return jsonify({
         'success': True,
@@ -1289,7 +1313,6 @@ def part_time_set_advance():
 @login_required
 def export_data():
     uid = get_current_user_id()
-    conn = get_db()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -1298,25 +1321,30 @@ def export_data():
     writer.writerow(['=== EMPLOYEES ==='])
     writer.writerow(['ID', 'Name', 'Phone', 'Age', 'Gender',
                     'Monthly Salary', 'Leaves', 'Working Hours/Week'])
-    emps = conn.execute(
-        'SELECT * FROM employees WHERE user_id=?', (uid,)).fetchall()
+    emps = list(db.employees.find({"user_id": ObjectId(uid)}))
+    emp_map = {}
     for e in emps:
-        writer.writerow([e['id'], e['name'], e['phone'], e['age'],
-                        e['gender'], e['salary'], e['leaves'], e['working_hours']])
+        emp_id_str = str(e['_id'])
+        emp_map[e['_id']] = e.get('name', 'Unknown')
+        writer.writerow([
+            emp_id_str, e.get('name'), e.get('phone'), e.get('age'),
+            e.get('gender'), e.get('salary'), e.get('leaves'), e.get('working_hours')
+        ])
 
     writer.writerow([])
 
     # === ATTENDANCE ===
     writer.writerow(['=== ATTENDANCE ==='])
     writer.writerow(['Employee ID', 'Employee Name', 'Date', 'Status'])
-    att = conn.execute('''
-        SELECT a.emp_id, e.name, a.date, a.status FROM attendance a
-        JOIN employees e ON e.id = a.emp_id
-        WHERE e.user_id=?
-        ORDER BY a.date DESC
-    ''', (uid,)).fetchall()
-    for a in att:
-        writer.writerow([a['emp_id'], a['name'], a['date'], a['status']])
+    emp_ids = list(emp_map.keys())
+    attendance_records = list(db.attendance.find({"emp_id": {"$in": emp_ids}}).sort("date", -1))
+    for a in attendance_records:
+        writer.writerow([
+            str(a['emp_id']),
+            emp_map.get(a['emp_id'], 'Unknown'),
+            a.get('date'),
+            a.get('status')
+        ])
 
     writer.writerow([])
 
@@ -1324,18 +1352,18 @@ def export_data():
     writer.writerow(['=== SALARY RECORDS ==='])
     writer.writerow(['Employee ID', 'Employee Name', 'Month',
                     'Present Days', 'Total Salary', 'Advance Amount Paid', 'Payment Status', 'Paid At'])
-    sal = conn.execute('''
-        SELECT s.emp_id, e.name, s.month, s.present_days, s.total_salary, s.advance_amount_paid, s.payment_status, s.paid_at
-        FROM salary_records s
-        JOIN employees e ON e.id = s.emp_id
-        WHERE e.user_id=?
-        ORDER BY s.month DESC
-    ''', (uid,)).fetchall()
-    for s in sal:
-        writer.writerow([s['emp_id'], s['name'], s['month'], s['present_days'],
-                        s['total_salary'], s['advance_amount_paid'], s['payment_status'], s['paid_at']])
-
-    conn.close()
+    salary_records = list(db.salary_records.find({"emp_id": {"$in": emp_ids}}).sort("month", -1))
+    for s in salary_records:
+        writer.writerow([
+            str(s['emp_id']),
+            emp_map.get(s['emp_id'], 'Unknown'),
+            s.get('month'),
+            s.get('present_days'),
+            s.get('total_salary'),
+            s.get('advance_amount_paid'),
+            s.get('payment_status'),
+            s.get('paid_at')
+        ])
 
     output.seek(0)
     return send_file(
@@ -1350,33 +1378,37 @@ def export_data():
 # API - CHART DATA
 # ─────────────────────────────────────────
 
-@app.route('/api/chart/attendance')
+@api_v1.route('/chart/attendance')
 @limiter.limit("60 per minute")         # chart API called on month change
 @login_required
 def chart_attendance():
     uid = get_current_user_id()
     month = request.args.get('month', datetime.now().strftime('%Y-%m'))
-    conn = get_db()
 
-    emps = conn.execute(
-        'SELECT id, name FROM employees WHERE user_id=?', (uid,)).fetchall()
+    emps = list(db.employees.find({"user_id": ObjectId(uid)}))
     labels, present_data, absent_data = [], [], []
 
     for e in emps:
-        p = conn.execute(
-            "SELECT COUNT(*) as c FROM attendance WHERE emp_id=? AND date LIKE ? AND status='Present'",
-            (e['id'], f'{month}%')
-        ).fetchone()['c']
-        a = conn.execute(
-            "SELECT COUNT(*) as c FROM attendance WHERE emp_id=? AND date LIKE ? AND status='Absent'",
-            (e['id'], f'{month}%')
-        ).fetchone()['c']
-        labels.append(e['name'])
+        emp_id = e['_id']
+        p = db.attendance.count_documents({
+            "emp_id": emp_id,
+            "status": "Present",
+            "date": {"$regex": f"^{month}"}
+        })
+        a = db.attendance.count_documents({
+            "emp_id": emp_id,
+            "status": "Absent",
+            "date": {"$regex": f"^{month}"}
+        })
+        labels.append(e.get('name', 'Unknown'))
         present_data.append(p)
         absent_data.append(a)
 
-    conn.close()
     return jsonify({'labels': labels, 'present': present_data, 'absent': absent_data})
+
+
+# Register api_v1 blueprint after all its routes are declared
+app.register_blueprint(api_v1)
 
 
 # ─────────────────────────────────────────

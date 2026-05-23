@@ -37,3 +37,15 @@ package.json
 package-lock.json
 skills-lock.json
 EMS_backup_*.zip
+
+# Scratch / debug scripts
+scratch/
+
+# AI agent tooling (local only)
+.agents/
+.sixth/
+.gemini/
+claude_desktop_config.json
+
+# One-time migration scripts
+migrate_to_mongo.py
