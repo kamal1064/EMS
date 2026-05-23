@@ -31,8 +31,8 @@
   </div>
 </div>
 
-<!-- ── Attendance Card Grid ── -->
-<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Attendance Card Grid (Desktop View) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 desktop-only">
   {% for e in employees %}
   {% set status = att_map.get(e.id, 'Present') %}
   <div class="glass-panel p-5 space-y-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:hover:shadow-2xl relative group" id="card-{{ e.id }}">
@@ -92,6 +92,55 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Mobile-Only Compact List View -->
+<div class="mobile-only space-y-3" style="margin-bottom: 24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
+    <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);">
+      <i class="bi bi-calendar2-check-fill text-primary"></i> Daily Roster
+    </h3>
+    <span class="badge badge-primary">{{ employees|length }} Active</span>
+  </div>
+
+  {% for e in employees %}
+  {% set status = att_map.get(e.id, 'Present') %}
+  <div class="card p-3 flex items-center justify-between gap-3" id="mob-card-{{ e.id }}" style="border-radius:12px;border:1px solid var(--card-border);background:var(--card);padding:10px 14px;">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+      <div class="avatar" style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg, var(--primary), var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0;">
+        {{ e.name[0].upper() }}
+      </div>
+      <div style="min-width:0;flex:1;">
+        <span style="font-weight:700;font-size:13px;display:block;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ e.name }}</span>
+        <!-- Badge Status Pill -->
+        <span id="badge-mob-{{ e.id }}" style="font-size:9px;font-weight:800;color:{% if status == 'Present' %}var(--success){% else %}var(--danger){% endif %};display:inline-flex;align-items:center;gap:4px;margin-top:1px;">
+          <span style="width:5px;height:5px;border-radius:50%;background:{% if status == 'Present' %}var(--success){% else %}var(--danger){% endif %};display:inline-block;"></span>
+          <span>{{ status }}</span>
+        </span>
+      </div>
+    </div>
+    
+    <!-- Quick Buttons -->
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button id="btn-present-mob-{{ e.id }}"
+              onclick="markAttendance('{{ e.id }}', 'Present')"
+              class="btn-saas {% if status == 'Present' %}btn-saas-success{% else %}btn-saas-secondary{% endif %}"
+              style="padding:6px 12px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:4px;">
+        <i class="bi bi-check-lg"></i> P
+      </button>
+      <button id="btn-absent-mob-{{ e.id }}"
+              onclick="markAttendance('{{ e.id }}', 'Absent')"
+              class="btn-saas {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}"
+              style="padding:6px 12px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:4px;">
+        <i class="bi bi-x-lg"></i> A
+      </button>
+    </div>
+  </div>
+  {% else %}
+  <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    No employees configured.
+  </div>
+  {% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -99,21 +148,48 @@
 function markAttendance(empId, status) {
   const date = "{{ selected_date }}";
   
+  // Desktop elements
   const badge = document.getElementById('badge-' + empId);
   const btnPresent = document.getElementById('btn-present-' + empId);
   const btnAbsent = document.getElementById('btn-absent-' + empId);
   
-  // Optimistic UI updates
+  // Mobile elements
+  const badgeMob = document.getElementById('badge-mob-' + empId);
+  const btnPresentMob = document.getElementById('btn-present-mob-' + empId);
+  const btnAbsentMob = document.getElementById('btn-absent-mob-' + empId);
+  
+  // Optimistic UI updates (Desktop)
   if (status === 'Present') {
-    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-success/15 border-success/30 text-success';
-    badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success"></span><span>Present</span>';
-    btnPresent.className = 'btn-saas btn-saas-sm btn-saas-success';
-    btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
+    if (badge) {
+      badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-success/15 border-success/30 text-success';
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success"></span><span>Present</span>';
+    }
+    if (btnPresent) btnPresent.className = 'btn-saas btn-saas-sm btn-saas-success';
+    if (btnAbsent) btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
   } else {
-    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-danger/15 border-danger/30 text-danger';
-    badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-danger"></span><span>Absent</span>';
-    btnPresent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
-    btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-danger';
+    if (badge) {
+      badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-danger/15 border-danger/30 text-danger';
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-danger"></span><span>Absent</span>';
+    }
+    if (btnPresent) btnPresent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
+    if (btnAbsent) btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-danger';
+  }
+  
+  // Optimistic UI updates (Mobile)
+  if (status === 'Present') {
+    if (badgeMob) {
+      badgeMob.style.color = 'var(--success)';
+      badgeMob.innerHTML = '<span style="width:5px;height:5px;border-radius:50%;background:var(--success);display:inline-block;"></span><span>Present</span>';
+    }
+    if (btnPresentMob) btnPresentMob.className = 'btn-saas btn-saas-success';
+    if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-secondary';
+  } else {
+    if (badgeMob) {
+      badgeMob.style.color = 'var(--danger)';
+      badgeMob.innerHTML = '<span style="width:5px;height:5px;border-radius:50%;background:var(--danger);display:inline-block;"></span><span>Absent</span>';
+    }
+    if (btnPresentMob) btnPresentMob.className = 'btn-saas btn-saas-secondary';
+    if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-danger';
   }
 
   fetch('/attendance/mark', {

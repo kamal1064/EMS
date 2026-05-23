@@ -31,8 +31,8 @@
   </form>
 </div>
 
-<!-- Attendance Summary Table -->
-<div class="glass-panel overflow-hidden">
+<!-- Attendance Summary Table (Desktop View) -->
+<div class="glass-panel overflow-hidden desktop-only">
   <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <i class="bi bi-table text-primary"></i>
@@ -120,5 +120,78 @@
       </tbody>
     </table>
   </div>
+</div>
+
+<!-- Mobile-Only List View (Visible only on mobile) -->
+<div class="mobile-only space-y-4" style="margin-bottom: 24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
+    <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);">
+      <i class="bi bi-bar-chart-fill text-primary"></i> Attendance Summary
+    </h3>
+    <span class="badge badge-primary">{{ summary|length }} Profiles</span>
+  </div>
+
+  {% for s in summary %}
+  {% set pct = ((s.present / s.total * 100) | int) if s.total > 0 else 0 %}
+  <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary/15 to-purpleaccent/15 border border-primary/20 flex items-center justify-center text-xs font-black text-primary shadow-glow-primary">
+          {{ s.name[0].upper() }}
+        </div>
+        <span style="font-weight:700;font-size:14px;color:var(--text);">{{ s.name }}</span>
+      </div>
+      
+      {% if pct >= 80 %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-success/10 border border-success/20 text-success">
+          {{ pct }}%
+        </span>
+      {% elif pct >= 50 %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-warning/10 border border-warning/20 text-warning">
+          {{ pct }}%
+        </span>
+      {% else %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-danger/10 border border-danger/20 text-danger">
+          {{ pct }}%
+        </span>
+      {% endif %}
+    </div>
+
+    <!-- Attendance Breakdown Stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--card-border);border-bottom:1px solid var(--card-border);font-size:12px;text-align:center;">
+      <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Present</span>
+        <span class="font-bold text-success font-mono">{{ s.present }}</span>
+      </div>
+      <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Absent</span>
+        <span class="font-bold text-danger font-mono">{{ s.absent }}</span>
+      </div>
+      <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Total Marked</span>
+        <span class="font-semibold font-mono" style="color:var(--text2);">{{ s.total }}</span>
+      </div>
+    </div>
+
+    <!-- Monthly Score Progress Bar -->
+    <div style="padding-top:4px;">
+      <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:6px;">Monthly Score Progress</span>
+      <div class="w-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-full h-2 overflow-hidden flex">
+        {% if pct >= 80 %}
+          <div class="bg-success shadow-glow-primary h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+        {% elif pct >= 50 %}
+          <div class="bg-warning h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+        {% else %}
+          <div class="bg-danger h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+    <i class="bi bi-calendar-x text-2xl text-muted block mb-2"></i>
+    No entries found.
+  </div>
+  {% endfor %}
 </div>
 {% endblock %}
