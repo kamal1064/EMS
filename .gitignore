@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual env
+venv/
+.venv/
+env/
+
+# Database (do NOT commit — Railway/Render has its own volume)
+database.db
+*.db
+*.sqlite
+
+# Secrets
+.env
+*.key
+
+# Editor
+.vscode/
+.idea/
+
+# Node (not needed for Flask)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+package.json
+package-lock.json
+skills-lock.json
+EMS_backup_*.zip

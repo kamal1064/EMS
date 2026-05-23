@@ -1,115 +1,1097 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" class="">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}EMS{% endblock %} — Employee Management</title>
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <!-- Theme: apply dark class before paint to avoid flash -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('ems-theme') || 'dark';
+      if(t==='dark') document.documentElement.classList.add('dark');
+    })();
+  </script>
 
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 
   <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet"/>
 
-  <!-- Custom Styles -->
+  <!-- Local Design System CSS (no CDN dependency, always works) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+
+  <!-- Tailwind CDN (progressive enhancement — adds utility classes if online) -->
+  <script>
+    // Tailwind config must come before the CDN script
+    window.tailwind = window.tailwind || {};
+  </script>
+  <script src="https://cdn.tailwindcss.com" onerror="console.warn('Tailwind CDN unavailable, using local CSS')"></script>
+  <script>
+    if(window.tailwind && window.tailwind.config){
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#3b82f6',
+              success: '#10b981',
+              warning: '#f59e0b',
+              danger:  '#ef4444',
+              purpleaccent: '#8b5cf6',
+              textprimary:  '#f1f5f9',
+              textsecondary:'#94a3b8',
+              textmuted:    '#64748b',
+            },
+            fontFamily: {
+              sans: ['Plus Jakarta Sans','sans-serif'],
+              mono: ['JetBrains Mono','monospace'],
+            }
+          }
+        }
+      };
+    }
+  </script>
+
+  {% block styles %}{% endblock %}
 </head>
-<body>
 
-<!-- ── Sidebar ─────────────────────────────── -->
+<body style="min-height:100vh;">
+
 {% if session.get('user_id') %}
-<div class="sidebar" id="sidebar">
-  <div class="sidebar-brand">
-    <div class="brand-icon"><i class="bi bi-people-fill"></i></div>
-    <span class="brand-text">EMS</span>
-  </div>
+<div class="app-shell">
 
-  <nav class="sidebar-nav">
-    <div class="nav-label">Main</div>
-    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-      <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
-    </a>
-    <a href="{{ url_for('part_time') }}"
-   class="nav-link">
-
-    <i class="bi bi-box-seam"></i>
-    <span>Part Time Work</span></a>
-    <a href="{{ url_for('employees') }}" class="nav-link {% if request.endpoint in ['employees','edit_employee'] %}active{% endif %}">
-      <i class="bi bi-person-badge-fill"></i><span>Employees</span>
-    </a>
-
-    <div class="nav-label mt-3">Tracking</div>
-    <a href="{{ url_for('attendance') }}" class="nav-link {% if request.endpoint == 'attendance' %}active{% endif %}">
-      <i class="bi bi-calendar2-check-fill"></i><span>Attendance</span>
-    </a>
-    <a href="{{ url_for('attendance_summary') }}" class="nav-link {% if request.endpoint == 'attendance_summary' %}active{% endif %}">
-      <i class="bi bi-bar-chart-fill"></i><span>Att. Summary</span>
-    </a>
-    <a href="{{ url_for('salary') }}" class="nav-link {% if request.endpoint == 'salary' %}active{% endif %}">
-      <i class="bi bi-cash-coin"></i><span>Salary</span>
-    </a>
-
-    <div class="nav-label mt-3">Data</div>
-    <a href="{{ url_for('export_data') }}" class="nav-link">
-      <i class="bi bi-download"></i><span>Export CSV</span>
-    </a>
-  </nav>
-
-  <div class="sidebar-footer">
-    <div class="user-info">
-    {% set username = session.get('username') %}
-    <div class="user-avatar">{{ (username[0].upper() if username else '?') }}</div>
-    <div class="user-details">
-        <div class="user-name">{{ username if username else 'User' }}</div>
-        <div class="user-role">Owner</div>
+  <!-- ══ SIDEBAR ══════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Brand -->
+    <div class="sidebar-brand">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="brand-logo"><i class="bi bi-people-fill"></i></div>
+        <span class="brand-name">EMS</span>
+      </div>
+      <button class="sidebar-close" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
     </div>
-    </div>
-    <a href="{{ url_for('logout') }}" class="btn-logout" title="Logout">
-      <i class="bi bi-box-arrow-right"></i>
-    </a>
-  </div>
-</div>
 
-<!-- ── Main Wrapper ─────────────────────────── -->
-<div class="main-wrapper">
-  <!-- Top Bar -->
-  <header class="topbar">
-    <button class="sidebar-toggle" id="sidebarToggle">
-      <i class="bi bi-list"></i>
+    <!-- Nav -->
+    <nav class="sidebar-nav">
+      <div>
+        <span class="nav-section-label">Main</span>
+        <div class="nav-links">
+          <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+          </a>
+          <a href="{{ url_for('part_time') }}" class="nav-link {% if request.endpoint == 'part_time' %}active{% endif %}">
+            <i class="bi bi-box-seam-fill"></i><span>Part Time Work</span>
+          </a>
+          <a href="{{ url_for('employees') }}" class="nav-link {% if request.endpoint in ['employees','edit_employee'] %}active{% endif %}">
+            <i class="bi bi-person-badge-fill"></i><span>Employees</span>
+          </a>
+        </div>
+      </div>
+      <div>
+        <span class="nav-section-label">Tracking</span>
+        <div class="nav-links">
+          <a href="{{ url_for('attendance') }}" class="nav-link {% if request.endpoint == 'attendance' %}active{% endif %}">
+            <i class="bi bi-calendar2-check-fill"></i><span>Attendance</span>
+          </a>
+          <a href="{{ url_for('attendance_summary') }}" class="nav-link {% if request.endpoint == 'attendance_summary' %}active{% endif %}">
+            <i class="bi bi-bar-chart-fill"></i><span>Att. Summary</span>
+          </a>
+          <a href="{{ url_for('salary') }}" class="nav-link {% if request.endpoint == 'salary' %}active{% endif %}">
+            <i class="bi bi-cash-coin"></i><span>Salary</span>
+          </a>
+        </div>
+      </div>
+      <div>
+        <span class="nav-section-label">Data</span>
+        <div class="nav-links">
+          <a href="{{ url_for('export_data') }}" class="nav-link">
+            <i class="bi bi-download"></i><span>Export CSV</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- User Footer -->
+    <div class="sidebar-footer">
+      {% set username = session.get('username') %}
+      <div class="sidebar-user">
+        <div class="user-avatar">{{ (username[0].upper() if username else '?') }}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="user-name truncate">{{ username if username else 'Admin' }}</div>
+          <div class="user-role">Owner</div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn-logout" title="Logout"><i class="bi bi-box-arrow-right"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- ══ MAIN ═════════════════════════════════════════ -->
+  <div class="main-wrapper">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+
+        <div class="search-bar">
+          <i class="bi bi-search"></i>
+          <input type="text" id="global-search" placeholder="Search employees..." onkeyup="handleGlobalSearch(event)" style="border:none;outline:none;background:transparent;font-size:13px;width:100%;font-family:inherit;color:inherit;"/>
+          <span class="search-kbd">⌘K</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="clock-widget">
+          <span class="clock-dot"></span>
+          <span id="nav-clock">00:00:00</span>
+        </div>
+
+        <button class="topbar-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">
+          <i class="bi bi-moon-fill" id="theme-toggle-icon"></i>
+        </button>
+
+        <button class="topbar-btn" onclick="showToast('All systems operational','success')" title="Notifications">
+          <i class="bi bi-bell"></i>
+          <span class="notif-dot"></span>
+        </button>
+
+        {% set username = session.get('username') %}
+        <!-- Profile Trigger -->
+        <div class="profile-trigger" id="profile-trigger" onclick="toggleProfilePopup(event)" title="My Account">
+          <div class="topbar-avatar" id="topbar-avatar-letter">{{ (username[0].upper() if username else '?') }}</div>
+          <i class="bi bi-chevron-down" id="profile-chevron" style="font-size:10px;color:var(--text2);transition:transform 0.2s;"></i>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+          <p class="page-subtitle">{% block page_subtitle %}Employee Management System{% endblock %}</p>
+        </div>
+        <div class="page-actions">{% block top_actions %}{% endblock %}</div>
+      </div>
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- ══ FOOTER ════════════════════════════════════ -->
+    <footer class="app-footer">
+      <div class="footer-brand">
+        <span class="footer-brand-dot"></span>
+        EMS &copy; {{ now.year if now is defined else '2025' }} &mdash; Employee Management System
+      </div>
+
+      <div class="footer-links">
+        <button class="footer-link-btn" onclick="openLegalPanel('privacy')">
+          <i class="bi bi-shield-lock"></i> Privacy
+        </button>
+        <span class="footer-sep">|</span>
+        <button class="footer-link-btn" onclick="openLegalPanel('terms')">
+          <i class="bi bi-file-earmark-text"></i> Terms
+        </button>
+        <span class="footer-sep">|</span>
+        <button class="footer-link-btn" onclick="openLegalPanel('compliance')">
+          <i class="bi bi-patch-check"></i> Compliance
+        </button>
+        <span class="footer-sep">|</span>
+        <button class="footer-link-btn" onclick="openLegalPanel('security')">
+          <i class="bi bi-lock"></i> Security
+        </button>
+      </div>
+
+      <div class="footer-status">
+        <span class="footer-status-dot"></span>
+        All systems operational
+      </div>
+    </footer>
+  </div><!-- end main-wrapper -->
+</div><!-- end app-shell -->
+
+<!-- ══ PROFILE POPUP ═══════════════════════════════════ -->
+<div class="profile-popup-overlay" id="profile-popup-overlay" onclick="closeProfilePopup()"></div>
+
+<div class="profile-popup" id="profile-popup">
+
+  <!-- Header: Avatar + name + email -->
+  <div class="pp-header">
+    <div class="pp-avatar" id="pp-avatar">?</div>
+    <div class="pp-info">
+      <div class="pp-name"  id="pp-name">Loading…</div>
+      <div class="pp-email" id="pp-email"></div>
+    </div>
+    <button class="pp-close-btn" onclick="closeProfilePopup()" title="Close">
+      <i class="bi bi-x-lg"></i>
     </button>
-    <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
-    <div class="topbar-actions">
-      <!-- Dark Mode Toggle -->
-      <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
-        <i class="bi bi-moon-fill" id="themeIcon"></i>
+  </div>
+
+  <!-- Last login -->
+  <div class="pp-last-login">
+    <i class="bi bi-clock-history"></i>
+    <span>Last login: <strong id="pp-last-login-val">—</strong></span>
+  </div>
+
+  <!-- Menu items -->
+  <div class="pp-menu">
+
+    <!-- Edit Profile -->
+    <button class="pp-menu-item" onclick="togglePPPanel('edit-profile')">
+      <div class="pp-menu-icon blue"><i class="bi bi-person-fill"></i></div>
+      <span>Edit Profile</span>
+      <i class="bi bi-chevron-right pp-menu-arrow"></i>
+    </button>
+
+    <!-- Change Password -->
+    <button class="pp-menu-item" onclick="togglePPPanel('change-pw')">
+      <div class="pp-menu-icon purple"><i class="bi bi-lock-fill"></i></div>
+      <span>Change Password</span>
+      <i class="bi bi-chevron-right pp-menu-arrow"></i>
+    </button>
+
+    <!-- Theme Toggle -->
+    <div class="pp-menu-item" style="cursor:default;">
+      <div class="pp-menu-icon amber"><i class="bi bi-palette-fill"></i></div>
+      <span>Dark Mode</span>
+      <button class="pp-theme-toggle" id="pp-theme-toggle" onclick="ppToggleTheme()" title="Toggle theme">
+        <span class="pp-toggle-knob" id="pp-toggle-knob"></span>
       </button>
     </div>
-  </header>
 
-  <!-- Page Content -->
-  <main class="page-content">
-    {% block content %}{% endblock %}
-  </main>
-</div>
+  </div>
+
+  <!-- ── Edit Profile Drawer ─────────────────── -->
+  <div class="pp-drawer" id="pp-drawer-edit-profile">
+    <div class="pp-drawer-title"><i class="bi bi-person-fill"></i> Edit Profile</div>
+    <div class="pp-form-field">
+      <label class="pp-label">Display Name</label>
+      <input type="text" id="pp-edit-name" class="pp-input" placeholder="Your name" />
+    </div>
+    <div class="pp-form-field">
+      <label class="pp-label">Email Address</label>
+      <input type="email" id="pp-edit-email" class="pp-input" placeholder="you@example.com" readonly style="opacity:.6;cursor:not-allowed;" />
+    </div>
+    <button class="pp-action-btn blue" onclick="ppSaveProfile()">
+      <i class="bi bi-check-lg"></i> Save Changes
+    </button>
+  </div>
+
+  <!-- ── Change Password Drawer ──────────────── -->
+  <div class="pp-drawer" id="pp-drawer-change-pw">
+    <div class="pp-drawer-title"><i class="bi bi-lock-fill"></i> Change Password</div>
+    <div class="pp-form-field">
+      <label class="pp-label">Current Password</label>
+      <div class="pp-input-wrap">
+        <input type="password" id="pp-cur-pw"  class="pp-input" placeholder="Current password" />
+        <button type="button" class="pp-eye" onclick="ppTogglePw('pp-cur-pw',this)"><i class="bi bi-eye"></i></button>
+      </div>
+    </div>
+    <div class="pp-form-field">
+      <label class="pp-label">New Password</label>
+      <div class="pp-input-wrap">
+        <input type="password" id="pp-new-pw"  class="pp-input" placeholder="Min 8 characters" />
+        <button type="button" class="pp-eye" onclick="ppTogglePw('pp-new-pw',this)"><i class="bi bi-eye"></i></button>
+      </div>
+    </div>
+    <div class="pp-form-field">
+      <label class="pp-label">Confirm New Password</label>
+      <div class="pp-input-wrap">
+        <input type="password" id="pp-con-pw"  class="pp-input" placeholder="Repeat new password" />
+        <button type="button" class="pp-eye" onclick="ppTogglePw('pp-con-pw',this)"><i class="bi bi-eye"></i></button>
+      </div>
+    </div>
+    <div id="pp-pw-error" class="pp-error" style="display:none;"></div>
+    <button class="pp-action-btn purple" id="pp-save-pw-btn" onclick="ppChangePassword()">
+      <i class="bi bi-shield-check"></i> Update Password
+    </button>
+  </div>
+
+  <!-- Divider -->
+  <div class="pp-divider"></div>
+
+  <!-- Logout -->
+  <a href="{{ url_for('logout') }}" class="pp-logout-btn">
+    <i class="bi bi-box-arrow-right"></i>
+    <span>Sign Out</span>
+  </a>
+
+</div><!-- end profile-popup -->
+
+<!-- ══ LEGAL SLIDE PANEL ════════════════════════════ -->
+<div class="legal-overlay" id="legal-overlay" onclick="closeLegalPanel()"></div>
+
+<div class="legal-panel" id="legal-panel">
+
+  <!-- Panel Header -->
+  <div class="legal-panel-header">
+    <div class="legal-panel-title">
+      <div class="legal-panel-icon blue" id="legal-panel-icon"><i class="bi bi-shield-lock"></i></div>
+      <div>
+        <div class="legal-panel-name" id="legal-panel-name">Privacy Policy</div>
+        <div class="legal-panel-sub" id="legal-panel-sub">Last updated May 2025 &middot; v1.0</div>
+      </div>
+    </div>
+    <button class="legal-panel-close" onclick="closeLegalPanel()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <!-- Tab Strip -->
+  <div class="legal-tabs">
+    <button class="legal-tab active" data-tab="privacy" onclick="switchLegalTab('privacy')">
+      <i class="bi bi-shield-lock"></i> Privacy
+    </button>
+    <button class="legal-tab" data-tab="terms" onclick="switchLegalTab('terms')">
+      <i class="bi bi-file-earmark-text"></i> Terms
+    </button>
+    <button class="legal-tab" data-tab="compliance" onclick="switchLegalTab('compliance')">
+      <i class="bi bi-patch-check"></i> Compliance
+    </button>
+    <button class="legal-tab" data-tab="security" onclick="switchLegalTab('security')">
+      <i class="bi bi-lock"></i> Security
+    </button>
+  </div>
+
+  <!-- Panel Body -->
+  <div class="legal-panel-body">
+
+    <!-- ── PRIVACY PANE ───────────────────────────── -->
+    <div class="legal-pane active" id="pane-privacy">
+      <div class="legal-updated"><i class="bi bi-calendar3"></i> Last updated: May 23, 2025</div>
+
+      <div class="legal-banner blue">
+        <i class="bi bi-info-circle-fill"></i>
+        <div><strong>Your privacy is our priority.</strong> This policy explains what data EMS collects, how it's used, and how it's protected within your organisation.</div>
+      </div>
+
+      <div class="legal-grid">
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">👤</div>
+          <div class="legal-grid-card-title">Employee Data</div>
+          <div class="legal-grid-card-desc">Names, contact info, and payroll stored securely and used only for HR operations.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">📅</div>
+          <div class="legal-grid-card-title">Attendance Records</div>
+          <div class="legal-grid-card-desc">Daily check-in/out logs used exclusively for payroll computation.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">💰</div>
+          <div class="legal-grid-card-title">Salary & Advances</div>
+          <div class="legal-grid-card-desc">Financial data is encrypted at rest and accessible only to account owners.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🔐</div>
+          <div class="legal-grid-card-title">Authentication</div>
+          <div class="legal-grid-card-desc">Session tokens expire automatically. No persistent tracking cookies are used.</div>
+        </div>
+      </div>
+
+      <div class="legal-section open">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--primary-lo);color:var(--primary);"><i class="bi bi-database"></i></div>
+            <span class="legal-section-label">Data We Collect</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            We collect only the minimum information required to operate the system:
+            <ul>
+              <li><span class="legal-pill blue"><i class="bi bi-person"></i> Identity</span> Employee names, phone numbers, age, and gender.</li>
+              <li><span class="legal-pill green"><i class="bi bi-calendar-check"></i> Attendance</span> Daily presence/absence records and dates.</li>
+              <li><span class="legal-pill amber"><i class="bi bi-cash-coin"></i> Payroll</span> Monthly salary, advance payments, and payment status.</li>
+              <li><span class="legal-pill purple"><i class="bi bi-person-lock"></i> Account</span> Username and hashed password for secure authentication.</li>
+            </ul>
+            We do <strong>not</strong> collect biometric data, location data, or device identifiers.
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--success-lo);color:var(--success);"><i class="bi bi-gear"></i></div>
+            <span class="legal-section-label">How We Use Your Data</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            All collected data is used exclusively to operate the Employee Management System:
+            <ul>
+              <li>Computing pro-rated salary based on attendance records.</li>
+              <li>Tracking advance payments and remaining balances.</li>
+              <li>Generating CSV payroll and attendance reports on request.</li>
+              <li>Authenticating users and maintaining secure sessions.</li>
+            </ul>
+            Data is <strong>never sold, shared with third parties, or used for advertising.</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--warning-lo);color:var(--warning);"><i class="bi bi-clock-history"></i></div>
+            <span class="legal-section-label">Data Retention</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            Data is retained for as long as your account is active. When you delete an employee, <strong>all associated attendance and salary records are permanently removed</strong> from the database immediately. Account deletion removes all stored data with no recovery.
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--purple-lo);color:var(--purple);"><i class="bi bi-cookie"></i></div>
+            <span class="legal-section-label">Sessions &amp; Cookies</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            EMS uses a single <span class="legal-pill purple">session cookie</span> to maintain your login state. This cookie:
+            <ul>
+              <li>Is <strong>HTTP-only</strong> (not accessible by JavaScript).</li>
+              <li>Is cleared when you log out or close the browser.</li>
+              <li>Contains no personal data — only an encrypted session identifier.</li>
+            </ul>
+            No third-party tracking, analytics, or advertising cookies are used.
+          </div>
+        </div>
+      </div>
+    </div><!-- end privacy pane -->
+
+    <!-- ── TERMS PANE ─────────────────────────────── -->
+    <div class="legal-pane" id="pane-terms">
+      <div class="legal-updated"><i class="bi bi-calendar3"></i> Last updated: May 23, 2025</div>
+
+      <div class="legal-banner green">
+        <i class="bi bi-check-circle-fill"></i>
+        <div><strong>By using EMS</strong>, you agree to these terms. Please read them carefully before using the platform.</div>
+      </div>
+
+      <div class="legal-section open">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--primary-lo);color:var(--primary);"><i class="bi bi-person-check"></i></div>
+            <span class="legal-section-label">Acceptable Use</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            You agree to use EMS only for legitimate HR and payroll management purposes. You must not:
+            <ul>
+              <li>Enter false employee records or fabricate attendance data.</li>
+              <li>Share your account credentials with unauthorised individuals.</li>
+              <li>Attempt to access data belonging to other users or accounts.</li>
+              <li>Use automated scripts to bypass rate limits or security controls.</li>
+              <li>Reverse engineer or tamper with the application's source code.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--success-lo);color:var(--success);"><i class="bi bi-person-lock"></i></div>
+            <span class="legal-section-label">Account Responsibilities</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            You are fully responsible for:
+            <ul>
+              <li>Maintaining the confidentiality of your username and password.</li>
+              <li>All actions performed under your account.</li>
+              <li>Ensuring employee data entered is accurate and consented to.</li>
+              <li>Promptly reporting any suspected unauthorised access.</li>
+            </ul>
+            If you suspect a security breach, log out immediately and change your password.
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--warning-lo);color:var(--warning);"><i class="bi bi-exclamation-triangle"></i></div>
+            <span class="legal-section-label">Limitations of Liability</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            EMS is provided <strong>"as is"</strong> without warranties of any kind. We are not liable for:
+            <ul>
+              <li>Inaccurate payroll calculations resulting from incorrect input data.</li>
+              <li>Data loss due to server failure or accidental deletion by the user.</li>
+              <li>Service interruptions during maintenance or deployment updates.</li>
+            </ul>
+            Always maintain offline backups of critical payroll data using the <span class="legal-pill amber">CSV Export</span> feature.
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--purple-lo);color:var(--purple);"><i class="bi bi-arrow-repeat"></i></div>
+            <span class="legal-section-label">Modifications to Terms</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            We reserve the right to update these terms at any time. Continued use of EMS after changes are published constitutes acceptance of the revised terms. The "Last updated" date at the top of this panel will reflect any changes.
+          </div>
+        </div>
+      </div>
+    </div><!-- end terms pane -->
+
+    <!-- ── COMPLIANCE PANE ────────────────────────── -->
+    <div class="legal-pane" id="pane-compliance">
+      <div class="legal-updated"><i class="bi bi-calendar3"></i> Last updated: May 23, 2025</div>
+
+      <div class="legal-banner green">
+        <i class="bi bi-patch-check-fill"></i>
+        <div><strong>Data compliance</strong> practices built into EMS to protect employee information and meet professional HR standards.</div>
+      </div>
+
+      <div class="legal-grid">
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🔒</div>
+          <div class="legal-grid-card-title">Password Hashing</div>
+          <div class="legal-grid-card-desc">All passwords hashed with SHA-256 before storage. Plain-text passwords are never stored.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🧱</div>
+          <div class="legal-grid-card-title">Rate Limiting</div>
+          <div class="legal-grid-card-desc">Login endpoints limited to 10 requests/min. All routes protected against abuse.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">👁️</div>
+          <div class="legal-grid-card-title">Access Control</div>
+          <div class="legal-grid-card-desc">Each user can only access their own data. Cross-account data access is prevented.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🗑️</div>
+          <div class="legal-grid-card-title">Right to Erasure</div>
+          <div class="legal-grid-card-desc">Deleting an employee removes all their records cascade — no orphaned data left behind.</div>
+        </div>
+      </div>
+
+      <div class="legal-section open">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--success-lo);color:var(--success);"><i class="bi bi-database-check"></i></div>
+            <span class="legal-section-label">Data Handling Standards</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            EMS follows these data handling principles:
+            <ul>
+              <li><span class="legal-pill green">Minimisation</span> Only essential data is collected — no extras.</li>
+              <li><span class="legal-pill blue">Purpose Limitation</span> Data is used strictly for HR and payroll functions.</li>
+              <li><span class="legal-pill purple">Integrity</span> All writes validated server-side before being committed to the database.</li>
+              <li><span class="legal-pill amber">Transparency</span> This panel documents every data practice in plain language.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--primary-lo);color:var(--primary);"><i class="bi bi-people"></i></div>
+            <span class="legal-section-label">Employee Data Rights</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            As an account owner, you are the data controller for your employees' information. Your responsibilities:
+            <ul>
+              <li>Inform employees that their data is being processed in this system.</li>
+              <li>Obtain appropriate consent before entering personal details.</li>
+              <li>Delete records when an employee's relationship ends.</li>
+              <li>Not retain data beyond its legitimate HR purpose.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--warning-lo);color:var(--warning);"><i class="bi bi-download"></i></div>
+            <span class="legal-section-label">Export &amp; Portability</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            All your data can be exported at any time via the <span class="legal-pill amber"><i class="bi bi-download"></i> CSV Export</span> feature. Exports include employee records, attendance logs, and salary details in a standard open format — ensuring you are never locked in.
+          </div>
+        </div>
+      </div>
+    </div><!-- end compliance pane -->
+
+    <!-- ── SECURITY PANE ───────────────────────────── -->
+    <div class="legal-pane" id="pane-security">
+      <div class="legal-updated"><i class="bi bi-calendar3"></i> Last updated: May 23, 2025</div>
+
+      <div class="legal-banner amber">
+        <i class="bi bi-shield-fill-exclamation"></i>
+        <div><strong>Security is built-in, not bolted on.</strong> EMS applies multiple layers of protection to keep your HR data safe.</div>
+      </div>
+
+      <div class="legal-grid">
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🛡️</div>
+          <div class="legal-grid-card-title">Brute-Force Protection</div>
+          <div class="legal-grid-card-desc">Login limited to 10 attempts/min per IP. Repeated failures are automatically blocked.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🔑</div>
+          <div class="legal-grid-card-title">Hashed Credentials</div>
+          <div class="legal-grid-card-desc">Passwords stored as SHA-256 hashes. Your real password is never saved anywhere.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🚦</div>
+          <div class="legal-grid-card-title">Rate Limiting</div>
+          <div class="legal-grid-card-desc">All 20+ routes are individually rate-limited to prevent abuse and DoS attacks.</div>
+        </div>
+        <div class="legal-grid-card">
+          <div class="legal-grid-card-icon">🗄️</div>
+          <div class="legal-grid-card-title">Isolated Data</div>
+          <div class="legal-grid-card-desc">Every query is user-scoped. It is impossible to access another user's employee data.</div>
+        </div>
+      </div>
+
+      <div class="legal-section open">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--primary-lo);color:var(--primary);"><i class="bi bi-layers"></i></div>
+            <span class="legal-section-label">Security Layers</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            <ul>
+              <li><span class="legal-pill blue">Layer 1</span> <strong>Authentication</strong> — Session-based login required for all protected routes.</li>
+              <li><span class="legal-pill green">Layer 2</span> <strong>Authorisation</strong> — Every DB query filters by <code>user_id</code> from the session.</li>
+              <li><span class="legal-pill purple">Layer 3</span> <strong>Rate Limiting</strong> — Flask-Limiter enforces per-IP request caps on all endpoints.</li>
+              <li><span class="legal-pill amber">Layer 4</span> <strong>Input Validation</strong> — All form inputs are validated and sanitised server-side.</li>
+              <li><span class="legal-pill red">Layer 5</span> <strong>Cascade Deletes</strong> — FK constraints prevent orphaned data on employee removal.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--success-lo);color:var(--success);"><i class="bi bi-person-lock"></i></div>
+            <span class="legal-section-label">Your Account Security Tips</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            Keep your account secure by following these best practices:
+            <ul>
+              <li>Use a <strong>strong, unique password</strong> (12+ characters, mixed case, numbers).</li>
+              <li>Never share your login credentials with anyone, even colleagues.</li>
+              <li>Always <span class="legal-pill green"><i class="bi bi-box-arrow-right"></i> Log out</span> when using a shared or public device.</li>
+              <li>Check the <span class="legal-pill blue">Debugger PIN</span> is only known to you in development mode.</li>
+              <li>In production, set a strong <code>SECRET_KEY</code> environment variable.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <div class="legal-section-header" onclick="toggleSection(this)">
+          <div class="legal-section-left">
+            <div class="legal-section-icon" style="background:var(--danger-lo);color:var(--danger);"><i class="bi bi-bug"></i></div>
+            <span class="legal-section-label">Reporting Security Issues</span>
+          </div>
+          <i class="bi bi-chevron-down legal-section-chevron"></i>
+        </div>
+        <div class="legal-section-body">
+          <div class="legal-section-content">
+            If you discover a security vulnerability in EMS:
+            <ul>
+              <li>Do <strong>not</strong> exploit or publicly disclose it before informing the maintainer.</li>
+              <li>Report it privately with a clear description of the issue and reproduction steps.</li>
+              <li>Responsible disclosure is appreciated and will be acknowledged.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div><!-- end security pane -->
+
+  </div><!-- end legal-panel-body -->
+
+  <!-- Panel Footer -->
+  <div class="legal-panel-footer">
+    <span><i class="bi bi-building" style="margin-right:4px;"></i> EMS &mdash; Employee Management System</span>
+    <span>v1.0 &middot; All rights reserved</span>
+  </div>
+</div><!-- end legal-panel -->
 
 {% else %}
   {% block auth_content %}{% endblock %}
 {% endif %}
 
-<!-- Loading Spinner Overlay -->
-<div class="spinner-overlay" id="spinnerOverlay">
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Spinner -->
+<div id="loading-spinner">
   <div class="spinner-ring"></div>
+  <p style="margin-top:14px;font-size:12px;font-weight:600;color:#64748b;letter-spacing:0.1em;text-transform:uppercase;">Loading...</p>
 </div>
 
-<!-- Bootstrap JS -->
+<!-- Bootstrap JS (for modal) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<!-- Custom JS -->
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<script>
+  /* ── Clock ── */
+  function updateClock(){
+    var el=document.getElementById('nav-clock');
+    if(el) el.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  setInterval(updateClock,1000); updateClock();
+
+  /* ── Sidebar ── */
+  function toggleSidebar(){
+    var sb=document.getElementById('sidebar');
+    var ov=document.getElementById('sidebar-overlay');
+    var open=sb.classList.contains('open');
+    sb.classList.toggle('open',!open);
+    ov.classList.toggle('show',!open);
+  }
+
+  /* ── Toasts ── */
+  function showToast(msg,type){
+    type=type||'info';
+    var c=document.getElementById('toast-container');
+    if(!c) return;
+    var t=document.createElement('div');
+    var icons={success:'bi-check-circle-fill',danger:'bi-exclamation-triangle-fill',warning:'bi-exclamation-circle-fill',info:'bi-info-circle-fill'};
+    t.className='toast toast-'+type;
+    t.innerHTML='<i class="bi '+icons[type]+'" style="font-size:15px;flex-shrink:0;"></i><span class="toast-msg">'+msg+'</span><button class="toast-close" onclick="this.parentElement.remove()"><i class="bi bi-x-lg"></i></button>';
+    c.appendChild(t);
+    setTimeout(function(){t.classList.add('show');},10);
+    setTimeout(function(){t.classList.remove('show');setTimeout(function(){if(t.parentElement)t.remove();},300);},4000);
+  }
+  /* Legacy alias used in templates */
+  function showLiveToast(msg,type){ showToast(msg,type); }
+
+  /* ── Spinner ── */
+  function setLoaderState(on){
+    var s=document.getElementById('loading-spinner');
+    if(s) s.classList.toggle('active',!!on);
+  }
+
+  /* ── Form submit / unload ── */
+  document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('form').forEach(function(f){
+      f.addEventListener('submit',function(){ setLoaderState(true); });
+    });
+    window.addEventListener('beforeunload',function(){ setLoaderState(true); });
+  });
+
+  /* ── Ctrl/Cmd+K ── */
+  window.addEventListener('keydown',function(e){
+    if((e.metaKey||e.ctrlKey)&&e.key==='k'){
+      e.preventDefault();
+      var s=document.getElementById('global-search');
+      if(s) s.focus();
+    }
+  });
+  function handleGlobalSearch(e){
+    if(e.key==='Enter'){
+      var q=e.target.value.trim();
+      if(q){ setLoaderState(true); window.location.href='/employees?q='+encodeURIComponent(q); }
+    }
+  }
+
+  /* ── Theme ── */
+  function toggleTheme(){
+    var dark=document.documentElement.classList.contains('dark');
+    document.documentElement.classList.toggle('dark',!dark);
+    localStorage.setItem('ems-theme',dark?'light':'dark');
+    updateThemeIcon(!dark);
+  }
+  function updateThemeIcon(isDark){
+    var icon=document.getElementById('theme-toggle-icon');
+    if(icon) icon.className=isDark?'bi bi-sun-fill':'bi bi-moon-fill';
+  }
+  updateThemeIcon(document.documentElement.classList.contains('dark'));
+  updatePPToggle();
+</script>
+
 {% block scripts %}{% endblock %}
+
+<script>
+/* ══ PROFILE POPUP JS ════════════════════════════════ */
+
+var _ppOpen  = false;
+var _ppLoaded = false;
+
+function toggleProfilePopup(e) {
+  if (e) e.stopPropagation();
+  _ppOpen ? closeProfilePopup() : openProfilePopup();
+}
+
+function openProfilePopup() {
+  var pp  = document.getElementById('profile-popup');
+  var ov  = document.getElementById('profile-popup-overlay');
+  var chv = document.getElementById('profile-chevron');
+  if (!pp) return;
+  _ppOpen = true;
+  pp.classList.add('open');
+  if (ov)  ov.classList.add('open');
+  if (chv) chv.style.transform = 'rotate(180deg)';
+  if (!_ppLoaded) { loadProfileInfo(); _ppLoaded = true; }
+  updatePPToggle();
+}
+
+function closeProfilePopup() {
+  var pp  = document.getElementById('profile-popup');
+  var ov  = document.getElementById('profile-popup-overlay');
+  var chv = document.getElementById('profile-chevron');
+  if (!pp) return;
+  _ppOpen = false;
+  pp.classList.remove('open');
+  if (ov)  ov.classList.remove('open');
+  if (chv) chv.style.transform = 'rotate(0deg)';
+  /* Close all drawers */
+  document.querySelectorAll('.pp-drawer').forEach(function(d){ d.classList.remove('open'); });
+}
+
+/* Fetch user info from server */
+function loadProfileInfo() {
+  fetch('/api/profile-info')
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var nameEl  = document.getElementById('pp-name');
+      var emailEl = document.getElementById('pp-email');
+      var avEl    = document.getElementById('pp-avatar');
+      var llEl    = document.getElementById('pp-last-login-val');
+      var enEl    = document.getElementById('pp-edit-name');
+      var eeEl    = document.getElementById('pp-edit-email');
+      /* Use localStorage display name override if set */
+      var dispName = localStorage.getItem('ems-display-name') || d.username || '?';
+      if (nameEl)  nameEl.textContent  = dispName;
+      if (emailEl) emailEl.textContent = d.email || '';
+      if (avEl)    avEl.textContent    = dispName.charAt(0).toUpperCase();
+      if (llEl)    llEl.textContent    = d.last_login || 'This session';
+      if (enEl)    enEl.value          = dispName;
+      if (eeEl)    eeEl.value          = d.email || '';
+    })
+    .catch(function() {
+      var n = document.getElementById('pp-name');
+      if (n) n.textContent = 'Could not load';
+    });
+}
+
+/* Toggle sub-drawers (edit profile / change password) */
+function togglePPPanel(name) {
+  var target = document.getElementById('pp-drawer-' + name);
+  if (!target) return;
+  var wasOpen = target.classList.contains('open');
+  /* Close all drawers first */
+  document.querySelectorAll('.pp-drawer').forEach(function(d){ d.classList.remove('open'); });
+  if (!wasOpen) target.classList.add('open');
+}
+
+/* Save display name locally */
+function ppSaveProfile() {
+  var nameVal = (document.getElementById('pp-edit-name').value || '').trim();
+  if (!nameVal) { showToast('Name cannot be empty.', 'warning'); return; }
+  localStorage.setItem('ems-display-name', nameVal);
+  var nameEl = document.getElementById('pp-name');
+  var avEl   = document.getElementById('pp-avatar');
+  var navAv  = document.getElementById('topbar-avatar-letter');
+  if (nameEl) nameEl.textContent = nameVal;
+  if (avEl)   avEl.textContent   = nameVal.charAt(0).toUpperCase();
+  if (navAv)  navAv.textContent  = nameVal.charAt(0).toUpperCase();
+  showToast('Profile updated successfully!', 'success');
+  document.querySelectorAll('.pp-drawer').forEach(function(d){ d.classList.remove('open'); });
+}
+
+/* Change password via API */
+function ppChangePassword() {
+  var curPw = document.getElementById('pp-cur-pw').value;
+  var newPw = document.getElementById('pp-new-pw').value;
+  var conPw = document.getElementById('pp-con-pw').value;
+  var errEl = document.getElementById('pp-pw-error');
+  var btn   = document.getElementById('pp-save-pw-btn');
+
+  function setErr(msg) {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = msg ? 'block' : 'none'; }
+  }
+  setErr('');
+
+  if (!curPw || !newPw || !conPw) { setErr('All fields are required.'); return; }
+  if (newPw.length < 8)           { setErr('Password must be at least 8 characters.'); return; }
+  if (newPw !== conPw)            { setErr('New passwords do not match.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="opacity:.7">Updating\u2026</span>';
+
+  fetch('/api/change-password', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ current_password: curPw, new_password: newPw, confirm_password: conPw })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-shield-check"></i> Update Password';
+    if (d.ok) {
+      showToast('Password changed successfully!', 'success');
+      ['pp-cur-pw','pp-new-pw','pp-con-pw'].forEach(function(id){
+        var el = document.getElementById(id); if(el) el.value = '';
+      });
+      setErr('');
+      document.querySelectorAll('.pp-drawer').forEach(function(d){ d.classList.remove('open'); });
+    } else {
+      setErr(d.error || 'Something went wrong.');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-shield-check"></i> Update Password';
+    setErr('Network error. Please try again.');
+  });
+}
+
+/* Password eye toggle */
+function ppTogglePw(id, btn) {
+  var inp  = document.getElementById(id);
+  var icon = btn.querySelector('i');
+  if (!inp) return;
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+  icon.className = inp.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+/* Theme toggle synced with main toggle */
+function ppToggleTheme() {
+  toggleTheme();        /* calls the global toggleTheme() */
+  updatePPToggle();
+}
+function updatePPToggle() {
+  var isDark  = document.documentElement.classList.contains('dark');
+  var toggle  = document.getElementById('pp-theme-toggle');
+  var knob    = document.getElementById('pp-toggle-knob');
+  var label   = toggle ? toggle.closest('.pp-menu-item').querySelector('span') : null;
+  if (toggle) toggle.classList.toggle('active', isDark);
+  if (label)  label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+}
+
+/* Close popup on Escape */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeProfilePopup();
+});
+
+/* Apply saved display name on page load */
+document.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem('ems-display-name');
+  if (saved) {
+    var navAv = document.getElementById('topbar-avatar-letter');
+    if (navAv) navAv.textContent = saved.charAt(0).toUpperCase();
+  }
+});
+
+
+</script>
+
+<script>
+/* ══ LEGAL PANEL JS ══════════════════════════════════ */
+var LEGAL_META = {
+  privacy:    { name:'Privacy Policy',      sub:'How we handle your data',             icon:'bi bi-shield-lock',        color:'blue'   },
+  terms:      { name:'Terms of Service',    sub:'Rules governing platform usage',      icon:'bi bi-file-earmark-text',  color:'green'  },
+  compliance: { name:'Data Compliance',     sub:'Standards and data handling',         icon:'bi bi-patch-check',        color:'purple' },
+  security:   { name:'Security Information',sub:'Layers of protection in EMS',         icon:'bi bi-lock',               color:'amber'  }
+};
+
+function openLegalPanel(tab) {
+  var panel   = document.getElementById('legal-panel');
+  var overlay = document.getElementById('legal-overlay');
+  if (!panel || !overlay) return;
+  panel.classList.add('open');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  switchLegalTab(tab || 'privacy');
+}
+
+function closeLegalPanel() {
+  var panel   = document.getElementById('legal-panel');
+  var overlay = document.getElementById('legal-overlay');
+  if (panel)   panel.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function switchLegalTab(tab) {
+  /* Update tabs */
+  document.querySelectorAll('.legal-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  /* Update panes */
+  document.querySelectorAll('.legal-pane').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'pane-' + tab);
+  });
+  /* Update header */
+  var meta = LEGAL_META[tab];
+  if (meta) {
+    var nameEl = document.getElementById('legal-panel-name');
+    var subEl  = document.getElementById('legal-panel-sub');
+    var iconEl = document.getElementById('legal-panel-icon');
+    if (nameEl) nameEl.textContent = meta.name;
+    if (subEl)  subEl.textContent  = meta.sub;
+    if (iconEl) {
+      iconEl.className = 'legal-panel-icon ' + meta.color;
+      iconEl.innerHTML = '<i class="' + meta.icon + '"></i>';
+    }
+  }
+}
+
+function toggleSection(headerEl) {
+  var section = headerEl.closest('.legal-section');
+  if (section) section.classList.toggle('open');
+}
+
+/* Close on Escape */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeLegalPanel();
+});
+</script>
 </body>
 </html>

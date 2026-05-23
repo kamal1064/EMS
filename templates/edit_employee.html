@@ -1,65 +1,67 @@
 {% extends "base.html" %}
 {% block title %}Edit Employee{% endblock %}
 {% block page_title %}Edit Employee{% endblock %}
+{% block page_subtitle %}Update employee details{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('employees') }}" class="btn-saas btn-saas-md btn-saas-secondary">
+  <i class="bi bi-arrow-left"></i>
+  <span>Back</span>
+</a>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div>
-    <h2 class="page-h2">Edit Employee</h2>
-    <p class="page-sub">Update details for {{ emp['name'] }}</p>
+<div class="max-w-3xl mx-auto glass-panel overflow-hidden">
+  <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center gap-2">
+    <i class="bi bi-pencil-square text-primary"></i>
+    <h3 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Modify Employee Fields</h3>
   </div>
-  <a href="{{ url_for('employees') }}" class="btn-secondary-custom">
-    <i class="bi bi-arrow-left me-1"></i> Back
-  </a>
-</div>
 
-<div class="card-custom" style="max-width:700px">
-  <div class="card-header-custom">
-    <span><i class="bi bi-pencil-fill me-2"></i>Edit Details</span>
-  </div>
-  <div class="p-4">
-    <form method="POST">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label-custom">Full Name *</label>
-          <input type="text" name="name" class="form-input" value="{{ emp['name'] }}" required/>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label-custom">Phone Number</label>
-          <input type="text" name="phone" class="form-input" value="{{ emp['phone'] or '' }}"/>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label-custom">Age</label>
-          <input type="number" name="age" class="form-input" value="{{ emp['age'] }}" min="16" max="80"/>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label-custom">Gender</label>
-          <select name="gender" class="form-input">
-            <option value="Male" {% if emp['gender']=='Male' %}selected{% endif %}>Male</option>
-            <option value="Female" {% if emp['gender']=='Female' %}selected{% endif %}>Female</option>
-            <option value="Other" {% if emp['gender']=='Other' %}selected{% endif %}>Other</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label-custom">Leaves Allowed</label>
-          <input type="number" name="leaves" class="form-input" value="{{ emp['leaves'] }}" min="0"/>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label-custom">Monthly Salary (₹)</label>
-          <input type="number" name="salary" class="form-input" value="{{ emp['salary'] }}" step="0.01"/>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label-custom">Working Hours/Week</label>
-          <input type="number" name="working_hours" class="form-input" value="{{ emp['working_hours'] }}" step="0.5"/>
-        </div>
+  <form method="POST" class="p-6 space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Full Name *</label>
+        <input type="text" name="name" value="{{ emp['name'] }}" required
+               class="form-input"/>
       </div>
-      <div class="mt-4 d-flex gap-2">
-        <a href="{{ url_for('employees') }}" class="btn-secondary-custom">Cancel</a>
-        <button type="submit" class="btn-primary-custom">
-          <i class="bi bi-check-lg me-1"></i>Save Changes
-        </button>
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Phone Number</label>
+        <input type="text" name="phone" value="{{ emp['phone'] or '' }}" placeholder="Enter phone"
+               class="form-input"/>
       </div>
-    </form>
-  </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Age</label>
+        <input type="number" name="age" value="{{ emp['age'] }}" min="16" max="80"
+               class="form-input"/>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Gender</label>
+        <select name="gender" class="form-input">
+          <option value="Male" {% if emp['gender'] == 'Male' %}selected{% endif %}>Male</option>
+          <option value="Female" {% if emp['gender'] == 'Female' %}selected{% endif %}>Female</option>
+          <option value="Other" {% if emp['gender'] == 'Other' %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Monthly Salary (₹)</label>
+        <input type="number" name="salary" value="{{ emp['salary'] }}" step="0.01" required
+               class="form-input"/>
+      </div>
+    </div>
+
+    <div class="pt-4 border-t border-slate-200 dark:border-white/5 flex items-center justify-end gap-3">
+      <a href="{{ url_for('employees') }}" class="btn-saas btn-saas-md btn-saas-secondary">
+        Cancel
+      </a>
+      <button type="submit" class="btn-saas btn-saas-md btn-saas-primary">
+        <i class="bi bi-check-lg mr-1"></i> Save Changes
+      </button>
+    </div>
+  </form>
 </div>
 {% endblock %}

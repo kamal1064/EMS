@@ -1,169 +1,229 @@
 {% extends "base.html" %}
 {% block title %}Salary{% endblock %}
-{% block page_title %}Salary Management{% endblock %}
+{% block page_title %}Salary{% endblock %}
+{% block page_subtitle %}Attendance-linked payroll with advance deductions{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('export_data') }}" class="btn-saas btn-saas-md btn-saas-secondary">
+  <i class="bi bi-download"></i>
+  <span>Export CSV</span>
+</a>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div>
-    <h2 class="page-h2">Salary Calculations</h2>
-    <p class="page-sub">Attendance-based salary for the selected month</p>
+
+<!-- Filter + Formula -->
+<div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:stretch;">
+  <!-- Month picker -->
+  <div class="card" style="padding:14px 18px;">
+    <form method="GET" style="display:flex;align-items:center;gap:10px;">
+      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap;">
+        <i class="bi bi-calendar-month" style="color:var(--primary);"></i> Payroll Month:
+      </label>
+      <input type="month" name="month" value="{{ month_filter }}"
+             style="font-size:13px;padding:6px 12px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;font-family:monospace;"/>
+      <button type="submit" onclick="setLoaderState(true);" class="btn-saas btn-saas-md btn-saas-primary">Load</button>
+    </form>
   </div>
-  <a href="{{ url_for('export_data') }}" class="btn-secondary-custom">
-    <i class="bi bi-download me-1"></i>Export CSV
-  </a>
+
+  <!-- Formula box -->
+  <div class="info-panel">
+    <div class="info-panel-icon"><i class="bi bi-info-circle-fill"></i></div>
+    <div>
+      <div class="info-panel-title">Payroll Formula</div>
+      <div class="info-panel-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:4px;">
+        <span>Daily Rate: <code>Monthly Salary ÷ Days in Month</code></span>
+        <span style="color:var(--text3);">•</span>
+        <span>Earned: <code>Daily Rate × Present Days</code></span>
+        <span style="color:var(--text3);">•</span>
+        <span style="font-weight:700;color:var(--primary);">Net Payable: <code>Earned − Advance Given</code></span>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Month Filter -->
-<div class="date-bar mb-4">
-  <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
-    <label class="date-label"><i class="bi bi-calendar-month me-2"></i>Month:</label>
-    <input type="month" name="month" class="form-input date-input" value="{{ month_filter }}"/>
-    <button type="submit" class="btn-primary-custom">Load</button>
-  </form>
-</div>
-
-<!-- Formula Info Card -->
-<div class="info-card mb-4">
-  <i class="bi bi-info-circle-fill"></i>
-  <div>
-    <strong>Salary Formula:</strong>
-    <code>salary_per_day = monthly_salary ÷ 30</code> &nbsp;·&nbsp;
-    <code>final_salary = salary_per_day × present_days</code>
+<!-- Payroll Table -->
+<div class="card overflow-hidden">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-cash-coin"></i> Payroll Sheet — {{ month_filter }}</span>
+    <span class="badge badge-primary">{{ salary_details|length }} Employees</span>
   </div>
-</div>
 
-<div class="card-custom">
-  <div class="card-header-custom">
-    <span><i class="bi bi-cash-stack me-2"></i>Salary Details — {{ month_filter }}</span>
-  </div>
-  <div class="table-responsive">
-    <table class="table-custom">
+  <div class="table-wrap">
+    <table>
       <thead>
         <tr>
           <th>#</th>
           <th>Employee</th>
-          <th>Monthly Salary</th>
-          <th>Per Day (÷30)</th>
+          <th>Monthly Rate</th>
+          <th>Daily Rate</th>
           <th>Present Days</th>
-          <th>Calculated Salary</th>
-          <th>Advance Amount Paid</th>
+          <th>Earned Salary</th>
+          <th>Advance Given</th>
+          <th style="color:var(--primary);">Net Payable</th>
           <th>Status</th>
-          <th class="text-end">Action</th>
+          <th class="text-right">Action</th>
         </tr>
       </thead>
       <tbody>
         {% for s in salary_details %}
         <tr id="sal-row-{{ s.id }}">
-          <td class="text-muted">{{ loop.index }}</td>
+          <td class="mono text-sm" style="color:var(--text3);">{{ loop.index }}</td>
+
+          <!-- Employee Name -->
           <td>
-            <div class="emp-cell">
-              <div class="emp-avatar">{{ s.name[0].upper() }}</div>
-              <span class="emp-name">{{ s.name }}</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="avatar">{{ s.name[0].upper() }}</div>
+              <span style="font-weight:600;">{{ s.name }}</span>
             </div>
           </td>
-          <td class="salary-cell">₹{{ "{:,.0f}".format(s.monthly_salary) }}</td>
-          <td class="text-muted">₹{{ s.salary_per_day }}</td>
-          <td><span class="num-green">{{ s.present_days }}</span></td>
-          <td class="salary-cell fw-bold">₹{{ "{:,.2f}".format(s.final_salary) }}</td>
-          <td class="salary-cell">
-            <div class="d-flex align-items-center gap-2">
-              <input type="number"
-                     step="0.01"
-                     min="0"
-                     class="form-input advance-input"
+
+          <!-- Monthly Rate -->
+          <td class="mono" style="font-weight:600;">₹{{ "{:,.0f}".format(s.monthly_salary) }}</td>
+
+          <!-- Daily Rate -->
+          <td class="mono text-sm text-muted">₹{{ s.salary_per_day }}</td>
+
+          <!-- Present Days -->
+          <td>
+            <span class="badge badge-success">{{ s.present_days }} days</span>
+          </td>
+
+          <!-- Earned Salary -->
+          <td class="mono" style="font-weight:700;font-size:14px;">₹{{ "{:,.2f}".format(s.final_salary) }}</td>
+
+          <!-- Advance Input -->
+          <td style="min-width:180px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="number" step="0.01" min="0"
+                     value="{{ s.advance_amount_paid }}"
                      id="advance-input-{{ s.id }}"
                      data-emp-id="{{ s.id }}"
                      data-month="{{ month_filter }}"
-                     value="{{ s.advance_amount_paid }}"
-                     style="width: 120px;" />
+                     data-earned="{{ s.final_salary }}"
+                     {% if s.payment_status == 'Paid' %}disabled{% endif %}
+                     placeholder="0.00"
+                     style="width:100px;font-family:monospace;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
+              <button onclick="setAdvance(this)"
+                      id="advance-btn-{{ s.id }}"
+                      data-emp-id="{{ s.id }}"
+                      data-month="{{ month_filter }}"
+                      {% if s.payment_status == 'Paid' %}disabled{% endif %}
+                      class="btn-saas btn-saas-icon" style="color:var(--primary);" title="Save advance">
+                <i class="bi bi-save"></i>
+              </button>
             </div>
-            <div class="text-muted small mt-1" id="advance-msg-{{ s.id }}">
+            <div id="advance-msg-{{ s.id }}" style="font-size:10px;font-family:monospace;margin-top:4px;color:var(--text3);">
               {% if s.advance_paid_at %}Saved: {{ s.advance_paid_at[:10] }}{% endif %}
             </div>
           </td>
-          <td>
-            <button class="btn-primary-custom btn-advance-update"
-                    id="advance-btn-{{ s.id }}"
-                    data-emp-id="{{ s.id }}"
-                    data-month="{{ month_filter }}"
-                    onclick="setAdvance(this)">
-              <i class="bi bi-save me-1"></i>Update
-            </button>
-          </td>
-          <td>
-            <span class="badge-status {% if s.payment_status == 'Paid' %}badge-paid{% else %}badge-unpaid{% endif %}"
-                  id="pay-badge-{{ s.id }}">
-              {% if s.payment_status == 'Paid' %}✅ Paid{% else %}⏳ Unpaid{% endif %}
-            </span>
-            {% if s.paid_at %}
-            <div class="paid-date" id="paid-date-{{ s.id }}">{{ s.paid_at[:10] }}</div>
+
+          <!-- Net Payable (Earned - Advance) -->
+          <td id="net-{{ s.id }}">
+            {% set net = s.net_payable %}
+            {% if net < 0 %}
+              <span class="mono" style="font-size:16px;font-weight:800;color:var(--warning);">−₹{{ "{:,.2f}".format(net|abs) }}</span>
+              <div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹{{ "{:,.2f}".format(net|abs) }}</div>
+            {% elif net > 0 %}
+              <span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹{{ "{:,.2f}".format(net) }}</span>
             {% else %}
-            <div class="paid-date" id="paid-date-{{ s.id }}"></div>
+              <span class="mono" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>
+              <div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>
+            {% endif %}
+            {% if s.advance_amount_paid > 0 %}
+            <div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">
+              −₹{{ "{:,.2f}".format(s.advance_amount_paid) }} advance
+            </div>
             {% endif %}
           </td>
-          <td class="text-end">
+
+          <!-- Status -->
+          <td>
+            <span id="pay-badge-{{ s.id }}" class="badge {% if s.payment_status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}">
+              <span class="badge-dot" style="background:{% if s.payment_status == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
+              {{ s.payment_status }}
+            </span>
+            <div id="paid-date-{{ s.id }}" style="font-size:10px;font-family:monospace;color:var(--text3);margin-top:4px;">
+              {% if s.paid_at %}Paid: {{ s.paid_at[:10] }}{% endif %}
+            </div>
+          </td>
+
+          <!-- Action -->
+          <td class="text-right">
             {% if s.payment_status != 'Paid' %}
-            <button class="btn-pay"
-                    id="pay-btn-{{ s.id }}"
-                    data-emp-id="{{ s.id }}"
-                    data-month="{{ month_filter }}"
-                    onclick="markPaid(this)">
-              <i class="bi bi-check2-circle me-1"></i>Mark Paid
+            <button onclick="markPaid(this)" id="pay-btn-{{ s.id }}"
+                    data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
+                    class="btn-saas btn-saas-sm btn-saas-success">
+              <i class="bi bi-check2-circle"></i> Mark Paid
             </button>
             {% else %}
-            <span class="text-muted" id="pay-btn-{{ s.id }}">—</span>
+            <span class="text-muted mono" id="pay-btn-{{ s.id }}">—</span>
             {% endif %}
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="9" class="empty-state">
-          <i class="bi bi-cash"></i>
-          <p>No employees found. <a href="{{ url_for('employees') }}">Add employees</a> first.</p>
-        </td></tr>
+        <tr>
+          <td colspan="10" class="text-center" style="padding:56px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+              <div style="width:56px;height:56px;border-radius:16px;background:var(--input-bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--text3);">
+                <i class="bi bi-cash"></i>
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:15px;margin-bottom:4px;">No payroll records yet</div>
+                <div class="text-muted text-sm">Add employees first to see their payroll here.</div>
+              </div>
+              <a href="{{ url_for('employees') }}" class="btn-saas btn-saas-md btn-saas-primary">Add Employees</a>
+            </div>
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 function markPaid(button) {
-  const empId = button.dataset.empId;
-  const month = button.dataset.month;
-
+  var empId = button.dataset.empId;
+  var month = button.dataset.month;
+  setLoaderState(true);
   fetch('/salary/mark_paid', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ emp_id: empId, month: month })
   })
-  .then(r => r.json())
-  .then(data => {
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    setLoaderState(false);
     if (data && data.success) {
-      document.getElementById('pay-badge-' + empId).outerHTML =
-        '<span class="badge-status badge-paid" id="pay-badge-' + empId + '">✅ Paid</span>';
-      document.getElementById('paid-date-' + empId).textContent = (data.paid_at || '').slice(0, 10);
-      document.getElementById('pay-btn-'  + empId).outerHTML =
-        '<span class="text-muted" id="pay-btn-' + empId + '">—</span>';
-
-      // Lock advance controls
-      const advanceInput = document.getElementById('advance-input-' + empId);
-      const advanceBtn = document.getElementById('advance-btn-' + empId);
-      if (advanceInput) advanceInput.disabled = true;
-      if (advanceBtn) advanceBtn.disabled = true;
+      showToast('Salary marked as paid', 'success');
+      var badge = document.getElementById('pay-badge-' + empId);
+      badge.className = 'badge badge-success';
+      badge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
+      document.getElementById('paid-date-' + empId).textContent = 'Paid: ' + (data.paid_at || '').slice(0, 10);
+      document.getElementById('pay-btn-' + empId).outerHTML = '<span class="text-muted mono" id="pay-btn-' + empId + '">—</span>';
+      var advInput = document.getElementById('advance-input-' + empId);
+      var advBtn = document.getElementById('advance-btn-' + empId);
+      if (advInput) advInput.disabled = true;
+      if (advBtn) advBtn.disabled = true;
+    } else {
+      showToast(data.message || 'Failed', 'danger');
     }
-  });
+  }).catch(function(){ setLoaderState(false); showToast('Request failed', 'danger'); });
 }
 
 function setAdvance(button) {
-  const empId = button.dataset.empId;
-  const month = button.dataset.month;
+  var empId = button.dataset.empId;
+  var month = button.dataset.month;
+  var input = document.getElementById('advance-input-' + empId);
+  var msg = document.getElementById('advance-msg-' + empId);
+  var netCell = document.getElementById('net-' + empId);
+  var value = parseFloat(input ? input.value : 0) || 0;
 
-  const input = document.getElementById('advance-input-' + empId);
-  const msg = document.getElementById('advance-msg-' + empId);
-  const value = input ? input.value : 0;
-
+  msg.style.color = 'var(--primary)';
   msg.textContent = 'Saving...';
 
   fetch('/salary/set_advance', {
@@ -171,21 +231,43 @@ function setAdvance(button) {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ emp_id: empId, month: month, advance_amount_paid: value })
   })
-  .then(r => r.json().then(data => ({ ok: r.ok, data })))
-  .then(({ ok, data }) => {
-    if (ok && data && data.success) {
-      const when = data.advance_paid_at ? data.advance_paid_at.slice(0,10) : '';
-      msg.textContent = when ? 'Saved ✅ (' + when + ')' : 'Saved ✅';
+  .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
+  .then(function(res) {
+    if (res.ok && res.data && res.data.success) {
+      var when = res.data.advance_paid_at ? res.data.advance_paid_at.slice(0,10) : '';
+      msg.style.color = 'var(--success)';
+      msg.textContent = when ? 'Saved: ' + when : 'Saved';
 
-      // (net preview removed)
+      // Update Net Payable cell live
+      var net = res.data.net_payable !== undefined ? res.data.net_payable : 0;
+      var color, label;
+      if (net < 0) {
+        color = 'var(--warning)';
+        label = '<span class="mono" style="font-size:16px;font-weight:800;color:' + color + ';">−₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>'
+              + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(net).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</div>';
+      } else if (net === 0) {
+        color = 'var(--text3)';
+        label = '<span class="mono" style="font-size:16px;font-weight:800;color:' + color + ';">₹0.00</span>'
+              + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
+      } else {
+        color = 'var(--success)';
+        label = '<span class="mono" style="font-size:16px;font-weight:800;color:' + color + ';">₹' + net.toLocaleString('en-IN', {minimumFractionDigits:2}) + '</span>';
+      }
+      var advHtml = value > 0 ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−₹' + value.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' advance</div>' : '';
+      netCell.innerHTML = label + advHtml;
+
+      showToast('Advance of ₹' + value.toLocaleString('en-IN') + ' saved. Net: ₹' + net.toLocaleString('en-IN'), 'success');
     } else {
-      msg.textContent = (data && data.message) ? data.message : 'Failed';
+      msg.style.color = 'var(--danger)';
+      msg.textContent = (res.data && res.data.message) ? res.data.message : 'Save failed';
+      showToast('Save failed', 'danger');
     }
   })
-  .catch(() => {
-    msg.textContent = 'Failed';
+  .catch(function(){
+    msg.style.color = 'var(--danger)';
+    msg.textContent = 'Request failed';
+    showToast('Request failed', 'danger');
   });
 }
-
 </script>
 {% endblock %}

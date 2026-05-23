@@ -1,68 +1,194 @@
 {% extends "base.html" %}
-{% block title %}Sign Up{% endblock %}
+{% block title %}Create Account — EMS{% endblock %}
 
 {% block auth_content %}
-<div class="auth-page">
-  <div class="auth-card">
-    <div class="auth-header">
-      <div class="auth-logo"><i class="bi bi-people-fill"></i></div>
-      <h1>Create Account</h1>
-      <p>Register as an EMS owner/admin</p>
-    </div>
+<div class="auth-bg">
+  <div class="auth-blob auth-blob-1"></div>
+  <div class="auth-blob auth-blob-2"></div>
 
-    {% if error %}
-    <div class="alert-custom alert-danger-custom">
-      <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
-    </div>
-    {% endif %}
+  <div class="auth-shell">
 
-    <form method="POST" class="auth-form">
-      <div class="form-group-custom">
-        <label>Username</label>
-        <div class="input-with-icon">
-          <i class="bi bi-person"></i>
-          <input type="text" name="username" class="form-input" placeholder="Choose a username" required/>
+    <!-- ── LEFT: Signup Form ──────────────────────── -->
+    <div class="auth-card">
+
+      <div class="auth-brand">
+        <div class="brand-logo"><i class="bi bi-people-fill"></i></div>
+        <span class="auth-brand-name">EMS</span>
+      </div>
+
+      {% if sent %}
+      <!-- Email sent state -->
+      <div style="text-align:center;padding:20px 0;">
+        <div style="width:64px;height:64px;border-radius:20px;background:var(--success-lo);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 20px;">✉️</div>
+        <h2 class="auth-title">Check your inbox</h2>
+        <p class="auth-sub" style="margin-bottom:20px;">We sent a verification link to<br/><strong style="color:var(--text);">{{ email }}</strong></p>
+        <div class="auth-alert auth-alert-success">
+          <i class="bi bi-info-circle"></i>
+          <span>Click the link in the email to activate your account. Check your spam folder if you don't see it.</span>
         </div>
+        <form method="POST" action="{{ url_for('resend_verification') }}" style="margin-top:20px;">
+          <input type="hidden" name="email" value="{{ email }}">
+          <button type="submit" class="auth-btn-ghost" style="width:100%;">
+            <i class="bi bi-arrow-clockwise"></i> Resend verification email
+          </button>
+        </form>
+        <a href="{{ url_for('login') }}" class="auth-link" style="display:block;margin-top:16px;font-size:13px;">← Back to Sign In</a>
       </div>
-      <div class="form-group-custom">
-        <label>Email</label>
-        <div class="input-with-icon">
-          <i class="bi bi-envelope"></i>
-          <input type="email" name="email" class="form-input" placeholder="Enter your email" required/>
-        </div>
-      </div>
-      <div class="form-group-custom">
-        <label>Password</label>
-        <div class="input-with-icon">
-          <i class="bi bi-lock"></i>
-          <input type="password" name="password" class="form-input" placeholder="Create a strong password" required/>
-        </div>
-      </div>
-      <button type="submit" class="btn-auth">
-        <span>Create Account</span><i class="bi bi-arrow-right"></i>
-      </button>
-    </form>
 
-    <div class="auth-footer">
-      Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
-    </div>
-  </div>
+      {% else %}
 
-  <div class="auth-panel">
-    <div class="auth-panel-content">
-      <h2>Get Started<br/>in Minutes</h2>
-      <p>One account to manage your entire team. No complex setup required.</p>
-      <div class="feature-list">
-        <div class="feature-item"><i class="bi bi-check2-circle"></i> Unlimited employee records</div>
-        <div class="feature-item"><i class="bi bi-check2-circle"></i> Daily attendance marking</div>
-        <div class="feature-item"><i class="bi bi-check2-circle"></i> Monthly salary reports</div>
-        <div class="feature-item"><i class="bi bi-check2-circle"></i> Dark mode support</div>
+      <h2 class="auth-title">Create account</h2>
+      <p class="auth-sub">Set up your EMS workspace in seconds</p>
+
+      {% if error %}
+      <div class="auth-alert auth-alert-error">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="POST" id="signup-form" style="display:flex;flex-direction:column;gap:16px;margin-top:4px;">
+
+        <!-- Email -->
+        <div class="auth-field">
+          <label class="auth-label">Email Address</label>
+          <div class="auth-input-wrap">
+            <i class="bi bi-envelope auth-input-icon"></i>
+            <input type="email" name="email" id="su-email"
+                   placeholder="you@example.com" autocomplete="email"
+                   required class="auth-input"/>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="auth-field">
+          <label class="auth-label">Password</label>
+          <div class="auth-input-wrap">
+            <i class="bi bi-lock auth-input-icon"></i>
+            <input type="password" name="password" id="su-password"
+                   placeholder="Create a strong password" autocomplete="new-password"
+                   required class="auth-input auth-input-pw"
+                   oninput="updateStrength(this.value)"/>
+            <button type="button" class="auth-eye-btn" onclick="togglePw('su-password', this)" tabindex="-1">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          <!-- Strength meter -->
+          <div class="pw-strength-wrap" id="pw-strength-wrap" style="display:none;">
+            <div class="pw-strength-bar">
+              <div class="pw-strength-fill" id="pw-strength-fill"></div>
+            </div>
+            <span class="pw-strength-label" id="pw-strength-label">Weak</span>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="auth-field">
+          <label class="auth-label">Confirm Password</label>
+          <div class="auth-input-wrap">
+            <i class="bi bi-lock-fill auth-input-icon"></i>
+            <input type="password" name="confirm_password" id="su-confirm"
+                   placeholder="Repeat your password" autocomplete="new-password"
+                   required class="auth-input auth-input-pw"
+                   oninput="checkMatch()"/>
+            <button type="button" class="auth-eye-btn" onclick="togglePw('su-confirm', this)" tabindex="-1">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          <div id="match-msg" style="font-size:11px;margin-top:5px;display:none;"></div>
+        </div>
+
+        <button type="submit" class="auth-btn-primary" id="signup-btn">
+          <span id="signup-btn-text">Create Account</span>
+          <i class="bi bi-arrow-right" id="signup-btn-icon"></i>
+          <span class="auth-spinner hidden" id="signup-spinner"></span>
+        </button>
+      </form>
+
+      <div class="auth-divider"><span>Already have an account?</span></div>
+      <a href="{{ url_for('login') }}" class="auth-btn-ghost">
+        <i class="bi bi-box-arrow-in-right"></i> Sign in
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- ── RIGHT: Pitch ───────────────────────────── -->
+    <div class="auth-pitch">
+      <div class="live-badge">
+        <span class="ping"></span> Zero Setup Cost
+      </div>
+      <h1 class="auth-headline">
+        Manage everything<br/>
+        <span class="auth-gradient-text">from one workspace.</span>
+      </h1>
+      <p class="auth-pitch-sub">
+        Join owners worldwide tracking attendance, slab rates, pro-rated bonuses, and payouts in real-time.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:24px;">
+        <div class="auth-check-item"><div class="auth-check-dot"></div><div><strong>Salaried &amp; Slab Integration</strong><p>Isolated logs that don't collide. Perfect accounting structures.</p></div></div>
+        <div class="auth-check-item"><div class="auth-check-dot"></div><div><strong>Interactive Live Dashboards</strong><p>Gorgeous visualizations, attendance rings, and payroll insights.</p></div></div>
+        <div class="auth-check-item"><div class="auth-check-dot"></div><div><strong>Email Verified &amp; Secure</strong><p>Your account is protected with email verification and rate limiting.</p></div></div>
       </div>
     </div>
+
   </div>
 </div>
 
-<button class="theme-toggle floating-theme" id="themeToggle" title="Toggle dark mode">
-  <i class="bi bi-moon-fill" id="themeIcon"></i>
-</button>
+<script>
+function togglePw(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  var icon = btn.querySelector('i');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  icon.className = inp.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+function updateStrength(val) {
+  var wrap = document.getElementById('pw-strength-wrap');
+  var fill = document.getElementById('pw-strength-fill');
+  var label = document.getElementById('pw-strength-label');
+  wrap.style.display = val.length > 0 ? 'flex' : 'none';
+  var score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  var pct = (score / 5) * 100;
+  var colors = ['#ef4444','#f59e0b','#f59e0b','#10b981','#10b981'];
+  var labels = ['Very weak','Weak','Fair','Strong','Very strong'];
+  fill.style.width = pct + '%';
+  fill.style.background = colors[score - 1] || '#ef4444';
+  label.textContent = labels[score - 1] || 'Very weak';
+  label.style.color = colors[score - 1] || '#ef4444';
+}
+
+function checkMatch() {
+  var pw  = document.getElementById('su-password').value;
+  var con = document.getElementById('su-confirm').value;
+  var msg = document.getElementById('match-msg');
+  if (!con) { msg.style.display = 'none'; return; }
+  msg.style.display = 'block';
+  if (pw === con) {
+    msg.style.color = 'var(--success)';
+    msg.textContent = '✓ Passwords match';
+  } else {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✗ Passwords do not match';
+  }
+}
+
+document.getElementById('signup-form').addEventListener('submit', function(e) {
+  var pw  = document.getElementById('su-password').value;
+  var con = document.getElementById('su-confirm').value;
+  if (pw !== con) { e.preventDefault(); return; }
+  var btn  = document.getElementById('signup-btn');
+  var txt  = document.getElementById('signup-btn-text');
+  var ico  = document.getElementById('signup-btn-icon');
+  var spin = document.getElementById('signup-spinner');
+  btn.disabled = true;
+  txt.textContent = 'Creating account…';
+  ico.classList.add('hidden');
+  spin.classList.remove('hidden');
+});
+</script>
 {% endblock %}

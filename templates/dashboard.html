@@ -1,270 +1,242 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Overview of your employee data{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('attendance') }}" class="btn-saas btn-saas-md btn-saas-primary">
+  <i class="bi bi-calendar2-check-fill"></i>
+  <span>Mark Attendance</span>
+</a>
+{% endblock %}
 
 {% block content %}
-<!-- ── Summary Cards ─────────────────────── -->
-<div class="row g-4 mb-4">
-  <div class="col-xl-3 col-md-6">
-    <div class="stat-card stat-card--blue">
-      <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
-      <div class="stat-body">
-        <div class="stat-value">{{ total_emp }}</div>
-        <div class="stat-label">Total Employees</div>
-      </div>
-      <div class="stat-bg-icon"><i class="bi bi-people-fill"></i></div>
+
+<!-- Stat Cards -->
+<div class="grid grid-4">
+  <!-- Total Employees -->
+  <div class="card card-hover stat-card stat-card-blue" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="stat-label">Total Employees</div>
+      <div class="stat-value">{{ total_emp }}</div>
+      <div class="stat-note green"><i class="bi bi-arrow-up-right-circle-fill"></i> Active Roster</div>
     </div>
+    <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
   </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="stat-card stat-card--green">
-      <div class="stat-icon"><i class="bi bi-currency-rupee"></i></div>
-      <div class="stat-body">
-        <div class="stat-value">₹{{ "{:,.0f}".format(avg_salary) }}</div>
-        <div class="stat-label">Avg Monthly Salary</div>
-      </div>
-      <div class="stat-bg-icon"><i class="bi bi-currency-rupee"></i></div>
+
+  <!-- Avg Salary -->
+  <div class="card card-hover stat-card stat-card-purple" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="stat-label">Avg Monthly Salary</div>
+      <div class="stat-value mono">₹{{ "{:,.0f}".format(avg_salary) }}</div>
+      <div class="stat-note purple"><i class="bi bi-currency-rupee"></i> Standard Rate</div>
     </div>
+    <div class="stat-icon purple"><i class="bi bi-wallet2"></i></div>
   </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="stat-card stat-card--orange">
-      <div class="stat-icon"><i class="bi bi-person-fill"></i></div>
-      <div class="stat-body">
-        <div class="stat-value">{{ avg_age }}</div>
-        <div class="stat-label">Average Age</div>
-      </div>
-      <div class="stat-bg-icon"><i class="bi bi-person-fill"></i></div>
+
+  <!-- Avg Age -->
+  <div class="card card-hover stat-card stat-card-amber" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="stat-label">Average Age</div>
+      <div class="stat-value">{{ avg_age }} <span>yrs</span></div>
+      <div class="stat-note amber"><i class="bi bi-shield-check"></i> Workforce Average</div>
     </div>
+    <div class="stat-icon amber"><i class="bi bi-person-fill"></i></div>
   </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="stat-card stat-card--purple">
-      <div class="stat-icon"><i class="bi bi-clock-fill"></i></div>
-      <div class="stat-body">
-        <div class="stat-value">{{ total_hrs|int }}h</div>
-        <div class="stat-label">Total Working Hrs/Week</div>
-      </div>
-      <div class="stat-bg-icon"><i class="bi bi-clock-fill"></i></div>
+
+  <!-- Workload -->
+  <div class="card card-hover stat-card stat-card-green" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="stat-label">Weekly Workload</div>
+      <div class="stat-value mono">{{ total_hrs|int }} <span>hrs</span></div>
+      <div class="stat-note green"><i class="bi bi-clock-fill"></i> Allocated Hours</div>
     </div>
+    <div class="stat-icon green"><i class="bi bi-speedometer2"></i></div>
   </div>
 </div>
 
-<!-- ── Charts ─────────────────────────────── -->
-<div class="row g-4 mb-4">
-  <!-- Attendance Pie -->
-  <div class="col-xl-5 col-lg-6">
-    <div class="card-custom">
-      <div class="card-header-custom">
-        <span><i class="bi bi-pie-chart-fill me-2"></i>Overall Attendance</span>
-        <div class="month-picker-wrap">
-          <input type="month" id="attMonth" class="form-month"
-                 value="{{ today[:7] }}" onchange="loadAttChart()"/>
-        </div>
-      </div>
-      <div class="chart-container" style="height:260px">
-        <canvas id="attPieChart"></canvas>
-      </div>
-      <div class="chart-legend">
-        <div class="legend-dot legend-dot--green"></div><span>Present: <strong id="presentCount">{{ present_count }}</strong></span>
-        <div class="legend-dot legend-dot--red ms-3"></div><span>Absent: <strong id="absentCount">{{ absent_count }}</strong></span>
-      </div>
-    </div>
-  </div>
-
+<!-- Charts Row -->
+<div class="grid-7-5">
   <!-- Salary Bar Chart -->
-  <div class="col-xl-7 col-lg-6">
-    <div class="card-custom">
-      <div class="card-header-custom">
-        <span><i class="bi bi-bar-chart-fill me-2"></i>Salary Distribution</span>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-bar-chart-fill"></i> Salary Distribution</span>
+      <span class="text-muted text-sm">Salaried Employees</span>
+    </div>
+    <div style="padding:20px;height:260px;">
+      <canvas id="salaryBarChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Attendance Pie Chart -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-pie-chart-fill"></i> Attendance</span>
+      <input type="month" id="attMonth" value="{{ today[:7] }}" onchange="loadAttChart()"
+             style="font-size:12px;padding:4px 10px;border-radius:8px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;font-family:monospace;"/>
+    </div>
+    <div style="padding:16px;display:flex;align-items:center;justify-content:center;height:180px;">
+      <canvas id="attPieChart"></canvas>
+    </div>
+    <div style="display:flex;justify-content:space-around;padding:12px 20px;border-top:1px solid var(--card-border);font-size:12px;font-weight:600;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+        <span class="text-muted">Present: <strong id="presentCount" style="color:var(--text);font-family:monospace;">{{ present_count }}</strong></span>
       </div>
-      <div class="chart-container" style="height:290px">
-        <canvas id="salaryBarChart"></canvas>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span>
+        <span class="text-muted">Absent: <strong id="absentCount" style="color:var(--text);font-family:monospace;">{{ absent_count }}</strong></span>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Per-Employee Attendance Chart ────────── -->
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="card-custom">
-      <div class="card-header-custom">
-        <span><i class="bi bi-bar-chart-steps me-2"></i>Employee Attendance Breakdown</span>
-        <div class="month-picker-wrap">
-          <input type="month" id="empAttMonth" class="form-month"
-                 value="{{ today[:7] }}" onchange="loadEmpAttChart()"/>
-        </div>
-      </div>
-      <div class="chart-container" style="height:280px">
-        <canvas id="empAttChart"></canvas>
-      </div>
-    </div>
+<!-- Per-Employee Attendance Breakdown -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-bar-chart-steps" style="color:#10b981;"></i> Monthly Attendance Breakdown</span>
+    <input type="month" id="empAttMonth" value="{{ today[:7] }}" onchange="loadEmpAttChart()"
+           style="font-size:12px;padding:4px 10px;border-radius:8px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;font-family:monospace;"/>
+  </div>
+  <div style="padding:20px;height:260px;">
+    <canvas id="empAttChart"></canvas>
   </div>
 </div>
 
-<!-- ── Security Settings ─────────────────────── -->
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="card-custom">
-      <div class="card-header-custom">
-        <span><i class="bi bi-shield-check me-2"></i>Security Settings</span>
-      </div>
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <h6 class="mb-1">Two-Factor Authentication (2FA)</h6>
-            <p class="text-muted mb-0">
-              {% if otp_enabled %}
-              <i class="bi bi-check-circle-fill text-success me-1"></i>Enabled - Your account is protected with 2FA
-              {% else %}
-              <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>Not enabled - Add an extra layer of security
-              {% endif %}
-            </p>
-          </div>
-          <div>
-            {% if otp_enabled %}
-            <form method="POST" action="{{ url_for('otp_disable') }}" class="d-inline"
-                  onsubmit="return confirm('Are you sure you want to disable 2FA? This will make your account less secure.')">
-              <button type="submit" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-shield-x me-1"></i>Disable 2FA
-              </button>
-            </form>
-            {% else %}
-            <a href="{{ url_for('otp_setup') }}" class="btn btn-primary btn-sm">
-              <i class="bi bi-shield-plus me-1"></i>Enable 2FA
-            </a>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
+<!-- Recent Attendance Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-clock-history" style="color:#f59e0b;"></i> Recent Attendance</span>
+    <a href="{{ url_for('attendance') }}" class="btn-saas btn-saas-sm btn-saas-secondary">View All</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Date</th>
+          <th class="text-right">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recent_att %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="avatar">{{ r['name'][0].upper() }}</div>
+              <span style="font-weight:600;">{{ r['name'] }}</span>
+            </div>
+          </td>
+          <td class="mono text-sm text-muted">{{ r['date'] }}</td>
+          <td class="text-right">
+            <span class="badge {% if r['status'] == 'Present' %}badge-success{% else %}badge-danger{% endif %}">
+              <span class="badge-dot" style="background:{% if r['status'] == 'Present' %}#10b981{% else %}#ef4444{% endif %};"></span>
+              {{ r['status'] }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" class="text-center" style="padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:var(--input-bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text3);">
+                <i class="bi bi-calendar-x"></i>
+              </div>
+              <span class="text-muted text-sm">No attendance entries found</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 
-<!-- ── Recent Attendance ─────────────────────── -->
-<div class="row g-4">
-  <div class="col-12">
-    <div class="card-custom">
-      <div class="card-header-custom">
-        <span><i class="bi bi-clock-history me-2"></i>Recent Attendance Entries</span>
-        <a href="{{ url_for('attendance') }}" class="btn-sm-custom">View All</a>
-      </div>
-      <div class="table-responsive">
-        <table class="table-custom">
-          <thead>
-            <tr>
-              <th>Employee</th><th>Date</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in recent_att %}
-            <tr>
-              <td><span class="emp-name-cell">{{ r['name'] }}</span></td>
-              <td>{{ r['date'] }}</td>
-              <td>
-                <span class="badge-status {% if r['status'] == 'Present' %}badge-present{% else %}badge-absent{% endif %}">
-                  {{ r['status'] }}
-                </span>
-              </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="3" class="text-center text-muted py-4">No attendance records yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// ── Salary Bar Chart ────────────────────────────────────────
-const salaryData = {{ salary_data | tojson }};
+  var isDark = document.documentElement.classList.contains('dark');
+  var gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  var textColor = isDark ? '#94a3b8' : '#64748b';
+  var bgTooltip  = isDark ? '#111827' : '#fff';
+  var borderTooltip = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  Chart.defaults.color = textColor;
+  Chart.defaults.font.family = 'Plus Jakarta Sans';
 
-new Chart(document.getElementById('salaryBarChart'), {
-  type: 'bar',
-  data: {
-    labels: salaryData.map(d => d.name),
-    datasets: [{
-      label: 'Monthly Salary (₹)',
-      data: salaryData.map(d => d.salary),
-      backgroundColor: 'rgba(99,102,241,0.7)',
-      borderColor: 'rgba(99,102,241,1)',
-      borderWidth: 1,
-      borderRadius: 6,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,0.1)' } },
-               x: { grid: { display: false } } }
-  }
-});
-
-// ── Attendance Pie Chart ─────────────────────────────────────
-let pieChart;
-function buildPie(present, absent) {
-  if (pieChart) pieChart.destroy();
-  const ctx = document.getElementById('attPieChart');
-  pieChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Present', 'Absent'],
-      datasets: [{
-        data: [present, absent],
-        backgroundColor: ['rgba(34,197,94,0.8)', 'rgba(239,68,68,0.8)'],
-        borderWidth: 0, hoverOffset: 8
+  // Salary Bar Chart
+  var salaryData = {{ salary_data | tojson }};
+  var salaryCtx = document.getElementById('salaryBarChart').getContext('2d');
+  var salGrad = salaryCtx.createLinearGradient(0,0,0,260);
+  salGrad.addColorStop(0,'rgba(139,92,246,0.85)');
+  salGrad.addColorStop(1,'rgba(59,130,246,0.15)');
+  new Chart(salaryCtx,{
+    type:'bar',
+    data:{
+      labels:salaryData.map(function(d){return d.name;}),
+      datasets:[{
+        label:'Monthly Salary (₹)',
+        data:salaryData.map(function(d){return d.salary;}),
+        backgroundColor:salGrad,
+        borderColor:'#8b5cf6',borderWidth:1.5,
+        borderRadius:8,barThickness:24,
+        hoverBackgroundColor:'#3b82f6'
       }]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: '68%',
-      plugins: { legend: { display: false } }
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:bgTooltip,titleColor:textColor,bodyColor:'#3b82f6',borderWidth:1,borderColor:borderTooltip,padding:10,cornerRadius:8,bodyFont:{family:'JetBrains Mono',weight:'bold'}}},
+      scales:{y:{beginAtZero:true,grid:{color:gridColor},border:{dash:[4,4]}},x:{grid:{display:false}}}
     }
   });
-  document.getElementById('presentCount').textContent = present;
-  document.getElementById('absentCount').textContent  = absent;
-}
-buildPie({{ present_count }}, {{ absent_count }});
 
-function loadAttChart() {
-  const month = document.getElementById('attMonth').value;
-  fetch(`/api/chart/attendance?month=${month}`)
-    .then(r => r.json()).then(d => {
-      const p = d.present.reduce((a,b)=>a+b,0);
-      const ab = d.absent.reduce((a,b)=>a+b,0);
-      buildPie(p, ab);
+  // Attendance Pie
+  var pieChart;
+  function buildPie(present,absent){
+    if(pieChart) pieChart.destroy();
+    var ctx=document.getElementById('attPieChart').getContext('2d');
+    pieChart=new Chart(ctx,{
+      type:'doughnut',
+      data:{labels:['Present','Absent'],datasets:[{data:[present,absent],backgroundColor:['#10b981','#ef4444'],hoverBackgroundColor:['#059669','#dc2626'],borderWidth:4,borderColor:bgTooltip,hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{backgroundColor:bgTooltip,padding:10,cornerRadius:8,borderWidth:1,borderColor:borderTooltip}}}
     });
-}
+    document.getElementById('presentCount').textContent=present;
+    document.getElementById('absentCount').textContent=absent;
+  }
+  buildPie({{ present_count }},{{ absent_count }});
+  function loadAttChart(){
+    var month=document.getElementById('attMonth').value;
+    setLoaderState(true);
+    fetch('/api/chart/attendance?month='+month)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        setLoaderState(false);
+        buildPie(d.present.reduce(function(a,b){return a+b;},0),d.absent.reduce(function(a,b){return a+b;},0));
+        showToast('Chart updated','info');
+      }).catch(function(){setLoaderState(false);});
+  }
 
-// ── Employee Attendance Bar Chart ───────────────────────────
-let empAttChart;
-function loadEmpAttChart() {
-  const month = document.getElementById('empAttMonth').value;
-  fetch(`/api/chart/attendance?month=${month}`)
-    .then(r => r.json()).then(d => {
-      if (empAttChart) empAttChart.destroy();
-      empAttChart = new Chart(document.getElementById('empAttChart'), {
-        type: 'bar',
-        data: {
-          labels: d.labels,
-          datasets: [
-            { label: 'Present', data: d.present, backgroundColor: 'rgba(34,197,94,0.7)', borderRadius: 5 },
-            { label: 'Absent',  data: d.absent,  backgroundColor: 'rgba(239,68,68,0.7)',  borderRadius: 5 }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'top' } },
-          scales: {
-            x: { stacked: false, grid: { display: false } },
-            y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,0.1)' } }
-          }
-        }
-      });
-    });
-}
-loadEmpAttChart();
+  // Emp Att Chart
+  var empAttChart;
+  function loadEmpAttChart(){
+    var month=document.getElementById('empAttMonth').value;
+    setLoaderState(true);
+    fetch('/api/chart/attendance?month='+month)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        setLoaderState(false);
+        if(empAttChart) empAttChart.destroy();
+        var ctx=document.getElementById('empAttChart').getContext('2d');
+        empAttChart=new Chart(ctx,{
+          type:'bar',
+          data:{labels:d.labels,datasets:[
+            {label:'Present',data:d.present,backgroundColor:'rgba(16,185,129,0.7)',borderColor:'#10b981',borderWidth:1,borderRadius:6,barPercentage:0.5},
+            {label:'Absent', data:d.absent, backgroundColor:'rgba(239,68,68,0.7)', borderColor:'#ef4444',borderWidth:1,borderRadius:6,barPercentage:0.5}
+          ]},
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},tooltip:{backgroundColor:bgTooltip,padding:10,cornerRadius:8,borderWidth:1,borderColor:borderTooltip}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:gridColor},border:{dash:[4,4]}}}}
+        });
+      }).catch(function(){setLoaderState(false);});
+  }
+  loadEmpAttChart();
 </script>
 {% endblock %}

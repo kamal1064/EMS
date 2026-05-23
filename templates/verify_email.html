@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{% if status == 'success' %}Email Verified{% else %}Verification Error{% endif %} — EMS{% endblock %}
+
+{% block auth_content %}
+<div class="auth-bg">
+  <div class="auth-blob auth-blob-1"></div>
+  <div class="auth-blob auth-blob-2"></div>
+
+  <div style="width:100%;max-width:440px;z-index:1;padding:0 16px;">
+    <div class="auth-card" style="text-align:center;">
+
+      <div class="auth-brand" style="margin-bottom:28px;justify-content:center;">
+        <div class="brand-logo"><i class="bi bi-people-fill"></i></div>
+        <span class="auth-brand-name">EMS</span>
+      </div>
+
+      {% if status == 'success' %}
+      <div style="width:72px;height:72px;border-radius:22px;background:var(--success-lo);border:2px solid rgba(16,185,129,0.4);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;box-shadow:0 0 24px rgba(16,185,129,0.2);">✅</div>
+      <h2 class="auth-title">Email verified!</h2>
+      <p class="auth-sub" style="margin-bottom:28px;">Your account is now active. You can sign in and start using EMS.</p>
+      <a href="{{ url_for('login') }}" class="auth-btn-primary" style="display:flex;justify-content:center;">
+        <i class="bi bi-box-arrow-in-right"></i> Sign In Now
+      </a>
+
+      {% else %}
+      <div style="width:72px;height:72px;border-radius:22px;background:var(--danger-lo);border:2px solid rgba(239,68,68,0.4);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;box-shadow:0 0 24px rgba(239,68,68,0.15);">🔗</div>
+      <h2 class="auth-title">Link invalid</h2>
+      <p class="auth-sub" style="margin-bottom:28px;">This verification link is invalid or has already been used. Request a new one from the login page.</p>
+      <a href="{{ url_for('login') }}" class="auth-btn-primary" style="display:flex;justify-content:center;">
+        <i class="bi bi-arrow-left"></i> Back to Sign In
+      </a>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

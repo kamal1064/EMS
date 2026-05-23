@@ -1,75 +1,121 @@
 {% extends "base.html" %}
-{% block title %}Attendance Summary{% endblock %}
-{% block page_title %}Attendance Summary{% endblock %}
+{% block title %}Att. Summary{% endblock %}
+{% block page_title %}Att. Summary{% endblock %}
+{% block page_subtitle %}Monthly attendance reports for your employees{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('attendance') }}" class="btn-saas btn-saas-md btn-saas-primary flex items-center gap-2">
+  <i class="bi bi-calendar2-check-fill"></i>
+  <span>Daily Mark Roster</span>
+</a>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div>
-    <h2 class="page-h2">Attendance Summary</h2>
-    <p class="page-sub">Monthly overview per employee</p>
-  </div>
-  <a href="{{ url_for('attendance') }}" class="btn-secondary-custom">
-    <i class="bi bi-calendar2-check me-1"></i>Mark Attendance
-  </a>
-</div>
-
-<!-- Month Filter -->
-<div class="date-bar mb-4">
-  <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
-    <label class="date-label"><i class="bi bi-calendar-month me-2"></i>Filter by Month:</label>
-    <input type="month" name="month" class="form-input date-input" value="{{ month_filter }}"/>
-    <button type="submit" class="btn-primary-custom">Apply</button>
-    <a href="{{ url_for('attendance_summary') }}" class="btn-secondary-custom">Reset</a>
+<!-- Month Filter Bar -->
+<div class="glass-panel p-4">
+  <form method="GET" class="flex flex-wrap items-center gap-3">
+    <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase flex items-center gap-2">
+      <i class="bi bi-calendar-month text-primary"></i>
+      <span>Selected Month:</span>
+    </label>
+    <input type="month" name="month" value="{{ month_filter }}"
+           class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono"/>
+    <button type="submit" onclick="setLoaderState(true);"
+            class="btn-saas btn-saas-md btn-saas-secondary">
+      Filter
+    </button>
+    <a href="{{ url_for('attendance_summary') }}" onclick="setLoaderState(true);"
+       class="btn-saas btn-saas-md btn-saas-secondary">
+      Reset
+    </a>
   </form>
 </div>
 
-<div class="card-custom">
-  <div class="card-header-custom">
-    <span><i class="bi bi-table me-2"></i>Summary — {{ month_filter }}</span>
+<!-- Attendance Summary Table -->
+<div class="glass-panel overflow-hidden">
+  <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i class="bi bi-table text-primary"></i>
+      <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Attendance Ledger — {{ month_filter }}</h3>
+    </div>
+    <span class="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-extrabold text-primary font-mono">
+      {{ summary|length }} Profiles
+    </span>
   </div>
-  <div class="table-responsive">
-    <table class="table-custom">
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse text-sm">
       <thead>
-        <tr>
-          <th>#</th>
-          <th>Employee</th>
-          <th>Present Days</th>
-          <th>Absent Days</th>
-          <th>Total Marked</th>
-          <th>Attendance %</th>
-          <th>Progress</th>
+        <tr class="border-b border-slate-200 dark:border-white/5 text-slate-500 dark:text-textsecondary text-xs uppercase tracking-wider font-bold">
+          <th class="py-4 px-6 w-16">Index</th>
+          <th class="py-4 px-6">Employee Name</th>
+          <th class="py-4 px-6">Present Days</th>
+          <th class="py-4 px-6">Absent Days</th>
+          <th class="py-4 px-6">Total Marked</th>
+          <th class="py-4 px-6">Ratio %</th>
+          <th class="py-4 px-6">Monthly Score</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody class="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-white/90">
         {% for s in summary %}
         {% set pct = ((s.present / s.total * 100) | int) if s.total > 0 else 0 %}
-        <tr>
-          <td class="text-muted">{{ loop.index }}</td>
-          <td>
-            <div class="emp-cell">
-              <div class="emp-avatar">{{ s.name[0].upper() }}</div>
-              <span class="emp-name">{{ s.name }}</span>
+        <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all">
+          <td class="py-4 px-6 font-mono text-xs text-textmuted">{{ loop.index }}</td>
+          <td class="py-4 px-6">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary/15 to-purpleaccent/15 border border-primary/20 flex items-center justify-center text-xs font-black text-primary shadow-glow-primary">
+                {{ s.name[0].upper() }}
+              </div>
+              <span class="font-semibold text-slate-900 dark:text-white">{{ s.name }}</span>
             </div>
           </td>
-          <td><span class="num-green">{{ s.present }}</span></td>
-          <td><span class="num-red">{{ s.absent }}</span></td>
-          <td>{{ s.total }}</td>
-          <td>
-            <span class="pct-badge {% if pct >= 80 %}pct-good{% elif pct >= 50 %}pct-mid{% else %}pct-low{% endif %}">
-              {{ pct }}%
-            </span>
+          <td class="py-4 px-6 font-mono font-bold text-success">{{ s.present }}</td>
+          <td class="py-4 px-6 font-mono font-bold text-danger">{{ s.absent }}</td>
+          <td class="py-4 px-6 font-mono text-slate-500 dark:text-textsecondary">{{ s.total }}</td>
+          <td class="py-4 px-6">
+            {% if pct >= 80 %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-success/10 border border-success/20 text-success">
+                {{ pct }}%
+              </span>
+            {% elif pct >= 50 %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-warning/10 border border-warning/20 text-warning">
+                {{ pct }}%
+              </span>
+            {% else %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-danger/10 border border-danger/20 text-danger">
+                {{ pct }}%
+              </span>
+            {% endif %}
           </td>
-          <td style="min-width:120px">
-            <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" style="width:{{ pct }}%"></div>
+          <td class="py-4 px-6 min-w-[160px]">
+            <div class="w-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-full h-2 overflow-hidden flex">
+              {% if pct >= 80 %}
+                <div class="bg-success shadow-glow-primary h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+              {% elif pct >= 50 %}
+                <div class="bg-warning h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+              {% else %}
+                <div class="bg-danger h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+              {%   endif %}
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty-state">
-          <i class="bi bi-calendar-x"></i>
-          <p>No attendance records for this month.</p>
-        </td></tr>
+        <tr>
+          <td colspan="7" class="py-16 text-center text-slate-500 dark:text-textsecondary">
+            <div class="flex flex-col items-center gap-4 max-w-sm mx-auto">
+              <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-center text-2xl text-slate-400 dark:text-textmuted mx-auto">
+                <i class="bi bi-calendar-x"></i>
+              </div>
+              <div class="space-y-1">
+                <h4 class="font-bold text-slate-900 dark:text-white text-base">No entries found</h4>
+                <p class="text-xs text-slate-500 dark:text-textsecondary">No daily attendance logs exist for the specified calendar month.</p>
+              </div>
+              <a href="{{ url_for('attendance') }}" class="px-4 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-glow-primary transition-all">
+                Mark Roster Now
+              </a>
+            </div>
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

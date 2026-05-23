@@ -1,313 +1,138 @@
-<!-- language: jinja-html -->
 {% extends "base.html" %}
-
 {% block title %}Attendance{% endblock %}
 {% block page_title %}Attendance{% endblock %}
+{% block page_subtitle %}Mark daily attendance for your employees{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('attendance_summary') }}" class="btn-saas btn-saas-md btn-saas-secondary">
+  <i class="bi bi-bar-chart-fill"></i>
+  <span>View Reports</span>
+</a>
+{% endblock %}
 
 {% block content %}
-
-<div class="page-header">
-    <div>
-        <h2 class="page-h2">Daily Attendance</h2>
-        <p class="page-sub">
-            Employees are present by default. Only mark absentees.
-        </p>
-
-        <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
-            `` 
-            <a href="{{ url_for('attendance_summary') }}"
-               class="btn-secondary-custom">
-                <i class="bi bi-bar-chart me-1"></i>
-                View Summary
-            </a>
-            ``
-            <span class="badge-status badge-present" id="presentCountPill">Present: 0</span>
-            <span class="badge-status badge-absent" id="absentCountPill">Absent: 0</span>
-        </div>
-    </div>
-</div>
-
-<!-- Date Picker -->
-
-<div class="date-bar mb-4">
-
-```
-<label class="date-label">
-    <i class="bi bi-calendar3 me-2"></i>
-    Select Date:
-</label>
-
-<input
-    type="date"
-    id="datePicker"
-    class="form-input date-input"
-    value="{{ selected_date }}"
-    max="{{ today }}"
->
-
-<button
-    class="btn-primary-custom"
-    onclick="changeDate()"
->
-    <i class="bi bi-arrow-right"></i>
-    Go
-</button>
-```
-
-</div>
-
-<!-- Attendance Cards -->
-
-{% if employees %}
-
-<div class="row g-3" id="attCards">
-
-```
-{% for e in employees %}
-
-{% set status = att_map.get(e['id'], 'Present') %}
-
-<div class="col-xl-4 col-md-6">
-
-    <div class="att-card" id="card-{{ e['id'] }}">
-
-        <!-- Employee Info -->
-        <div class="att-emp-info">
-
-            <div class="emp-avatar">
-                {{ e['name'][0].upper() }}
-            </div>
-
-            <div>
-                <div class="att-emp-name">
-                    {{ e['name'] }}
-                </div>
-
-                <div class="att-emp-meta">
-                    {{ e['gender'] or 'Employee' }}
-                    · Age {{ e['age'] }}
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Status Badge -->
-        <div class="att-status" id="status-{{ e['id'] }}">
-
-            {% if status == 'Absent' %}
-
-            <span class="badge-status badge-absent">
-                Absent
-            </span>
-
-            {% else %}
-
-            <span class="badge-status badge-present">
-                Present
-            </span>
-
-            {% endif %}
-
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="att-actions">
-
-            {% if status == 'Absent' %}
-
-            <button
-                class="att-btn att-btn--present"
-                data-emp-id="{{ e['id'] }}"
-                data-status="Present"
-                onclick="markAttFromButton(this)"
-            >
-                <i class="bi bi-check-circle-fill me-1"></i>
-                Mark Present
-            </button>
-
-            {% else %}
-
-            <button
-                class="att-btn att-btn--absent"
-                data-emp-id="{{ e['id'] }}"
-                data-status="Absent"
-                onclick="markAttFromButton(this)"
-            >
-                <i class="bi bi-x-circle-fill me-1"></i>
-                Mark Absent
-            </button>
-
-            {% endif %}
-
-        </div>
-
-    </div>
-
-</div>
-
-{% endfor %}
-```
-
-</div>
-
-<!-- Quick Actions -->
-
-<div class="quick-actions mt-4">
-
-```
-<span class="text-muted me-3">
-    Quick Actions:
-</span>
-
-<button
-    class="btn-outline-danger-custom"
-    onclick="markAllAbsent()"
->
-    <i class="bi bi-x-lg me-1"></i>
-    Mark All Absent
-</button>
-```
-
-</div>
-
-{% else %}
-
-<div class="empty-full">
-
-```
-<i class="bi bi-people"></i>
-
-<p>
-    No employees found.
-    <a href="{{ url_for('employees') }}">
-        Add employees first.
+<!-- ── Date Filter Bar ── -->
+<div class="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <form method="GET" class="flex flex-wrap items-center gap-3">
+    <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase flex items-center gap-2">
+      <i class="bi bi-calendar-event text-primary"></i>
+      <span>Selected Date:</span>
+    </label>
+    <input type="date" name="date" value="{{ selected_date }}" onchange="setLoaderState(true); this.form.submit();"
+           class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono"/>
+    <a href="{{ url_for('attendance') }}" class="btn-saas btn-saas-sm btn-saas-secondary">
+      Today
     </a>
-</p>
-```
-
+  </form>
+  
+  <div class="text-xs text-slate-500 dark:text-textsecondary flex items-center gap-2 font-medium">
+    <span class="w-2.5 h-2.5 rounded-full bg-success animate-pulse"></span>
+    <span>Auto-saving roster records</span>
+  </div>
 </div>
 
-{% endif %}
+<!-- ── Attendance Card Grid ── -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+  {% for e in employees %}
+  {% set status = att_map.get(e.id, 'Present') %}
+  <div class="glass-panel p-5 space-y-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:hover:shadow-2xl relative group" id="card-{{ e.id }}">
+    <div class="space-y-3">
+      <!-- Employee Profile Header -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purpleaccent flex items-center justify-center text-sm font-bold text-white shadow-sm group-hover:scale-105 transition-transform flex-shrink-0">
+          {{ e.name[0].upper() }}
+        </div>
+        <div class="min-w-0">
+          <h4 class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ e.name }}</h4>
+          <p class="text-[10px] text-slate-500 dark:text-textsecondary truncate font-mono mt-0.5"><i class="bi bi-telephone-fill text-[9px] mr-1"></i>{{ e.phone or 'No Phone' }}</p>
+        </div>
+      </div>
 
+      <!-- Badge Status Pill -->
+      <div class="pt-1">
+        <span id="badge-{{ e.id }}" 
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border transition-all {% if status == 'Present' %}bg-success/15 border-success/30 text-success{% else %}bg-danger/15 border-danger/30 text-danger{% endif %}">
+          <span class="w-1.5 h-1.5 rounded-full {% if status == 'Present' %}bg-success{% else %}bg-danger{% endif %}"></span>
+          <span>{{ status }}</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Attendance Action Buttons -->
+    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
+      <button id="btn-present-{{ e.id }}"
+              onclick="markAttendance({{ e.id }}, 'Present')"
+              class="btn-saas btn-saas-sm {% if status == 'Present' %}btn-saas-success{% else %}btn-saas-secondary{% endif %}">
+        <i class="bi bi-check-lg"></i>
+        <span>Present</span>
+      </button>
+      
+      <button id="btn-absent-{{ e.id }}"
+              onclick="markAttendance({{ e.id }}, 'Absent')"
+              class="btn-saas btn-saas-sm {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}">
+        <i class="bi bi-x-lg"></i>
+        <span>Absent</span>
+      </button>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-span-full">
+    <div class="glass-panel text-center p-12 text-slate-500 dark:text-textsecondary max-w-md mx-auto space-y-4">
+      <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-center text-2xl text-slate-400 dark:text-textmuted mx-auto">
+        <i class="bi bi-people"></i>
+      </div>
+      <div>
+        <h4 class="font-bold text-slate-900 dark:text-white text-base">Roster database is vacant</h4>
+        <p class="text-xs text-slate-500 dark:text-textsecondary mt-1">Please configure full-time salaried members inside the Directory index before tracking attendance.</p>
+      </div>
+      <a href="{{ url_for('employees') }}" class="inline-flex px-4 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-glow-primary transition-all">
+        Go to Directory
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts %}
-
 <script>
+function markAttendance(empId, status) {
+  const date = "{{ selected_date }}";
+  
+  const badge = document.getElementById('badge-' + empId);
+  const btnPresent = document.getElementById('btn-present-' + empId);
+  const btnAbsent = document.getElementById('btn-absent-' + empId);
+  
+  // Optimistic UI updates
+  if (status === 'Present') {
+    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-success/15 border-success/30 text-success';
+    badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success"></span><span>Present</span>';
+    btnPresent.className = 'btn-saas btn-saas-sm btn-saas-success';
+    btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
+  } else {
+    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-danger/15 border-danger/30 text-danger';
+    badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-danger"></span><span>Absent</span>';
+    btnPresent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
+    btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-danger';
+  }
 
-let empIds = [];
-
-function initEmpIds() {
-    empIds = Array.prototype.map.call(
-        document.querySelectorAll('[id^="card-"]'),
-        function(el) {
-            return parseInt(el.id.replace('card-', ''), 10);
-        }
-    );
-}
-
-function getCounts() {
-    let present = 0;
-    let absent = 0;
-
-    empIds.forEach(function(id) {
-        const statusEl = document.getElementById('status-' + id);
-        if (!statusEl) return;
-
-        const text = (statusEl.textContent || '').toLowerCase();
-        if (text.includes('absent')) absent += 1;
-        else present += 1;
-    });
-
-    return { present, absent };
-}
-
-function renderCounts() {
-    const counts = getCounts();
-    const presentPill = document.getElementById('presentCountPill');
-    const absentPill = document.getElementById('absentCountPill');
-
-    if (presentPill) presentPill.textContent = 'Present: ' + counts.present;
-    if (absentPill) absentPill.textContent = 'Absent: ' + counts.absent;
-}
-
-function setCardUI(empId, status) {
-    const statusWrap = document.getElementById('status-' + empId);
-    const card = document.getElementById('card-' + empId);
-    if (!statusWrap || !card) return;
-
-    if (status === 'Absent') {
-        statusWrap.innerHTML = '<span class="badge-status badge-absent">Absent</span>';
+  fetch('/attendance/mark', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emp_id: empId, date: date, status: status })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data && data.success) {
+      showLiveToast('Attendance record saved', 'success');
     } else {
-        statusWrap.innerHTML = '<span class="badge-status badge-present">Present</span>';
+      showLiveToast(data.message || 'Error updating status', 'danger');
     }
-
-    const actions = card.querySelector('.att-actions');
-    if (!actions) return;
-
-    if (status === 'Absent') {
-        actions.innerHTML =
-            '<button class="att-btn att-btn--present"'
-            + ' data-emp-id="' + empId + '"'
-            + ' data-status="Present"'
-            + ' onclick="markAttFromButton(this)">'
-            + '<i class="bi bi-check-circle-fill me-1"></i>'
-            + 'Mark Present'
-            + '</button>';
-    } else {
-        actions.innerHTML =
-            '<button class="att-btn att-btn--absent"'
-            + ' data-emp-id="' + empId + '"'
-            + ' data-status="Absent"'
-            + ' onclick="markAttFromButton(this)">'
-            + '<i class="bi bi-x-circle-fill me-1"></i>'
-            + 'Mark Absent'
-            + '</button>';
-    }
+  })
+  .catch(err => {
+    console.error('Error:', err);
+    showLiveToast('Server connection failed', 'danger');
+  });
 }
-
-function markAttFromButton(button) {
-    const empId = button.dataset.empId;
-    const status = button.dataset.status;
-    markAtt(empId, status);
-}
-
-function changeDate() {
-    const date = document.getElementById('datePicker').value;
-    window.location.href = '/attendance?date=' + date;
-}
-
-function markAtt(empId, status) {
-    const date = document.getElementById('datePicker').value;
-
-    fetch('/attendance/mark', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emp_id: empId, date: date, status: status })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data && data.success) {
-            setCardUI(empId, status);
-            renderCounts();
-        }
-    })
-    .catch(error => console.error(error));
-}
-
-async function markAllAbsent() {
-    // sequential to keep UI consistent
-    for (let i = 0; i < empIds.length; i++) {
-        const id = empIds[i];
-        // eslint-disable-next-line no-await-in-loop
-        await markAtt(id, 'Absent');
-    }
-    renderCounts();
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    renderCounts();
-});
 </script>
-
 {% endblock %}
