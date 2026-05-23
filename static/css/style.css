@@ -1240,3 +1240,59 @@ body.modal-open { overflow:hidden; }
   display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
   background: var(--modal-bg); font-size: 11px; color: var(--text3);
 }
+
+/* ── Mobile Responsive Overrides ─────────────────── */
+@media (max-width: 767px) {
+  /* Shrink table padding and font size for phone viewports */
+  table th, table td,
+  tr td[style*="padding"],
+  td[style*="padding"] {
+    padding: 8px 10px !important;
+    font-size: 11.5px !important;
+  }
+  
+  /* Modal responsive margins and padding */
+  .modal-dialog {
+    margin: 8px !important;
+    max-width: calc(100% - 16px) !important;
+  }
+  .modal-content {
+    border-radius: 14px !important;
+  }
+  .modal-body {
+    padding: 14px !important;
+    gap: 12px !important;
+  }
+  .modal-header, .modal-footer {
+    padding: 12px 14px !important;
+  }
+  
+  /* Reduce header/subtitle padding on page shell */
+  .page-content {
+    padding: 12px !important;
+    gap: 14px !important;
+  }
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    margin-bottom: 4px !important;
+  }
+  .page-title {
+    font-size: 18px !important;
+  }
+  .page-subtitle {
+    font-size: 11px !important;
+  }
+  
+  /* Shrink Saas Buttons for touch friendliness without overflow */
+  .btn-saas-md, .btn-saas-lg {
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Adjust Dashboard charts heights for phones */
+  .grid-7-5 {
+    gap: 14px !important;
+  }
+}
