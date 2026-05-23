@@ -10,5 +10,7 @@ flask-talisman>=1.1.0
 flask-cors>=4.0.0
 sentry-sdk[flask]>=2.0.0
 pymongo[srv]>=4.6.0
+certifi>=2024.2.2
+
 
 

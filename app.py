@@ -19,6 +19,8 @@ from flask_cors import CORS
 from pymongo import MongoClient
 import pymongo.errors
 from bson.objectid import ObjectId
+import certifi
+
 
 import hashlib
 import secrets
@@ -192,7 +194,7 @@ if not mongo_uri:
     raise RuntimeError("MONGO_URI environment variable is not set. Refusing to start.")
 
 try:
-    mongo_client = MongoClient(mongo_uri)
+    mongo_client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
     # Ping database to check connection
     mongo_client.admin.command('ping')
     db = mongo_client.get_default_database()
