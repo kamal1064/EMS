@@ -61,14 +61,14 @@
     <!-- Attendance Action Buttons -->
     <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
       <button id="btn-present-{{ e.id }}"
-              onclick="markAttendance({{ e.id }}, 'Present')"
+              onclick="markAttendance('{{ e.id }}', 'Present')"
               class="btn-saas btn-saas-sm {% if status == 'Present' %}btn-saas-success{% else %}btn-saas-secondary{% endif %}">
         <i class="bi bi-check-lg"></i>
         <span>Present</span>
       </button>
       
       <button id="btn-absent-{{ e.id }}"
-              onclick="markAttendance({{ e.id }}, 'Absent')"
+              onclick="markAttendance('{{ e.id }}', 'Absent')"
               class="btn-saas btn-saas-sm {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}">
         <i class="bi bi-x-lg"></i>
         <span>Absent</span>
