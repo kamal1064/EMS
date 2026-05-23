@@ -187,6 +187,14 @@
 
 {% block scripts %}
 <script>
+  // Move modals to body on load to escape CSS Stacking Context created by the page-content animation
+  document.addEventListener("DOMContentLoaded", function() {
+    var addModal = document.getElementById('addEmpModal');
+    var delModal = document.getElementById('deleteModal');
+    if (addModal) document.body.appendChild(addModal);
+    if (delModal) document.body.appendChild(delModal);
+  });
+
   function confirmDelete(id, name) {
     document.getElementById('deleteMsg').textContent = '"' + name + '" and all their attendance/salary records will be permanently deleted.';
     document.getElementById('confirmDeleteBtn').onclick = function() {
