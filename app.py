@@ -1306,6 +1306,37 @@ def part_time_set_advance():
     })
 
 
+@app.route('/part-time/mark_paid', methods=['POST'])
+@limiter.limit("30 per minute")
+@login_required
+def part_time_mark_paid():
+    data = request.get_json() or {}
+    record_id = data.get('record_id')
+    
+    uid = get_current_user_id()
+    
+    record_id_obj = safe_object_id(record_id)
+    if not record_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid Record ID'}), 400
+        
+    log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
+    if not log_record:
+        return jsonify({'success': False, 'message': 'Record not found'}), 404
+        
+    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    if not worker:
+        return jsonify({'success': False, 'message': 'Record not found'}), 404
+        
+    # Mark it as paid
+    db.part_time_work_logs.update_one(
+        {"_id": record_id_obj},
+        {"$set": {"payment_status": "Paid", "remaining_balance": 0.0}}
+    )
+    
+    return jsonify({'success': True, 'payment_status': 'Paid'})
+
+
+
 # ─────────────────────────────────────────
 # EXPORT
 # ─────────────────────────────────────────

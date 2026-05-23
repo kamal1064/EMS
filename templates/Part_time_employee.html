@@ -202,11 +202,19 @@
           </td>
 
           <!-- Status -->
-          <td style="padding:14px 20px;text-align:right;">
-            <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% else %}badge-warning{% endif %}" id="status-{{ r['id'] }}">
-              <span class="badge-dot" style="background:{% if r['payment_status'] == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
-              {{ r['payment_status'] }}
-            </span>
+          <td style="padding:14px 20px;text-align:right;min-width:140px;">
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+              <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% else %}badge-warning{% endif %}" id="status-{{ r['id'] }}">
+                <span class="badge-dot" style="background:{% if r['payment_status'] == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
+                {{ r['payment_status'] }}
+              </span>
+              {% if r['payment_status'] != 'Paid' %}
+              <button onclick="markPartTimePaid(this)" id="pay-btn-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
+                      class="btn-saas btn-saas-xs btn-saas-success" style="font-size:10px;padding:3px 8px;border-radius:6px;">
+                <i class="bi bi-check2-circle"></i> Mark Paid
+              </button>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% else %}
@@ -313,6 +321,50 @@
       msg.style.color = 'var(--danger)';
       msg.textContent = 'Connection failed';
       showToast('Failed to connect to server', 'danger');
+    });
+  }
+
+  function markPartTimePaid(button) {
+    var recordId = button.dataset.recordId;
+    button.disabled = true;
+    button.innerHTML = '<span style="opacity:.7">Saving...</span>';
+
+    fetch('/part-time/mark_paid', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ record_id: recordId })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data && data.success) {
+        // Update Net Payable cell to be settled (0 remaining)
+        var netCell = document.getElementById('net-' + recordId);
+        if (netCell) {
+          var netColor = 'var(--text3)';
+          netCell.innerHTML = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹0.00</span>'
+                            + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
+        }
+
+        // Update status badge
+        var statusBadge = document.getElementById('status-' + recordId);
+        if (statusBadge) {
+          statusBadge.className = 'badge badge-success';
+          statusBadge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
+        }
+
+        // Remove the mark paid button
+        button.remove();
+        showToast('Work entry marked as paid!', 'success');
+      } else {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid';
+        showToast(data.message || 'Failed to update status', 'danger');
+      }
+    })
+    .catch(function(err) {
+      button.disabled = false;
+      button.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid';
+      showToast('Connection failed', 'danger');
     });
   }
 </script>
