@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Employee Management System</title>
+  <!-- Bootstrap Icons CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Mobile View Navbar Header -->
+  <div class="mobile-header">
+    <button class="sidebar-toggle" id="mobile-toggle">
+      <i class="bi bi-list"></i>
+    </button>
+    <span class="logo-text" style="font-size:18px;">EMS SaaS</span>
+    <img src="" class="google-avatar" style="width:30px;height:30px;" alt="User Profile Image">
+  </div>
+
+  <div class="app-wrapper">
+    <!-- Sidebar Navigation Drawer -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container" style="margin-bottom:0;">
+          <div class="logo-icon" style="width:36px;height:36px;font-size:18px;border-radius:8px;">
+            <i class="bi bi-grid-fill"></i>
+          </div>
+          <span class="logo-text" style="font-size:20px;">EMS SaaS</span>
+        </div>
+        <button class="sidebar-close" id="sidebar-close">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <ul class="sidebar-nav">
+        <li class="nav-item active">
+          <a href="#"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+        </li>
+        <li class="nav-item">
+          <a href="#"><i class="bi bi-people"></i> <span>Employees</span></a>
+        </li>
+        <li class="nav-item">
+          <a href="#"><i class="bi bi-calendar2-check"></i> <span>Attendance</span></a>
+        </li>
+        <li class="nav-item">
+          <a href="#"><i class="bi bi-cash-stack"></i> <span>Payroll Ledger</span></a>
+        </li>
+        <li class="nav-item">
+          <a href="#"><i class="bi bi-gear"></i> <span>Settings</span></a>
+        </li>
+      </ul>
+      
+      <div style="padding: 20px; border-top:1px solid var(--sidebar-border);">
+        <!-- Active Dark/Light theme checkbox toggle -->
+        <label class="theme-switch" for="checkbox-side" style="margin: 0 auto; display:block;">
+          <input type="checkbox" id="checkbox-side" class="theme-switch input" />
+          <div class="slider">
+            <i class="bi bi-sun-fill"></i>
+            <i class="bi bi-moon-stars-fill"></i>
+          </div>
+        </label>
+      </div>
+    </aside>
+
+    <!-- Main Content Workspace Area -->
+    <main class="main-content">
+      <!-- Top header bar -->
+      <nav class="top-navbar">
+        <div class="page-title">
+          <h1 id="welcome-greet">Good morning, Guest!</h1>
+          <p>Here's an overview of the organization roster stats today.</p>
+        </div>
+
+        <div class="user-menu">
+          <div class="notification-bell">
+            <i class="bi bi-bell-fill" style="font-size: 16px;"></i>
+            <span class="bell-badge"></span>
+          </div>
+
+          <!-- Profile drop down selector trigger -->
+          <div class="profile-dropdown-wrapper">
+            <div class="profile-trigger" id="profile-trigger">
+              <img src="" class="google-avatar" alt="Google Profile Photo">
+              <span class="profile-username">
+                <span class="user-display-name">Loading...</span>
+                <i class="bi bi-chevron-down" style="font-size: 11px;"></i>
+              </span>
+            </div>
+
+            <!-- Profile context panel -->
+            <div class="profile-dropdown glass-card" id="profile-dropdown">
+              <div class="dropdown-header">
+                <img src="" class="google-avatar" alt="Google Profile Photo">
+                <span class="dropdown-name user-display-name">Loading User</span>
+                <span class="dropdown-email" id="dropdown-email">user@email.com</span>
+                <span class="role-pill" id="user-role-badge">Employee</span>
+              </div>
+              
+              <div class="dropdown-items">
+                <a href="#" class="dropdown-item"><i class="bi bi-person"></i> My Profile</a>
+                <a href="#" class="dropdown-item"><i class="bi bi-shield-lock"></i> Security Credentials</a>
+                <a href="/auth/logout" class="dropdown-item logout-item"><i class="bi bi-box-arrow-right"></i> Terminate Session</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Dashboard dynamic metrics grid -->
+      <section class="stats-grid">
+        <div class="stat-card glass-card">
+          <div class="stat-info">
+            <h3>Registered Employees</h3>
+            <div class="stat-value" style="color: var(--primary);">28</div>
+          </div>
+          <div class="stat-icon-box bg-purple">
+            <i class="bi bi-people-fill"></i>
+          </div>
+        </div>
+
+        <div class="stat-card glass-card">
+          <div class="stat-info">
+            <h3>Present Today</h3>
+            <div class="stat-value" style="color: var(--success);">26</div>
+          </div>
+          <div class="stat-icon-box bg-emerald">
+            <i class="bi bi-calendar2-check-fill"></i>
+          </div>
+        </div>
+
+        <div class="stat-card glass-card">
+          <div class="stat-info">
+            <h3>Pending Claims</h3>
+            <div class="stat-value" style="color: var(--warning);">4</div>
+          </div>
+          <div class="stat-icon-box bg-blue">
+            <i class="bi bi-credit-card-2-front-fill"></i>
+          </div>
+        </div>
+
+        <div class="stat-card glass-card">
+          <div class="stat-info">
+            <h3>Departures (Month)</h3>
+            <div class="stat-value" style="color: var(--danger);">1</div>
+          </div>
+          <div class="stat-icon-box bg-rose">
+            <i class="bi bi-person-x-fill"></i>
+          </div>
+        </div>
+      </section>
+
+      <!-- Primary Content Panel -->
+      <section class="dashboard-panel glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><i class="bi bi-shield-check" style="color: var(--primary); margin-right: 8px;"></i> Verified Account Security Profile</h2>
+          <span class="badge" style="font-size:12px;background:rgba(16, 185, 129, 0.1);color:var(--success);padding:4px 10px;border-radius:12px;font-weight:700;"><i class="bi bi-patch-check"></i> Google Verified</span>
+        </div>
+
+        <ul class="profile-details-list">
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">MongoDB System ID</span>
+            <span class="profile-detail-value mono" id="profile-id">---</span>
+          </li>
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">Google Identity Identifier (googleId)</span>
+            <span class="profile-detail-value mono" id="profile-google-id">---</span>
+          </li>
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">User Full Name</span>
+            <span class="profile-detail-value" id="profile-name">---</span>
+          </li>
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">Email Address</span>
+            <span class="profile-detail-value" id="profile-email">---</span>
+          </li>
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">System Assigned Role</span>
+            <span class="profile-detail-value" style="font-weight:700;" id="profile-role">---</span>
+          </li>
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">Account Created At</span>
+            <span class="profile-detail-value" id="profile-created-at">---</span>
+          </li>
+          <li class="profile-detail-row">
+            <span class="profile-detail-label">Last Successful Session Login</span>
+            <span class="profile-detail-value" id="profile-last-login">---</span>
+          </li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <!-- Dynamic floating container for toasts -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Client Scripts -->
+  <script src="/js/main.js"></script>
+  <!-- Handle checkbox synchronization between desktop and mobile headers -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const topToggle = document.querySelector('#checkbox');
+      const sideToggle = document.querySelector('#checkbox-side');
+      
+      if (topToggle && sideToggle) {
+        topToggle.addEventListener('change', () => {
+          sideToggle.checked = topToggle.checked;
+          sideToggle.dispatchEvent(new Event('change'));
+        });
+        
+        sideToggle.addEventListener('change', () => {
+          topToggle.checked = sideToggle.checked;
+          topToggle.dispatchEvent(new Event('change'));
+        });
+      }
+    });
+  </script>
+</body>
+</html>
