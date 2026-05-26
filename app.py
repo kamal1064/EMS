@@ -31,6 +31,8 @@ import calendar
 import bcrypt
 import logging
 import json
+import urllib.request
+import urllib.parse
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from datetime import datetime, date, timedelta
@@ -110,7 +112,7 @@ Talisman(app,
 
 # Session Cookie Security
 app.config.update(
-    SESSION_COOKIE_SAMESITE='Strict',
+    SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=is_prod,
 )
@@ -428,6 +430,166 @@ def resend_verification():
     return render_template('login.html', success='Verification email resent! Check your inbox.')
 
 
+# ── GOOGLE OAUTH ROUTES ───────────────────────────────────
+
+@app.route('/auth/google')
+@limiter.limit("20 per minute")
+def login_google():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+        
+    client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    if not client_id:
+        return render_template('login.html', error="Google Client ID is not configured in the environment.")
+
+    # Generate a secure state token for CSRF protection
+    state = secrets.token_urlsafe(16)
+    session['oauth_state'] = state
+
+    # Construct the redirect URI: prioritize static env override, otherwise build dynamically (works on Vercel and localhost)
+    redirect_uri = os.environ.get('GOOGLE_CALLBACK_URL')
+    if not redirect_uri:
+        scheme = 'https' if 'vercel' in request.host or 'ems' in request.host else 'http'
+        host = request.host.replace('127.0.0.1', 'localhost')
+        redirect_uri = f"{scheme}://{host}/auth/google/callback"
+
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'state': state
+    }
+    auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    return redirect(auth_url)
+
+
+@app.route('/auth/google/callback')
+@limiter.limit("20 per minute")
+def auth_google_callback():
+    # 1. State verification to prevent CSRF attacks
+    state = request.args.get('state')
+    saved_state = session.pop('oauth_state', None)
+    if not state or state != saved_state:
+        return render_template('login.html', error="Invalid CSRF state. Please try logging in again.")
+
+    code = request.args.get('code')
+    if not code:
+        return render_template('login.html', error="Authorization failed. Google did not return a code.")
+
+    client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
+    
+    redirect_uri = os.environ.get('GOOGLE_CALLBACK_URL')
+    if not redirect_uri:
+        scheme = 'https' if 'vercel' in request.host or 'ems' in request.host else 'http'
+        host = request.host.replace('127.0.0.1', 'localhost')
+        redirect_uri = f"{scheme}://{host}/auth/google/callback"
+
+    # 2. Exchange authorization code for Access & ID tokens
+    token_url = "https://oauth2.googleapis.com/token"
+    payload = urllib.parse.urlencode({
+        'code': code,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'redirect_uri': redirect_uri,
+        'grant_type': 'authorization_code'
+    }).encode('utf-8')
+
+    token_req = urllib.request.Request(token_url, data=payload, method='POST')
+    token_req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+
+    try:
+        with urllib.request.urlopen(token_req) as response:
+            token_data = json.loads(response.read().decode('utf-8'))
+            access_token = token_data.get('access_token')
+    except Exception as e:
+        app.logger.error(f"Google Token Exchange Error: {e}")
+        return render_template('login.html', error="Failed to authenticate with Google. Token exchange failed.")
+
+    # 3. Retrieve user profile details from Google UserInfo API
+    user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+    user_req = urllib.request.Request(user_info_url)
+    user_req.add_header('Authorization', f'Bearer {access_token}')
+
+    try:
+        with urllib.request.urlopen(user_req) as response:
+            user_info = json.loads(response.read().decode('utf-8'))
+    except Exception as e:
+        app.logger.error(f"Google User Info Fetch Error: {e}")
+        return render_template('login.html', error="Failed to retrieve Google profile information.")
+
+    google_id = user_info.get('sub')
+    email = user_info.get('email', '').strip().lower()
+    name = user_info.get('name')
+    avatar = user_info.get('picture')
+
+    if not email:
+        return render_template('login.html', error="Google account did not provide a primary email address.")
+
+    username = email.split('@')[0]
+
+    # 4. Synchronize user in MongoDB Atlas
+    # Check if a user with this google_id already exists
+    user = db.users.find_one({"google_id": google_id})
+
+    if not user:
+        # Fallback: check by email in case of manual pre-existing signups
+        user = db.users.find_one({"email": email})
+        
+        if user:
+            # Upgrade local account to support Google OAuth
+            db.users.update_one(
+                {"_id": user['_id']},
+                {"$set": {
+                    "google_id": google_id,
+                    "avatar": avatar,
+                    "is_verified": True,   # Google email is already verified
+                    "last_login": datetime.utcnow().isoformat()
+                }}
+            )
+            user = db.users.find_one({"_id": user['_id']})
+        else:
+            # Register a brand new Google user
+            new_user = {
+                "username": username,
+                "email": email,
+                "password": hash_password(secrets.token_urlsafe(16)),  # secure placeholder password
+                "google_id": google_id,
+                "avatar": avatar,
+                "is_verified": True,
+                "verify_token": None,
+                "otp_secret": None,
+                "otp_enabled": False,
+                "reset_token": None,
+                "reset_token_expiry": None,
+                "created_at": datetime.utcnow().isoformat(),
+                "last_login": datetime.utcnow().isoformat()
+            }
+            res = db.users.insert_one(new_user)
+            user = db.users.find_one({"_id": res.inserted_id})
+    else:
+        # User exists, update avatar and login time
+        db.users.update_one(
+            {"_id": user['_id']},
+            {"$set": {
+                "avatar": avatar,
+                "last_login": datetime.utcnow().isoformat()
+            }}
+        )
+
+    # 5. Establish secure authenticated session cookie
+    session.clear()
+    session['user_id'] = str(user['_id'])
+    session['username'] = user['username']
+    session['email'] = user['email']
+    if user.get('avatar'):
+        session['avatar'] = user.get('avatar')
+
+    app.logger.info("Google OAuth login successful", extra={"user_id": str(user['_id'])})
+    return redirect(url_for('dashboard'))
+
+
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")         # 10 login attempts/min — brute-force protection
@@ -462,6 +624,9 @@ def login():
 
         session['user_id']  = str(user['_id'])
         session['username'] = user['username']
+        session['email'] = user['email']
+        if user.get('avatar'):
+            session['avatar'] = user.get('avatar')
         session['last_login'] = datetime.now().strftime('%b %d, %Y at %I:%M %p')
         if remember:
             from flask import current_app
@@ -546,6 +711,8 @@ def api_profile_info():
         'username':   user['username'] if user else session.get('username', ''),
         'email':      user['email']    if user else '',
         'last_login': session.get('last_login', 'Unknown'),
+        'avatar':     user.get('avatar') if user else session.get('avatar', ''),
+        'is_google':  bool(user.get('google_id')) if user else False
     })
 
 

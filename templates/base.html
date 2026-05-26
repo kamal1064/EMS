@@ -117,7 +117,13 @@
     <div class="sidebar-footer">
       {% set username = session.get('username') %}
       <div class="sidebar-user">
-        <div class="user-avatar">{{ (username[0].upper() if username else '?') }}</div>
+        <div class="user-avatar">
+          {% if session.get('avatar') %}
+            <img src="{{ session.get('avatar') }}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" referrerpolicy="no-referrer"/>
+          {% else %}
+            {{ (username[0].upper() if username else '?') }}
+          {% endif %}
+        </div>
         <div style="flex:1;min-width:0;">
           <div class="user-name truncate">{{ username if username else 'Admin' }}</div>
           <div class="user-role">Owner</div>
@@ -163,7 +169,13 @@
         {% set username = session.get('username') %}
         <!-- Profile Trigger -->
         <div class="profile-trigger" id="profile-trigger" onclick="toggleProfilePopup(event)" title="My Account">
-          <div class="topbar-avatar" id="topbar-avatar-letter">{{ (username[0].upper() if username else '?') }}</div>
+          <div class="topbar-avatar" id="topbar-avatar-letter">
+            {% if session.get('avatar') %}
+              <img src="{{ session.get('avatar') }}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" referrerpolicy="no-referrer"/>
+            {% else %}
+              {{ (username[0].upper() if username else '?') }}
+            {% endif %}
+          </div>
           <i class="bi bi-chevron-down" id="profile-chevron" style="font-size:10px;color:var(--text2);transition:transform 0.2s;"></i>
         </div>
       </div>
@@ -909,7 +921,13 @@ function loadProfileInfo() {
       var dispName = localStorage.getItem('ems-display-name') || d.username || '?';
       if (nameEl)  nameEl.textContent  = dispName;
       if (emailEl) emailEl.textContent = d.email || '';
-      if (avEl)    avEl.textContent    = dispName.charAt(0).toUpperCase();
+      if (avEl) {
+        if (d.avatar) {
+          avEl.innerHTML = '<img src="' + d.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" referrerpolicy="no-referrer"/>';
+        } else {
+          avEl.textContent = dispName.charAt(0).toUpperCase();
+        }
+      }
       if (llEl)    llEl.textContent    = d.last_login || 'This session';
       if (enEl)    enEl.value          = dispName;
       if (eeEl)    eeEl.value          = d.email || '';
