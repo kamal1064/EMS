@@ -856,14 +856,14 @@ input[type="password"], input[type="date"], input[type="month"], select, textare
   position: relative; display: flex; align-items: center;
 }
 .auth-input-icon {
-  position: absolute; left: 14px; width: 18px; height: 18px; color: var(--text3); pointer-events: none; z-index: 1;
+  position: absolute; left: 14px; width: 20px !important; height: 20px !important; min-width: 20px !important; color: var(--text3); pointer-events: none; z-index: 1;
   transition: color var(--transition);
 }
 .auth-input-wrap:focus-within .auth-input-icon {
   color: var(--primary);
 }
 .auth-input {
-  width: 100%; padding: 12px 14px 12px 42px;
+  width: 100%; padding: 12px 14px 12px 46px !important;
   background: var(--input-bg); border: 1px solid var(--card-border);
   border-radius: 10px; font-size: 14px; color: var(--text);
   font-family: inherit; outline: none;
