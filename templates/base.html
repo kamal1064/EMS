@@ -1035,14 +1035,14 @@
 </div><!-- end legal-panel -->
 
 <!-- ── EXPORT DATA MODAL ─────────────────────────── -->
-<div id="exportModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'exportModal')">
+<div id="exportModal" class="premium-modal-backdrop" onclick="handleGlobalBackdropClick(event, 'exportModal')">
   <div class="premium-modal-container" style="max-width: 600px;">
     <div class="premium-modal-header">
       <div>
         <div class="premium-modal-title">Export Data</div>
         <div class="premium-modal-subtitle">Configure format, filters, and target records</div>
       </div>
-      <button class="premium-modal-close-btn" onclick="closeModal('exportModal')" aria-label="Close">&times;</button>
+      <button class="premium-modal-close-btn" onclick="closeGlobalModal('exportModal')" aria-label="Close">&times;</button>
     </div>
     
     <div class="premium-modal-body">
@@ -1090,7 +1090,7 @@
     </div>
     
     <div class="premium-modal-footer">
-      <button class="btn-premium-cancel" onclick="closeModal('exportModal')">Cancel</button>
+      <button class="btn-premium-cancel" onclick="closeGlobalModal('exportModal')">Cancel</button>
       <button id="triggerExportBtn" class="btn-premium-save" onclick="triggerExport()">
         <i class="bi bi-download"></i> Export Excel
       </button>
@@ -1436,9 +1436,35 @@ function toggleSection(headerEl) {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     closeLegalPanel();
-    closeModal('exportModal');
+    closeGlobalModal('exportModal');
   }
 });
+
+/* ══ GLOBAL MODAL JS ══════════════════════════════════ */
+function openGlobalModal(id) {
+  var m = document.getElementById(id);
+  if (m) {
+    m.style.display = 'flex';
+    m.style.opacity = '0';
+    setTimeout(function() {
+      m.style.opacity = '1';
+    }, 10);
+  }
+}
+function closeGlobalModal(id) {
+  var m = document.getElementById(id);
+  if (m) {
+    m.style.opacity = '0';
+    setTimeout(function() {
+      m.style.display = 'none';
+    }, 200);
+  }
+}
+function handleGlobalBackdropClick(event, id) {
+  if (event.target === event.currentTarget) {
+    closeGlobalModal(id);
+  }
+}
 
 /* ══ EXPORT MODAL JS ══════════════════════════════════ */
 var _exportEmployees = [];
@@ -1451,7 +1477,7 @@ function openExportModal(event, defaultType) {
   document.getElementById('exportTypeSelect').value = defaultType || 'all_employees';
   handleExportTypeChange();
   
-  openModal('exportModal');
+  openGlobalModal('exportModal');
   
   // Fetch lists
   fetch('/api/export/options')
@@ -1570,7 +1596,7 @@ function triggerExport() {
   if (end) params.append('end_date', end);
   
   window.location.href = '/export?' + params.toString();
-  closeModal('exportModal');
+  closeGlobalModal('exportModal');
 }
 
 function capitalize(s) {
