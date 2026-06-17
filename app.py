@@ -251,12 +251,16 @@ def ready():
 # ─────────────────────────────────────────
 
 def serialize_doc(doc):
-    """Adds a string 'id' field to a MongoDB document based on its '_id'."""
+    """Adds a string 'id' field and safely casts ObjectIds to strings."""
     if not doc:
         return None
     doc = dict(doc)
     if '_id' in doc:
         doc['id'] = str(doc['_id'])
+        del doc['_id']
+    for k, v in doc.items():
+        if isinstance(v, ObjectId):
+            doc[k] = str(v)
     return doc
 
 
@@ -1421,13 +1425,35 @@ def salary_set_advance():
 @login_required
 def api_part_time_search():
     uid = get_current_user_id()
-    search = request.args.get('q', '').strip().lower()
+    search = request.args.get('q', '').strip()
+    page = int(request.args.get('page', 1))
+    per_page = 50
     
+    # Get decoupled part-time workers map
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}))
-    worker_names = {str(w['_id']): w['name'] for w in pt_workers}
-    worker_ids = [ObjectId(wid) for wid in worker_names.keys()]
+    worker_names = {w['_id']: w['name'] for w in pt_workers}
+    all_worker_ids = list(worker_names.keys())
     
-    logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}).sort("_id", -1))
+    query = {"worker_id": {"$in": all_worker_ids}}
+    
+    if search:
+        import re
+        escaped_search = re.escape(search)
+        matching_worker_ids = [w_id for w_id, w_name in worker_names.items() if re.search(escaped_search, w_name, re.IGNORECASE)]
+        
+        query["$and"] = [
+            {"worker_id": {"$in": all_worker_ids}},
+            {"$or": [
+                {"worker_id": {"$in": matching_worker_ids}},
+                {"client_name": {"$regex": escaped_search, "$options": "i"}},
+                {"delivery_location": {"$regex": escaped_search, "$options": "i"}}
+            ]}
+        ]
+        
+    total_records = db.part_time_work_logs.count_documents(query)
+    total_pages = max((total_records + per_page - 1) // per_page, 1)
+    
+    logs = list(db.part_time_work_logs.find(query).sort("_id", -1).skip((page-1)*per_page).limit(per_page))
     
     log_ids = [log['_id'] for log in logs]
     advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
@@ -1438,13 +1464,9 @@ def api_part_time_search():
         
     results = []
     for log in logs:
-        wname = worker_names.get(str(log['worker_id']), 'Unknown')
+        wname = worker_names.get(log['worker_id'], 'Unknown')
         cname = log.get('client_name', '')
-        loc = log.get('delivery_location', '')
         
-        if search and not (search in wname.lower() or search in cname.lower() or search in loc.lower()):
-            continue
-            
         record = serialize_doc(log)
         record['worker_name'] = wname
         record['client_name'] = cname
@@ -1464,7 +1486,14 @@ def api_part_time_search():
             
         results.append(record)
         
-    return jsonify({'success': True, 'records': results})
+    return jsonify({
+        'success': True,
+        'records': results,
+        'total_pages': total_pages,
+        'current_page': page,
+        'total_records': total_records
+    })
+
 
 
 @app.route('/api/part-time/advance/add', methods=['POST'])
@@ -1633,6 +1662,72 @@ def api_delete_advance():
         'remaining_balance': rem_bal,
         'payment_status': status
     })
+
+
+@app.route('/api/part-time/mark_paid', methods=['POST'])
+@login_required
+def api_part_time_mark_paid():
+    data = request.get_json() or {}
+    record_id = data.get('record_id')
+    uid = get_current_user_id()
+    
+    record_id_obj = safe_object_id(record_id)
+    if not record_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid ID'}), 400
+        
+    log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
+    if not log_record:
+        return jsonify({'success': False, 'message': 'Not found'}), 404
+        
+    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    if not worker:
+        return jsonify({'success': False, 'message': 'Not found'}), 404
+        
+    advances = list(db.advance_payments.find({"work_log_id": record_id_obj}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_price = float(log_record['total_price'] or 0)
+    rem_bal = total_price - total_adv
+    
+    if rem_bal > 0:
+        amount = round(rem_bal, 2)
+        payment_date = datetime.now().strftime('%Y-%m-%d')
+        notes = "Auto-settled via Mark Paid"
+        
+        db.advance_payments.insert_one({
+            "work_log_id": record_id_obj,
+            "user_id": ObjectId(uid),
+            "amount": amount,
+            "payment_date": payment_date,
+            "notes": notes,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        })
+        
+        db.audit_logs.insert_one({
+            "user_id": ObjectId(uid),
+            "module": "Part-Time Advance",
+            "action": "MARK_PAID",
+            "details": f"Auto-settled balance of ₹{amount} for work log {str(record_id_obj)}",
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # recalculate
+        total_adv += amount
+        rem_bal = total_price - total_adv
+        
+    status = 'Pending'
+    if total_adv > total_price: status = 'Overpaid'
+    elif rem_bal <= 0: status = 'Paid'
+    
+    db.part_time_work_logs.update_one({"_id": record_id_obj}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+    
+    return jsonify({
+        'success': True,
+        'total_advance': total_adv,
+        'remaining_balance': rem_bal,
+        'payment_status': status
+    })
+
 
 
 @app.route('/api/part-time/advance/history/<work_log_id>', methods=['GET'])

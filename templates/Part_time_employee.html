@@ -175,9 +175,16 @@
 
           <!-- Status -->
           <td style="padding:14px 20px;text-align:right;">
-            <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% elif r['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}" id="status-{{ r['id'] }}">
-              {{ r['payment_status'] }}
-            </span>
+            <div class="flex flex-col items-end gap-2">
+              <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% elif r['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}" id="status-{{ r['id'] }}">
+                {{ r['payment_status'] }}
+              </span>
+              {% if r['payment_status'] != 'Paid' %}
+              <button onclick="markPartTimePaid('{{ r['id'] }}')" id="pay-btn-{{ r['id'] }}" class="btn-saas btn-saas-xs btn-saas-success" style="font-size:10px;padding:3px 8px;border-radius:6px;">
+                <i class="bi bi-check2-circle"></i> Mark Paid
+              </button>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -542,6 +549,7 @@
       const dAdv = document.getElementById('total-adv-' + recId);
       const dNet = document.getElementById('net-' + recId);
       const dStat = document.getElementById('status-' + recId);
+      const dBtn = document.getElementById('pay-btn-' + recId);
       if(dAdv) dAdv.innerText = fmt(totalAdv);
       if(dNet) {
           if (netBal < 0) dNet.innerHTML = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--warning);">−${fmt(Math.abs(netBal))}</span>`;
@@ -552,10 +560,14 @@
           dStat.className = `badge ${status==='Paid'?'badge-success':status==='Overpaid'?'badge-danger':'badge-warning'}`;
           dStat.innerText = status;
       }
+      if(dBtn) {
+          dBtn.style.display = status === 'Paid' ? 'none' : 'inline-block';
+      }
       // Mobile
       const mAdv = document.getElementById('total-adv-mob-' + recId);
       const mNet = document.getElementById('net-mob-' + recId);
       const mStat = document.getElementById('status-mob-' + recId);
+      const mBtn = document.getElementById('pay-btn-mob-' + recId);
       if(mAdv) mAdv.innerText = fmt(totalAdv);
       if(mNet) {
           if (netBal < 0) mNet.innerHTML = `<span class="mono font-bold text-amber-500">−${fmt(Math.abs(netBal))}</span>`;
@@ -566,7 +578,34 @@
           mStat.className = `badge ${status==='Paid'?'badge-success':status==='Overpaid'?'badge-danger':'badge-warning'}`;
           mStat.innerText = status;
       }
+      if(mBtn) {
+          mBtn.style.display = status === 'Paid' ? 'none' : 'inline-block';
+      }
   }
+
+  // Mark Paid
+  function markPartTimePaid(recordId) {
+      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
+      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
+      
+      fetch('/api/part-time/mark_paid', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({record_id: recordId})
+      })
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              showToast('Balance Settled and Marked Paid', 'success');
+          } else {
+              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+              showToast(d.message, 'danger');
+          }
+      }).catch(e => {
+          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+          showToast('Network error', 'danger');
+      });
+  }
+
 
   // Worker Summary
   function openWorkerSummary(workerId) {
@@ -592,26 +631,53 @@
       });
   }
 
-  // Live Search (Debounced)
+  // Live Search & AJAX Pagination (Debounced)
   let searchTimeout = null;
+  let currentSearchQuery = '';
   const searchInput = document.getElementById('live-search');
+  
+  function doLiveSearch(q, page=1) {
+      currentSearchQuery = q;
+      fetch('/api/part-time/search?q=' + encodeURIComponent(q) + '&page=' + page)
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              renderDesktopTable(d.records);
+              renderMobileList(d.records);
+              document.getElementById('total-entries-badge').innerText = d.total_records + " Match" + (d.total_records!==1?'es':'');
+              renderPagination(d.current_page, d.total_pages);
+          }
+      });
+  }
+
   searchInput.addEventListener('input', function(e) {
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => {
-          const q = e.target.value.toLowerCase();
-          // If search is active, hide pagination
-          document.getElementById('pagination-controls').style.display = q ? 'none' : 'flex';
-          
-          fetch('/api/part-time/search?q=' + encodeURIComponent(q))
-          .then(r=>r.json()).then(d => {
-              if(d.success) {
-                  renderDesktopTable(d.records);
-                  renderMobileList(d.records);
-                  document.getElementById('total-entries-badge').innerText = d.records.length + " Match" + (d.records.length!==1?'es':'');
-              }
-          });
+          doLiveSearch(e.target.value.trim(), 1);
       }, 300);
   });
+
+  function renderPagination(curr, total) {
+      const pc = document.getElementById('pagination-controls');
+      if (!pc) return;
+      if (total <= 1) { pc.style.display = 'none'; return; }
+      pc.style.display = 'flex';
+      
+      let html = '';
+      if(curr > 1) {
+          html += `<button onclick="doLiveSearch(currentSearchQuery, ${curr-1})" class="px-4 py-2 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Previous</button>`;
+      } else {
+          html += `<button disabled class="px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed">Previous</button>`;
+      }
+      
+      html += `<span class="text-sm font-medium text-slate-600 dark:text-slate-300">Page <span id="current-page-num">${curr}</span> of ${total}</span>`;
+      
+      if(curr < total) {
+          html += `<button onclick="doLiveSearch(currentSearchQuery, ${curr+1})" class="px-4 py-2 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Next</button>`;
+      } else {
+          html += `<button disabled class="px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed">Next</button>`;
+      }
+      pc.innerHTML = html;
+  }
 
   function renderDesktopTable(records) {
       const tbody = document.getElementById('desktop-tbody');
@@ -652,7 +718,10 @@
             </td>
             <td style="padding:14px 20px;" id="net-${r.id}">${netHtml}</td>
             <td style="padding:14px 20px;text-align:right;">
-              <span class="badge ${statusClass}" id="status-${r.id}">${r.payment_status}</span>
+              <div class="flex flex-col items-end gap-2">
+                <span class="badge ${statusClass}" id="status-${r.id}">${r.payment_status}</span>
+                ${r.payment_status !== 'Paid' ? `<button onclick="markPartTimePaid('${r.id}')" id="pay-btn-${r.id}" class="btn-saas btn-saas-xs btn-saas-success" style="font-size:10px;padding:3px 8px;border-radius:6px;"><i class="bi bi-check2-circle"></i> Mark Paid</button>` : ''}
+              </div>
             </td>
           </tr>`;
       });
@@ -714,9 +783,10 @@
                 <span class="text-text3 text-[9px] uppercase font-bold">Total Advance</span>
                 <span class="mono font-bold text-danger text-[13px]" id="total-adv-mob-${r.id}">${fmt(r.advance_paid)}</span>
               </div>
-              <div class="flex gap-2">
-                <button onclick="openAddAdvance('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg"><i class="bi bi-plus"></i> Add</button>
-                <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg"><i class="bi bi-clock-history"></i> Hist</button>
+              <div class="flex flex-wrap gap-2 justify-end">
+                ${r.payment_status !== 'Paid' ? `<button onclick="markPartTimePaid('${r.id}')" id="pay-btn-mob-${r.id}" class="btn-saas btn-saas-xs btn-saas-success px-2 py-1.5 rounded-lg text-[10px]"><i class="bi bi-check2-circle"></i> Mark Paid</button>` : ''}
+                <button onclick="openAddAdvance('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1.5 rounded-lg"><i class="bi bi-plus"></i> Add</button>
+                <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1.5 rounded-lg"><i class="bi bi-clock-history"></i> Hist</button>
               </div>
             </div>
           </div>`;
