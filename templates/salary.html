@@ -3,6 +3,360 @@
 {% block page_title %}Salary{% endblock %}
 {% block page_subtitle %}Attendance-linked payroll with advance deductions{% endblock %}
 
+{% block styles %}
+<style>
+/* Premium Modals Design System */
+.premium-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.premium-modal-container {
+  background: #0F172A; /* Solid dark background */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 700px; /* Desktop: premium centered modal */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  color: #FFFFFF;
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  max-height: 90vh;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Responsive modal sizing */
+@media (max-width: 768px) {
+  /* Tablet: responsive width */
+  .premium-modal-container {
+    max-width: 90%;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Mobile: full-width sheet/modal */
+  .premium-modal-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto;
+    max-height: 100vh;
+    border-radius: 20px 20px 0 0 !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .premium-modal-backdrop {
+    align-items: flex-end;
+  }
+}
+
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Header styling */
+.premium-modal-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.premium-modal-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.premium-modal-subtitle {
+  font-size: 13px;
+  color: #CBD5E1;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.premium-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.premium-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}
+
+/* Content body */
+.premium-modal-body {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px; /* 24px section spacing */
+  overflow-y: auto;
+}
+
+/* Field Group */
+.premium-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* label to input spacing */
+}
+
+/* Field Label */
+.premium-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #CBD5E1; /* #CBD5E1 labels, 600 weight */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Premium Inputs */
+.premium-input {
+  background: #1E293B; /* Background: #1E293B */
+  border: 1px solid #334155; /* Border: #334155 */
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #FFFFFF; /* Text: #FFFFFF */
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.premium-input::placeholder {
+  color: #94A3B8; /* Placeholder: #94A3B8 */
+}
+
+.premium-input:focus {
+  border-color: #3B82F6; /* Focus: #3B82F6 */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  background: #1E293B;
+}
+
+/* For specific fields like amount which should stand out */
+.premium-input-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Footer & Buttons */
+.premium-modal-footer {
+  padding: 24px 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px; /* 16px spacing */
+  background: rgba(15, 23, 42, 0.5); /* slight solid distinction */
+}
+
+.btn-premium-cancel {
+  background: transparent; /* Background: Transparent */
+  border: 1px solid #475569; /* Border: #475569 */
+  color: #FFFFFF; /* Text: White */
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-premium-cancel:hover {
+  background: rgba(255, 255, 255, 0.04); /* Slight dark/light highlight */
+  border-color: #64748b;
+}
+
+.btn-premium-save {
+  background: linear-gradient(135deg, #2563EB, #3B82F6); /* Background: Blue Gradient #2563EB -> #3B82F6 */
+  border: none;
+  color: #FFFFFF;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-premium-save:hover:not(:disabled) {
+  transform: translateY(-2px); /* Hover: Slight lift animation */
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+}
+
+.btn-premium-save:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-premium-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* History Specific styles */
+.premium-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 45vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  width: 100%;
+}
+
+/* Style scrollbar for modal list */
+.premium-history-list::-webkit-scrollbar,
+.premium-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.premium-history-list::-webkit-scrollbar-track,
+.premium-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.premium-history-list::-webkit-scrollbar-thumb,
+.premium-modal-body::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+.premium-history-list::-webkit-scrollbar-thumb:hover,
+.premium-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.premium-history-item {
+  background: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s ease;
+}
+
+.premium-history-item:hover {
+  border-color: #475569;
+}
+
+.premium-history-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.premium-history-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #EF4444; /* Negative / deducted value style */
+}
+
+.premium-history-meta {
+  font-size: 12px;
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.premium-history-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-history-action {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #334155;
+  background: transparent;
+}
+
+.btn-history-action-edit {
+  color: #3B82F6;
+}
+.btn-history-action-edit:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+}
+
+.btn-history-action-delete {
+  color: #EF4444;
+}
+.btn-history-action-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
 {% block top_actions %}
 <a href="{{ url_for('export_data') }}" class="btn-saas btn-saas-md btn-saas-secondary">
   <i class="bi bi-download"></i>
@@ -260,85 +614,102 @@
 </div>
 
 <!-- ── ADD ADVANCE MODAL ─────────────────────────── -->
-<div id="addAdvModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:28px 32px;max-width:420px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+<div id="addAdvModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'addAdvModal')">
+  <div class="premium-modal-container">
+    <div class="premium-modal-header">
       <div>
-        <div style="font-size:16px;font-weight:800;">Add Advance</div>
-        <div id="addAdvSubtitle" style="font-size:11px;color:var(--text3);margin-top:2px;"></div>
+        <div class="premium-modal-title">Add Salary Advance</div>
+        <div id="addAdvSubtitle" class="premium-modal-subtitle"></div>
       </div>
-      <button onclick="closeModal('addAdvModal')" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
+      <button class="premium-modal-close-btn" onclick="closeModal('addAdvModal')" aria-label="Close">&times;</button>
     </div>
-    <input type="hidden" id="addAdv_recordId"/>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Amount (&#8377;) *</label>
-        <input type="number" id="addAdv_amount" min="1" step="0.01" placeholder="e.g. 2000"
-               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-family:monospace;font-size:14px;font-weight:700;outline:none;"/>
+    
+    <div class="premium-modal-body">
+      <input type="hidden" id="addAdv_recordId"/>
+      
+      <div class="premium-field-group">
+        <label for="addAdv_amount" class="premium-label">Amount (&#8377;) *</label>
+        <input type="number" id="addAdv_amount" class="premium-input premium-input-amount" min="1" step="0.01" placeholder="e.g. 2000" required/>
       </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Payment Date *</label>
-        <input type="date" id="addAdv_date" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      
+      <div class="premium-field-group">
+        <label for="addAdv_date" class="premium-label">Payment Date *</label>
+        <input type="date" id="addAdv_date" class="premium-input" required/>
       </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Notes (optional)</label>
-        <input type="text" id="addAdv_notes" placeholder="e.g. Emergency loan"
-               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      
+      <div class="premium-field-group">
+        <label for="addAdv_notes" class="premium-label">Notes (optional)</label>
+        <input type="text" id="addAdv_notes" class="premium-input" placeholder="e.g. Emergency loan"/>
       </div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:22px;">
-      <button onclick="closeModal('addAdvModal')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text2);cursor:pointer;font-weight:600;">Cancel</button>
-      <button onclick="submitAddAdvance()" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:700;">Save Advance</button>
+    
+    <div class="premium-modal-footer">
+      <button class="btn-premium-cancel" onclick="closeModal('addAdvModal')">Cancel</button>
+      <button id="addAdv_saveBtn" class="btn-premium-save" onclick="submitAddAdvance()">
+        <i class="bi bi-check-lg"></i> Save Advance
+      </button>
     </div>
   </div>
 </div>
 
 <!-- ── EDIT ADVANCE MODAL ─────────────────────────── -->
-<div id="editAdvModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:28px 32px;max-width:420px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="font-size:16px;font-weight:800;">Edit Advance</div>
-      <button onclick="closeModal('editAdvModal')" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
+<div id="editAdvModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'editAdvModal')">
+  <div class="premium-modal-container">
+    <div class="premium-modal-header">
+      <div>
+        <div class="premium-modal-title">Edit Salary Advance</div>
+        <div class="premium-modal-subtitle">Update advance transaction details</div>
+      </div>
+      <button class="premium-modal-close-btn" onclick="closeModal('editAdvModal')" aria-label="Close">&times;</button>
     </div>
-    <input type="hidden" id="editAdv_id"/>
-    <input type="hidden" id="editAdv_recordId"/>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Amount (&#8377;) *</label>
-        <input type="number" id="editAdv_amount" min="1" step="0.01"
-               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-family:monospace;font-size:14px;font-weight:700;outline:none;"/>
+    
+    <div class="premium-modal-body">
+      <input type="hidden" id="editAdv_id"/>
+      <input type="hidden" id="editAdv_recordId"/>
+      
+      <div class="premium-field-group">
+        <label for="editAdv_amount" class="premium-label">Amount (&#8377;) *</label>
+        <input type="number" id="editAdv_amount" class="premium-input premium-input-amount" min="1" step="0.01" required/>
       </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Payment Date *</label>
-        <input type="date" id="editAdv_date" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      
+      <div class="premium-field-group">
+        <label for="editAdv_date" class="premium-label">Payment Date *</label>
+        <input type="date" id="editAdv_date" class="premium-input" required/>
       </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Notes (optional)</label>
-        <input type="text" id="editAdv_notes"
-               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      
+      <div class="premium-field-group">
+        <label for="editAdv_notes" class="premium-label">Notes (optional)</label>
+        <input type="text" id="editAdv_notes" class="premium-input"/>
       </div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:22px;">
-      <button onclick="closeModal('editAdvModal')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text2);cursor:pointer;font-weight:600;">Cancel</button>
-      <button onclick="submitEditAdvance()" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:700;">Save Changes</button>
+    
+    <div class="premium-modal-footer">
+      <button class="btn-premium-cancel" onclick="closeModal('editAdvModal')">Cancel</button>
+      <button id="editAdv_saveBtn" class="btn-premium-save" onclick="submitEditAdvance()">
+        <i class="bi bi-check-lg"></i> Save Changes
+      </button>
     </div>
   </div>
 </div>
 
 <!-- ── HISTORY MODAL ─────────────────────────── -->
-<div id="historyModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:28px 32px;max-width:520px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+<div id="historyModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'historyModal')">
+  <div class="premium-modal-container">
+    <div class="premium-modal-header">
       <div>
-        <div style="font-size:16px;font-weight:800;">Advance History</div>
-        <div id="histSubtitle" style="font-size:11px;color:var(--text3);margin-top:2px;"></div>
+        <div class="premium-modal-title">Advance History</div>
+        <div id="histSubtitle" class="premium-modal-subtitle"></div>
       </div>
-      <button onclick="closeModal('historyModal')" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
+      <button class="premium-modal-close-btn" onclick="closeModal('historyModal')" aria-label="Close">&times;</button>
     </div>
-    <div id="historyContent" style="min-height:80px;"></div>
-    <div style="display:flex;gap:10px;margin-top:20px;align-items:center;">
-      <div id="historyTotal" style="flex:1;font-size:13px;font-weight:700;font-family:monospace;"></div>
-      <button onclick="closeModal('historyModal')" style="padding:10px 24px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text2);cursor:pointer;font-weight:600;">Close</button>
+    
+    <div class="premium-modal-body" style="gap:16px;">
+      <div id="historyContent" class="premium-history-list"></div>
+    </div>
+    
+    <div class="premium-modal-footer" style="align-items:center; justify-content:space-between;">
+      <div id="historyTotal"></div>
+      <button class="btn-premium-cancel" onclick="closeModal('historyModal')">Close</button>
     </div>
   </div>
 </div>
@@ -355,12 +726,41 @@ function fmt(n) {
 
 function openModal(id) {
   var m = document.getElementById(id);
-  if (m) { m.style.display = 'flex'; }
+  if (m) {
+    m.style.display = 'flex';
+    m.style.opacity = '0';
+    setTimeout(function() {
+      m.style.opacity = '1';
+    }, 10);
+  }
 }
 function closeModal(id) {
   var m = document.getElementById(id);
-  if (m) { m.style.display = 'none'; }
+  if (m) {
+    m.style.opacity = '0';
+    setTimeout(function() {
+      m.style.display = 'none';
+    }, 200);
+  }
 }
+
+function handleBackdropClick(event, id) {
+  if (event.target === event.currentTarget) {
+    closeModal(id);
+  }
+}
+
+// Escape key to close modal
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    ['addAdvModal', 'editAdvModal', 'historyModal'].forEach(function(id) {
+      var m = document.getElementById(id);
+      if (m && m.style.display === 'flex') {
+        closeModal(id);
+      }
+    });
+  }
+});
 
 function updateRowUI(recordId, data) {
   var net = data.net_payable;
@@ -420,6 +820,13 @@ function submitAddAdvance() {
   var notes = document.getElementById('addAdv_notes').value.trim();
   if (!amount || amount <= 0) { showToast('Enter a valid amount', 'danger'); return; }
   if (!dt) { showToast('Select a payment date', 'danger'); return; }
+
+  // Set loading state
+  var btn = document.getElementById('addAdv_saveBtn');
+  var origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="width:14px;height:14px;border:2px solid;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin 0.75s linear infinite;margin-right:6px;"></span> Saving...';
+
   fetch('/api/salary/advance/add', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -427,6 +834,8 @@ function submitAddAdvance() {
   })
   .then(function(r){ return r.json(); })
   .then(function(d) {
+    btn.disabled = false;
+    btn.innerHTML = origText;
     if (d.success) {
       showToast('Advance of ₹' + fmt(amount) + ' saved!', 'success');
       updateRowUI(recordId, d);
@@ -434,44 +843,55 @@ function submitAddAdvance() {
     } else {
       showToast(d.message || 'Failed', 'danger');
     }
-  }).catch(function(){ showToast('Request failed','danger'); });
+  }).catch(function(){
+    btn.disabled = false;
+    btn.innerHTML = origText;
+    showToast('Request failed','danger');
+  });
 }
 
 // ── HISTORY ────────────────────────────
 function openHistory(recordId, name) {
   _currentRecordId = recordId;
   document.getElementById('histSubtitle').textContent = name;
-  document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);">Loading...</div>';
+  document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:20px;color:#94A3B8;"><i class="bi bi-arrow-repeat spin" style="font-size:24px;display:inline-block;animation:spin 1s linear infinite;"></i><div style="margin-top:8px;">Loading history...</div></div>';
   document.getElementById('historyTotal').textContent = '';
   openModal('historyModal');
   fetch('/api/salary/advance/history/' + recordId)
   .then(function(r){ return r.json(); })
   .then(function(d) {
-    if (!d.success) { document.getElementById('historyContent').innerHTML = '<div style="color:var(--danger);">Error loading history</div>'; return; }
+    if (!d.success) { document.getElementById('historyContent').innerHTML = '<div style="color:var(--danger);text-align:center;padding:20px;">Error loading history</div>'; return; }
     var advances = d.advances;
     if (!advances.length) {
-      document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);"><i class="bi bi-inbox" style="font-size:32px;"></i><div style="margin-top:8px;">No advances recorded</div></div>';
+      document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:30px;color:#94A3B8;"><i class="bi bi-inbox" style="font-size:32px;"></i><div style="margin-top:8px;">No advances recorded</div></div>';
       return;
     }
     var total = 0;
-    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    var html = '';
     advances.forEach(function(a) {
       total += parseFloat(a.amount);
-      var isMigrated = a.is_migrated ? '<span style="font-size:9px;color:var(--text3);margin-left:4px;">(migrated)</span>' : '';
-      html += '<div style="background:var(--input-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-      html += '<div><span class="mono" style="font-size:15px;font-weight:800;color:var(--danger);">₹' + fmt(a.amount) + '</span>' + isMigrated + '</div>';
-      html += '<div style="display:flex;gap:6px;">';
-      html += '<button onclick="openEditAdvance(\'' + a.id + '\',\'' + recordId + '\',' + a.amount + ',\'' + (a.payment_date||'') + '\',\'' + (a.notes||'').replace(/'/g,"\\'") + '\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--card-border);background:transparent;color:var(--primary);cursor:pointer;">Edit</button>';
-      html += '<button onclick="deleteAdvance(\'' + a.id + '\',\'' + recordId + '\',this)" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--card-border);background:transparent;color:var(--danger);cursor:pointer;">Delete</button>';
-      html += '</div></div>';
-      html += '<div style="font-size:11px;color:var(--text3);margin-top:4px;">' + (a.payment_date ? a.payment_date.slice(0,10) : 'No date') + (a.notes ? ' &mdash; ' + a.notes : '') + '</div>';
+      var isMigrated = a.is_migrated ? '<span style="font-size:10px;color:#64748b;margin-left:6px;font-style:italic;">(migrated)</span>' : '';
+      
+      html += '<div class="premium-history-item">';
+      html += '  <div class="premium-history-item-left">';
+      html += '    <div style="display:flex;align-items:center;"><span class="premium-history-amount">₹' + fmt(a.amount) + '</span>' + isMigrated + '</div>';
+      html += '    <div class="premium-history-meta">';
+      html += '      <span><i class="bi bi-calendar3"></i> ' + (a.payment_date ? a.payment_date.slice(0,10) : 'No date') + '</span>';
+      if (a.notes) {
+        html += '      <span style="color:rgba(255,255,255,0.15)">•</span>';
+        html += '      <span style="color:#CBD5E1;word-break:break-all;"><i class="bi bi-chat-left-text"></i> ' + a.notes + '</span>';
+      }
+      html += '    </div>';
+      html += '  </div>';
+      html += '  <div class="premium-history-actions">';
+      html += '    <button onclick="openEditAdvance(\'' + a.id + '\',\'' + recordId + '\',' + a.amount + ',\'' + (a.payment_date||'') + '\',\'' + (a.notes||'').replace(/'/g,"\\'") + '\')" class="btn-history-action btn-history-action-edit"><i class="bi bi-pencil"></i> Edit</button>';
+      html += '    <button onclick="deleteAdvance(\'' + a.id + '\',\'' + recordId + '\',this)" class="btn-history-action btn-history-action-delete"><i class="bi bi-trash"></i> Delete</button>';
+      html += '  </div>';
       html += '</div>';
     });
-    html += '</div>';
     document.getElementById('historyContent').innerHTML = html;
-    document.getElementById('historyTotal').textContent = 'Total: ₹' + fmt(total);
-  }).catch(function(){ document.getElementById('historyContent').innerHTML = '<div style="color:var(--danger);">Failed to load</div>'; });
+    document.getElementById('historyTotal').innerHTML = '<span style="color:#94A3B8;font-size:13px;font-weight:600;">TOTAL ADVANCE:</span> <span style="font-size:18px;font-weight:800;font-family:\'JetBrains Mono\';color:#EF4444;">₹' + fmt(total) + '</span>';
+  }).catch(function(){ document.getElementById('historyContent').innerHTML = '<div style="color:var(--danger);text-align:center;padding:20px;">Failed to load history</div>'; });
 }
 
 // ── EDIT ADVANCE ────────────────────────────
@@ -492,6 +912,13 @@ function submitEditAdvance() {
   var dt = document.getElementById('editAdv_date').value;
   var notes = document.getElementById('editAdv_notes').value.trim();
   if (!amount || amount <= 0) { showToast('Enter a valid amount', 'danger'); return; }
+
+  // Set loading state
+  var btn = document.getElementById('editAdv_saveBtn');
+  var origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="width:14px;height:14px;border:2px solid;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin 0.75s linear infinite;margin-right:6px;"></span> Saving...';
+
   fetch('/api/salary/advance/edit', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -499,6 +926,8 @@ function submitEditAdvance() {
   })
   .then(function(r){ return r.json(); })
   .then(function(d) {
+    btn.disabled = false;
+    btn.innerHTML = origText;
     if (d.success) {
       showToast('Advance updated!', 'success');
       updateRowUI(recordId, d);
@@ -506,13 +935,17 @@ function submitEditAdvance() {
     } else {
       showToast(d.message || 'Failed', 'danger');
     }
-  }).catch(function(){ showToast('Request failed','danger'); });
+  }).catch(function(){
+    btn.disabled = false;
+    btn.innerHTML = origText;
+    showToast('Request failed','danger');
+  });
 }
 
 // ── DELETE ADVANCE ────────────────────────────
 function deleteAdvance(advId, recordId, btn) {
   if (!confirm('Delete this advance entry? This cannot be undone.')) return;
-  var row = btn.closest('[style*="background:var"]');
+  var row = btn.closest('.premium-history-item');
   fetch('/api/salary/advance/delete', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -525,7 +958,13 @@ function deleteAdvance(advId, recordId, btn) {
       updateRowUI(recordId, d);
       if (row) row.remove();
       var t = parseFloat(d.total_advance);
-      document.getElementById('historyTotal').textContent = 'Total: ₹' + fmt(t);
+      document.getElementById('historyTotal').innerHTML = '<span style="color:#94A3B8;font-size:13px;font-weight:600;">TOTAL ADVANCE:</span> <span style="font-size:18px;font-weight:800;font-family:\'JetBrains Mono\';color:#EF4444;">₹' + fmt(t) + '</span>';
+      
+      // If list becomes empty, display placeholder
+      var list = document.querySelector('.premium-history-list');
+      if (list && list.children.length === 0) {
+        document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:30px;color:#94A3B8;"><i class="bi bi-inbox" style="font-size:32px;"></i><div style="margin-top:8px;">No advances recorded</div></div>';
+      }
     } else {
       showToast(d.message || 'Failed', 'danger');
     }
