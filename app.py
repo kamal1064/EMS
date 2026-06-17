@@ -1148,78 +1148,77 @@ def part_time():
     uid = get_current_user_id()
     search = request.args.get('q', '').strip()
     selected_client = request.args.get('client', '').strip()
-    
+    page = int(request.args.get('page', 1))
+    per_page = 50
     setup_error = None
     
-    # Get decoupled part-time workers for the dropdown
+    # Get decoupled part-time workers
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
     worker_names = {str(w['_id']): w['name'] for w in pt_workers}
-    
-    # Get part-time logs mapped with worker name
     worker_ids = [ObjectId(wid) for wid in worker_names.keys()]
+    
+    # Fetch all logs for analytics (optimally this should be an aggregation, but keeping it memory-based for backwards compat)
     logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}).sort("_id", -1))
     
+    # Fetch all advances in one batch
+    log_ids = [log['_id'] for log in logs]
+    advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
+    advances_map = {}
+    for adv in advances_cursor:
+        wid = str(adv['work_log_id'])
+        advances_map[wid] = advances_map.get(wid, 0) + adv['amount']
+        
     records = []
-    for log in logs:
-        serialized = serialize_doc(log)
-        serialized['worker_name'] = worker_names.get(str(log['worker_id']), 'Unknown Worker')
-        records.append(serialized)
-        
-    part_time_workers = serialize_docs(pt_workers)
-
-    for record in records:
-        record['client_name'] = (record.get('client_name') or 'Unassigned').strip()
-        record['advance_paid'] = float(record.get('advance_paid') or 0)
-        record['total_price'] = float(record.get('total_price') or 0)
-        record['slab_quantity'] = int(record.get('slab_quantity') or 0)
-        
-        fallback_balance = max(record['total_price'] - record['advance_paid'], 0)
-        record['remaining_balance'] = float(
-            record.get('remaining_balance')
-            if record.get('remaining_balance') is not None
-            else fallback_balance
-        )
-        record['payment_status'] = record.get('payment_status') or (
-            'Paid' if record['remaining_balance'] <= 0 else 'Unpaid'
-        )
-
     client_map = {}
     worker_map = {}
     monthly_map = {}
     recent_clients = []
-
-    for record in records:
+    
+    for log in logs:
+        record = serialize_doc(log)
+        record['worker_name'] = worker_names.get(str(log['worker_id']), 'Unknown Worker')
+        record['client_name'] = (record.get('client_name') or 'Unassigned').strip()
+        record['total_price'] = float(record.get('total_price') or 0)
+        record['slab_quantity'] = int(record.get('slab_quantity') or 0)
+        
+        # Calculate multiple advances
+        total_advance = float(advances_map.get(str(log['_id']), 0))
+        record['advance_paid'] = total_advance
+        record['remaining_balance'] = float(record['total_price'] - total_advance)
+        
+        # Determine strict status
+        if total_advance > record['total_price']:
+            record['payment_status'] = 'Overpaid'
+        elif record['remaining_balance'] <= 0:
+            record['payment_status'] = 'Paid'
+        else:
+            record['payment_status'] = 'Pending'
+            
+        records.append(record)
+        
+        # Analytics mapping
         client = record['client_name']
-        worker = record.get('worker_name') or 'Unknown Worker'
+        worker = record['worker_name']
+        
         client_stats = client_map.setdefault(client, {
-            'name': client,
-            'entries': 0,
-            'total_payout': 0,
-            'advance_paid': 0,
-            'remaining_balance': 0,
-            'slabs': 0,
-            'workers': set()
+            'name': client, 'entries': 0, 'total_payout': 0, 'advance_paid': 0,
+            'remaining_balance': 0, 'slabs': 0, 'workers': set()
         })
         client_stats['entries'] += 1
         client_stats['total_payout'] += record['total_price']
-        client_stats['advance_paid'] += record['advance_paid']
+        client_stats['advance_paid'] += total_advance
         client_stats['remaining_balance'] += record['remaining_balance']
         client_stats['slabs'] += record['slab_quantity']
         client_stats['workers'].add(worker)
 
         worker_stats = worker_map.setdefault(worker, {
-            'name': worker,
-            'clients': set(),
-            'earnings': 0,
-            'recent_assignments': []
+            'name': worker, 'clients': set(), 'earnings': 0, 'recent_assignments': []
         })
         worker_stats['clients'].add(client)
         worker_stats['earnings'] += record['total_price']
         if len(worker_stats['recent_assignments']) < 3:
             worker_stats['recent_assignments'].append({
-                'client': client,
-                'date': record.get('working_date'),
-                'total': record['total_price']
+                'client': client, 'date': record.get('working_date'), 'total': record['total_price']
             })
 
         work_month = (record.get('working_date') or '')[:7] or 'Undated'
@@ -1235,31 +1234,30 @@ def part_time():
 
     filtered_records = records
     if selected_client:
-        filtered_records = [
-            record for record in filtered_records
-            if record['client_name'].lower() == selected_client.lower()
-        ]
+        filtered_records = [r for r in filtered_records if r['client_name'].lower() == selected_client.lower()]
     if search:
         needle = search.lower()
         filtered_records = [
-            record for record in filtered_records
-            if needle in record['client_name'].lower()
-            or needle in (record.get('worker_name') or '').lower()
-            or needle in (record.get('delivery_location') or '').lower()
+            r for r in filtered_records
+            if needle in r['client_name'].lower()
+            or needle in (r.get('worker_name') or '').lower()
+            or needle in (r.get('delivery_location') or '').lower()
         ]
+        
+    # Pagination
+    total_records = len(filtered_records)
+    total_pages = max((total_records + per_page - 1) // per_page, 1)
+    paginated_records = filtered_records[(page-1)*per_page : page*per_page]
 
     analytics = {
         'top_clients': client_summaries[:5],
         'workforce_allocation': sorted(client_summaries, key=lambda c: c['entries'], reverse=True)[:6],
-        'monthly_client_expenses': [
-            {'month': month, 'total': total}
-            for month, total in sorted(monthly_map.items())
-        ],
+        'monthly_client_expenses': [{'month': m, 'total': t} for m, t in sorted(monthly_map.items())],
         'client_productivity': sorted(client_summaries, key=lambda c: c['slabs'], reverse=True)[:6],
-        'total_payout': sum(record['total_price'] for record in filtered_records),
-        'total_advance': sum(record['advance_paid'] for record in filtered_records),
-        'total_remaining': sum(record['remaining_balance'] for record in filtered_records),
-        'total_slabs': sum(record['slab_quantity'] for record in filtered_records)
+        'total_payout': sum(r['total_price'] for r in filtered_records),
+        'total_advance': sum(r['advance_paid'] for r in filtered_records),
+        'total_remaining': sum(r['remaining_balance'] for r in filtered_records),
+        'total_slabs': sum(r['slab_quantity'] for r in filtered_records)
     }
 
     worker_history = []
@@ -1273,8 +1271,11 @@ def part_time():
 
     return render_template(
         'Part_time_employee.html',
-        records=filtered_records,
-        part_time_workers=part_time_workers,
+        records=paginated_records,
+        total_pages=total_pages,
+        current_page=page,
+        total_records=total_records,
+        part_time_workers=serialize_docs(pt_workers),
         setup_error=setup_error,
         search=search,
         selected_client=selected_client,
@@ -1307,12 +1308,10 @@ def add_part_time_work():
         return redirect(url_for('part_time'))
 
     total_price = slab_quantity * slab_price
-
     worker_id_obj = safe_object_id(worker_id)
     if not worker_id_obj:
         return redirect(url_for('part_time'))
 
-    # Verify decoupled worker belongs to this user
     worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
     if not worker:
         return redirect(url_for('part_time'))
@@ -1327,12 +1326,11 @@ def add_part_time_work():
         "total_price": total_price,
         "advance_paid": 0.0,
         "remaining_balance": total_price,
-        "payment_status": "Unpaid",
+        "payment_status": "Pending",
         "notes": "",
         "created_at": datetime.now().isoformat()
     }
     db.part_time_work_logs.insert_one(log_doc)
-
     return redirect(url_for('part_time'))
 
 
@@ -1351,7 +1349,6 @@ def add_part_time_worker():
         "created_at": datetime.now().isoformat()
     })
     return redirect(url_for('part_time'))
-
 
 # ─────────────────────────────────────────
 # SALARY ACTIONS
@@ -1420,89 +1417,267 @@ def salary_set_advance():
     })
 
 
-@app.route('/part-time/set_advance', methods=['POST'])
-@limiter.limit("30 per minute")
+@app.route('/api/part-time/search', methods=['GET'])
 @login_required
-def part_time_set_advance():
-    data = request.get_json()
-    record_id = data.get('record_id')
-    advance_amount_paid = data.get('advance_amount_paid')
-
-    try:
-        advance_amount_paid = float(advance_amount_paid)
-        if advance_amount_paid < 0:
-            return jsonify({'success': False, 'message': 'Advance must be >= 0'}), 400
-    except (TypeError, ValueError):
-        return jsonify({'success': False, 'message': 'Advance must be a number'}), 400
-
+def api_part_time_search():
     uid = get_current_user_id()
+    search = request.args.get('q', '').strip().lower()
     
+    pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}))
+    worker_names = {str(w['_id']): w['name'] for w in pt_workers}
+    worker_ids = [ObjectId(wid) for wid in worker_names.keys()]
+    
+    logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}).sort("_id", -1))
+    
+    log_ids = [log['_id'] for log in logs]
+    advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
+    advances_map = {}
+    for adv in advances_cursor:
+        wid = str(adv['work_log_id'])
+        advances_map[wid] = advances_map.get(wid, 0) + adv['amount']
+        
+    results = []
+    for log in logs:
+        wname = worker_names.get(str(log['worker_id']), 'Unknown')
+        cname = log.get('client_name', '')
+        loc = log.get('delivery_location', '')
+        
+        if search and not (search in wname.lower() or search in cname.lower() or search in loc.lower()):
+            continue
+            
+        record = serialize_doc(log)
+        record['worker_name'] = wname
+        record['client_name'] = cname
+        record['total_price'] = float(record.get('total_price') or 0)
+        record['slab_quantity'] = int(record.get('slab_quantity') or 0)
+        
+        total_advance = float(advances_map.get(str(log['_id']), 0))
+        record['advance_paid'] = total_advance
+        record['remaining_balance'] = float(record['total_price'] - total_advance)
+        
+        if total_advance > record['total_price']:
+            record['payment_status'] = 'Overpaid'
+        elif record['remaining_balance'] <= 0:
+            record['payment_status'] = 'Paid'
+        else:
+            record['payment_status'] = 'Pending'
+            
+        results.append(record)
+        
+    return jsonify({'success': True, 'records': results})
+
+
+@app.route('/api/part-time/advance/add', methods=['POST'])
+@login_required
+def api_add_advance():
+    data = request.get_json() or {}
+    record_id = data.get('record_id')
+    amount = data.get('amount')
+    payment_date = data.get('payment_date')
+    notes = data.get('notes', '')
+    
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            return jsonify({'success': False, 'message': 'Amount must be > 0'}), 400
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+        
+    uid = get_current_user_id()
     record_id_obj = safe_object_id(record_id)
     if not record_id_obj:
-        return jsonify({'success': False, 'message': 'Invalid Record ID'}), 400
+        return jsonify({'success': False, 'message': 'Invalid ID'}), 400
         
-    # Get record total_price and check ownership
     log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
     if not log_record:
-        return jsonify({'success': False, 'message': 'Record not found'}), 404
+        return jsonify({'success': False, 'message': 'Not found'}), 404
         
     worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
     if not worker:
-        return jsonify({'success': False, 'message': 'Record not found'}), 404
+        return jsonify({'success': False, 'message': 'Not found'}), 404
         
-    total_price = log_record['total_price']
-    net_payable = round(total_price - advance_amount_paid, 2)   # can be negative
-    remaining_balance = max(net_payable, 0)                     # floored for DB/status
-    payment_status = 'Paid' if remaining_balance <= 0 else 'Unpaid'
+    db.advance_payments.insert_one({
+        "work_log_id": record_id_obj,
+        "user_id": ObjectId(uid),
+        "amount": amount,
+        "payment_date": payment_date,
+        "notes": notes,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
+    })
     
-    db.part_time_work_logs.update_one(
-        {"_id": record_id_obj},
-        {"$set": {
-            "advance_paid": advance_amount_paid,
-            "remaining_balance": remaining_balance,
-            "payment_status": payment_status
-        }}
-    )
-
+    db.audit_logs.insert_one({
+        "user_id": ObjectId(uid),
+        "module": "Part-Time Advance",
+        "action": "ADD",
+        "details": f"Added advance of ₹{amount} for work log {str(record_id_obj)}",
+        "timestamp": datetime.now().isoformat()
+    })
+    
+    advances = list(db.advance_payments.find({"work_log_id": record_id_obj}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_price = float(log_record['total_price'] or 0)
+    rem_bal = total_price - total_adv
+    
+    status = 'Pending'
+    if total_adv > total_price: status = 'Overpaid'
+    elif rem_bal <= 0: status = 'Paid'
+    
+    # Update DB for backward compat/analytics caching
+    db.part_time_work_logs.update_one({"_id": record_id_obj}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+    
     return jsonify({
         'success': True,
-        'advance_amount_paid': advance_amount_paid,
-        'net_payable': net_payable,
-        'remaining_balance': remaining_balance,
-        'payment_status': payment_status
+        'total_advance': total_adv,
+        'remaining_balance': rem_bal,
+        'payment_status': status
     })
 
 
-@app.route('/part-time/mark_paid', methods=['POST'])
-@limiter.limit("30 per minute")
+@app.route('/api/part-time/advance/edit', methods=['POST'])
 @login_required
-def part_time_mark_paid():
+def api_edit_advance():
     data = request.get_json() or {}
-    record_id = data.get('record_id')
+    adv_id = data.get('advance_id')
+    amount = data.get('amount')
+    payment_date = data.get('payment_date')
+    notes = data.get('notes', '')
+    
+    try:
+        amount = float(amount)
+        if amount <= 0: return jsonify({'success': False, 'message': 'Amount must be > 0'}), 400
+    except:
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+        
+    adv_id_obj = safe_object_id(adv_id)
+    adv_record = db.advance_payments.find_one({"_id": adv_id_obj})
+    if not adv_record: return jsonify({'success': False, 'message': 'Advance not found'}), 404
     
     uid = get_current_user_id()
-    
-    record_id_obj = safe_object_id(record_id)
-    if not record_id_obj:
-        return jsonify({'success': False, 'message': 'Invalid Record ID'}), 400
-        
-    log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
-    if not log_record:
-        return jsonify({'success': False, 'message': 'Record not found'}), 404
-        
+    log_record = db.part_time_work_logs.find_one({"_id": adv_record['work_log_id']})
     worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
-    if not worker:
-        return jsonify({'success': False, 'message': 'Record not found'}), 404
-        
-    # Mark it as paid
-    db.part_time_work_logs.update_one(
-        {"_id": record_id_obj},
-        {"$set": {"payment_status": "Paid", "remaining_balance": 0.0}}
-    )
+    if not worker: return jsonify({'success': False, 'message': 'Not authorized'}), 403
     
-    return jsonify({'success': True, 'payment_status': 'Paid'})
+    db.advance_payments.update_one({"_id": adv_id_obj}, {"$set": {
+        "amount": amount, "payment_date": payment_date, "notes": notes, "updated_at": datetime.now().isoformat()
+    }})
+    
+    db.audit_logs.insert_one({
+        "user_id": ObjectId(uid),
+        "module": "Part-Time Advance",
+        "action": "EDIT",
+        "details": f"Edited advance {str(adv_id_obj)} to ₹{amount}",
+        "timestamp": datetime.now().isoformat()
+    })
+    
+    # recalculate
+    advances = list(db.advance_payments.find({"work_log_id": adv_record['work_log_id']}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_price = float(log_record['total_price'] or 0)
+    rem_bal = total_price - total_adv
+    
+    status = 'Pending'
+    if total_adv > total_price: status = 'Overpaid'
+    elif rem_bal <= 0: status = 'Paid'
+    
+    db.part_time_work_logs.update_one({"_id": adv_record['work_log_id']}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+    
+    return jsonify({
+        'success': True,
+        'total_advance': total_adv,
+        'remaining_balance': rem_bal,
+        'payment_status': status
+    })
 
 
+@app.route('/api/part-time/advance/delete', methods=['POST'])
+@login_required
+def api_delete_advance():
+    data = request.get_json() or {}
+    adv_id = data.get('advance_id')
+    adv_id_obj = safe_object_id(adv_id)
+    
+    adv_record = db.advance_payments.find_one({"_id": adv_id_obj})
+    if not adv_record: return jsonify({'success': False, 'message': 'Advance not found'}), 404
+    
+    uid = get_current_user_id()
+    log_record = db.part_time_work_logs.find_one({"_id": adv_record['work_log_id']})
+    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    if not worker: return jsonify({'success': False, 'message': 'Not authorized'}), 403
+    
+    db.advance_payments.delete_one({"_id": adv_id_obj})
+    
+    db.audit_logs.insert_one({
+        "user_id": ObjectId(uid),
+        "module": "Part-Time Advance",
+        "action": "DELETE",
+        "details": f"Deleted advance {str(adv_id_obj)} of ₹{adv_record['amount']}",
+        "timestamp": datetime.now().isoformat()
+    })
+    
+    # recalculate
+    advances = list(db.advance_payments.find({"work_log_id": adv_record['work_log_id']}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_price = float(log_record['total_price'] or 0)
+    rem_bal = total_price - total_adv
+    
+    status = 'Pending'
+    if total_adv > total_price: status = 'Overpaid'
+    elif rem_bal <= 0: status = 'Paid'
+    
+    db.part_time_work_logs.update_one({"_id": adv_record['work_log_id']}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+    
+    return jsonify({
+        'success': True,
+        'total_advance': total_adv,
+        'remaining_balance': rem_bal,
+        'payment_status': status
+    })
+
+
+@app.route('/api/part-time/advance/history/<work_log_id>', methods=['GET'])
+@login_required
+def api_advance_history(work_log_id):
+    uid = get_current_user_id()
+    w_id_obj = safe_object_id(work_log_id)
+    
+    log_record = db.part_time_work_logs.find_one({"_id": w_id_obj})
+    if not log_record: return jsonify({'success': False, 'message': 'Not found'}), 404
+    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    if not worker: return jsonify({'success': False, 'message': 'Not authorized'}), 403
+    
+    advances = list(db.advance_payments.find({"work_log_id": w_id_obj}).sort("created_at", 1))
+    return jsonify({'success': True, 'advances': serialize_docs(advances)})
+
+
+@app.route('/api/part-time/worker/<worker_id>/summary', methods=['GET'])
+@login_required
+def api_worker_summary(worker_id):
+    uid = get_current_user_id()
+    w_id_obj = safe_object_id(worker_id)
+    
+    worker = db.part_time_workers.find_one({"_id": w_id_obj, "user_id": ObjectId(uid)})
+    if not worker: return jsonify({'success': False, 'message': 'Not found'}), 404
+    
+    logs = list(db.part_time_work_logs.find({"worker_id": w_id_obj}))
+    log_ids = [l['_id'] for l in logs]
+    advances = list(db.advance_payments.find({"work_log_id": {"$in": log_ids}}))
+    
+    total_jobs = len(logs)
+    total_slabs = sum(l.get('slab_quantity', 0) for l in logs)
+    total_earnings = sum(l.get('total_price', 0) for l in logs)
+    total_advance = sum(a['amount'] for a in advances)
+    outstanding_balance = total_earnings - total_advance
+    
+    return jsonify({
+        'success': True,
+        'name': worker.get('name', 'Unknown'),
+        'total_jobs': total_jobs,
+        'total_slabs': total_slabs,
+        'total_earnings': total_earnings,
+        'total_advance': total_advance,
+        'outstanding_balance': outstanding_balance
+    })
 
 # ─────────────────────────────────────────
 # EXPORT

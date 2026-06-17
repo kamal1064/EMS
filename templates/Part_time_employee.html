@@ -11,7 +11,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- ── Top Action Panels ── -->
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
   <!-- Log Work Entry Form -->
   <div class="col-span-12 lg:col-span-8 glass-panel p-6 flex flex-col justify-between">
@@ -20,61 +19,46 @@
         <i class="bi bi-file-earmark-plus text-primary text-lg"></i>
         <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Log Slab Work Entry</h3>
       </div>
-
       <form method="POST" action="{{ url_for('add_part_time_work') }}" class="space-y-5">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Worker Name *</label>
-            <select name="worker_id" required
-                    class="w-full bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+            <select name="worker_id" required class="w-full bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
               <option value="">Select Worker</option>
               {% for emp in part_time_workers %}
               <option value="{{ emp.id }}">{{ emp.name }}</option>
               {% endfor %}
             </select>
           </div>
-
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Client / Project Name *</label>
-            <input type="text" name="client_name" placeholder="e.g. Acme Industries" required
-                   class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
+            <input type="text" name="client_name" placeholder="e.g. Acme Industries" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
           </div>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Working Date *</label>
-            <input type="date" name="working_date" required
-                   class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
+            <input type="date" name="working_date" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
           </div>
-
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Delivery Location *</label>
-            <input type="text" name="location" placeholder="e.g. Warehouse Zone B" required
-                   class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
+            <input type="text" name="location" placeholder="e.g. Warehouse Zone B" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
           </div>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Slab Quantity *</label>
-            <input type="number" id="slab_qty" name="slab_quantity" placeholder="0" min="1" required
-                   class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
+            <input type="number" id="slab_qty" name="slab_quantity" placeholder="0" min="1" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
           </div>
-
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Price Per Slab (₹) *</label>
-            <input type="number" id="slab_price" name="slab_price" placeholder="0.00" step="0.01" min="0" required
-                   class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
+            <input type="number" id="slab_price" name="slab_price" placeholder="0.00" step="0.01" min="0" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
           </div>
-
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Gross Price (₹)</label>
-            <input type="number" id="total_price" name="total_price" readonly placeholder="0.00"
-                   class="w-full bg-slate-50 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded-xl py-3 px-4 text-sm text-slate-500 dark:text-textsecondary focus:outline-none font-mono"/>
+            <input type="number" id="total_price" name="total_price" readonly placeholder="0.00" class="w-full bg-slate-50 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded-xl py-3 px-4 text-sm text-slate-500 dark:text-textsecondary focus:outline-none font-mono"/>
           </div>
         </div>
-
         <div class="pt-4 flex items-center justify-end">
           <button type="submit" class="btn-saas btn-saas-lg btn-saas-primary">
             <i class="bi bi-save-fill"></i>
@@ -92,19 +76,15 @@
         <i class="bi bi-person-plus-fill text-purpleaccent text-lg"></i>
         <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Onboard Slab Worker</h3>
       </div>
-
       <form method="POST" action="{{ url_for('add_part_time_worker') }}" class="space-y-5">
         <div class="space-y-2">
           <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Worker Full Name *</label>
-          <input type="text" name="name" placeholder="e.g. Vikram Malhotra" required
-                 class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
+          <input type="text" name="name" placeholder="e.g. Vikram Malhotra" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
         </div>
-
         <div class="p-4 rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.01] text-xs text-slate-500 dark:text-textsecondary leading-relaxed">
           <p><strong class="text-slate-900 dark:text-white block mb-1">Freelance Segregation Policy</strong>
           Part-time/piece-rate slab workers are entirely separated from salaried employees. They are exempt from daily attendance registers and monthly payroll cycles.</p>
         </div>
-
         <div class="pt-4">
           <button type="submit" class="w-full btn-saas btn-saas-lg bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 text-white shadow-glow-purple flex items-center justify-center gap-1.5 focus:outline-none">
             <i class="bi bi-person-plus"></i>
@@ -116,15 +96,23 @@
   </div>
 </div>
 
+<!-- Search & Controls -->
+<div class="mt-8 mb-4 flex flex-col md:flex-row gap-4 justify-between items-center">
+  <div class="w-full md:w-1/3 relative">
+    <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+    <input type="text" id="live-search" placeholder="Search workers, clients, locations..." class="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary transition-all dark:text-white" autocomplete="off"/>
+  </div>
+</div>
+
 <!-- Roster Table Ledger (Desktop View) -->
-<div class="glass-panel overflow-hidden desktop-only">
+<div class="glass-panel overflow-hidden desktop-only" id="desktop-table-container">
   <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <i class="bi bi-journal-text text-primary"></i>
       <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Freelance Work Ledger</h3>
     </div>
-    <span class="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-extrabold text-primary font-mono">
-      {{ records|length }} Entries
+    <span class="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-extrabold text-primary font-mono" id="total-entries-badge">
+      {{ total_records }} Entries
     </span>
   </div>
 
@@ -132,24 +120,21 @@
     <table class="w-full text-left border-collapse text-sm">
       <thead>
         <tr style="border-bottom:1px solid var(--card-border);background:rgba(0,0,0,0.02);">
-          <th>#</th>
           <th>Worker / Client</th>
           <th>Date</th>
           <th>Location</th>
           <th>Volume</th>
-          <th>Per Slab</th>
-          <th>Total Amount</th>
-          <th>Advance Given</th>
+          <th>Gross Price</th>
+          <th>Advance Ledger</th>
           <th style="color:var(--primary);">Net Payable</th>
           <th style="text-align:right;">Status</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-white/90">
+      <tbody class="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-white/90" id="desktop-tbody">
         {% for r in records %}
-        <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all">
-          <td class="py-4 px-6 font-mono text-xs text-textmuted">{{ loop.index }}</td>
+        <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all" id="row-{{ r['id'] }}">
           <td class="py-4 px-6">
-            <div class="font-semibold text-slate-900 dark:text-white">{{ r['worker_name'] }}</div>
+            <div class="font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-primary transition-colors" onclick="openWorkerSummary('{{ r['worker_id'] }}')">{{ r['worker_name'] }} <i class="bi bi-info-circle text-[10px]"></i></div>
             <div class="text-[10px] text-slate-500 dark:text-textsecondary flex items-center gap-1 mt-0.5">
               <i class="bi bi-briefcase-fill text-[9px]"></i>
               <span>Client: {{ r['client_name'] }}</span>
@@ -158,77 +143,41 @@
           <td class="py-4 px-6 font-mono text-xs text-slate-500 dark:text-textsecondary">{{ r['working_date'] }}</td>
           <td class="py-4 px-6 font-medium text-slate-500 dark:text-textsecondary">{{ r['delivery_location'] }}</td>
           <td class="py-4 px-6 font-mono text-slate-900 dark:text-white font-semibold">{{ r['slab_quantity'] }} slabs</td>
-          <td class="py-4 px-6 font-mono text-xs text-slate-500 dark:text-textsecondary">₹{{ "{:,.2f}".format(r['slab_price']) }}</td>
           
           <!-- Total Amount -->
           <td style="padding:14px 20px;">
-            <span class="mono" style="font-weight:700;font-size:14px;">₹{{ "{:,.2f}".format(r['total_price']) }}</span>
+            <span class="mono" style="font-weight:700;font-size:14px;" id="gross-{{ r['id'] }}">₹{{ "{:,.2f}".format(r['total_price']) }}</span>
             <div style="font-size:10px;color:var(--text3);font-family:monospace;margin-top:2px;">{{ r['slab_quantity'] }} × ₹{{ "{:,.2f}".format(r['slab_price']) }}</div>
           </td>
 
-          <!-- Advance Given (input) -->
-          <td style="padding:14px 20px;min-width:170px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input type="number" step="0.01" min="0" value="{{ r['advance_paid'] or 0 }}"
-                     id="advance-input-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
-                     placeholder="0.00"
-                     style="width:96px;font-family:monospace;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
-              <button onclick="setAdvancePart(this)" id="advance-btn-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
-                      class="btn-saas btn-saas-icon" style="color:var(--primary);" title="Save advance">
-                <i class="bi bi-save"></i>
-              </button>
+          <!-- Advance Given (Ledger) -->
+          <td style="padding:14px 20px;">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="mono font-bold text-danger text-[14px]" id="total-adv-{{ r['id'] }}">₹{{ "{:,.2f}".format(r['advance_paid']) }}</span>
             </div>
-            <div id="advance-msg-{{ r['id'] }}" style="font-size:10px;font-family:monospace;margin-top:4px;color:var(--text3);"></div>
+            <div class="flex items-center gap-1">
+              <button onclick="openAddAdvance('{{ r['id'] }}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 px-2 py-1 text-[10px] rounded"><i class="bi bi-plus"></i> Add</button>
+              <button onclick="openAdvanceHistory('{{ r['id'] }}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 px-2 py-1 text-[10px] rounded"><i class="bi bi-clock-history"></i> History</button>
+            </div>
           </td>
 
           <!-- Net Payable (Total - Advance) -->
           <td style="padding:14px 20px;" id="net-{{ r['id'] }}">
-            {% set net = r['remaining_balance'] %}
             {% set true_net = r['total_price'] - r['advance_paid'] %}
             {% if true_net < 0 %}
-              <span class="mono" style="font-size:16px;font-weight:800;color:var(--warning);">−₹{{ "{:,.2f}".format(true_net|abs) }}</span>
-              <div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹{{ "{:,.2f}".format(true_net|abs) }}</div>
+              <span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--warning);">−₹{{ "{:,.2f}".format(true_net|abs) }}</span>
             {% elif true_net == 0 %}
-              <span class="mono" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>
-              <div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>
+              <span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>
             {% else %}
-              <span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹{{ "{:,.2f}".format(true_net) }}</span>
-            {% endif %}
-            {% if r['advance_paid'] > 0 %}
-            <div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">
-              −₹{{ "{:,.2f}".format(r['advance_paid']) }} advance
-            </div>
+              <span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--success);">₹{{ "{:,.2f}".format(true_net) }}</span>
             {% endif %}
           </td>
 
           <!-- Status -->
-          <td style="padding:14px 20px;text-align:right;min-width:140px;">
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-              <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% else %}badge-warning{% endif %}" id="status-{{ r['id'] }}">
-                <span class="badge-dot" style="background:{% if r['payment_status'] == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
-                {{ r['payment_status'] }}
-              </span>
-              {% if r['payment_status'] != 'Paid' %}
-              <button onclick="markPartTimePaid(this)" id="pay-btn-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
-                      class="btn-saas btn-saas-xs btn-saas-success" style="font-size:10px;padding:3px 8px;border-radius:6px;">
-                <i class="bi bi-check2-circle"></i> Mark Paid
-              </button>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="9" class="py-16 text-center text-slate-500 dark:text-textsecondary">
-            <div class="flex flex-col items-center gap-4 max-w-sm mx-auto">
-              <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-center text-2xl text-slate-400 dark:text-textmuted mx-auto">
-                <i class="bi bi-clipboard-x"></i>
-              </div>
-              <div class="space-y-1">
-                <h4 class="font-bold text-slate-900 dark:text-white text-base">No slab work entries found</h4>
-                <p class="text-xs text-slate-500 dark:text-textsecondary mt-1">Create your first piece-rate slab ledger above.</p>
-              </div>
-            </div>
+          <td style="padding:14px 20px;text-align:right;">
+            <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% elif r['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}" id="status-{{ r['id'] }}">
+              {{ r['payment_status'] }}
+            </span>
           </td>
         </tr>
         {% endfor %}
@@ -237,272 +186,542 @@
   </div>
 </div>
 
-<!-- Mobile-Only List View (Visible only on mobile) -->
-<div class="mobile-only space-y-4" style="margin-bottom: 24px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;">
-    <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);">
-      <i class="bi bi-journal-text text-primary"></i> Freelance Ledger
-    </h3>
-    <span class="badge badge-primary">{{ records|length }} Entries</span>
-  </div>
-
+<!-- Mobile-Only List View -->
+<div class="mobile-only space-y-4 mb-6" id="mobile-list-container">
   {% for r in records %}
-  <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+  <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);" id="row-mob-{{ r['id'] }}">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <span style="font-weight:700;font-size:14px;display:block;color:var(--text);">{{ r['worker_name'] }}</span>
-        <span class="text-xs text-muted font-mono" style="color:var(--text3);"><i class="bi bi-briefcase text-[10px] mr-1"></i>Client: {{ r['client_name'] }}</span>
+        <span class="font-bold text-[14px] text-text cursor-pointer hover:text-primary" onclick="openWorkerSummary('{{ r['worker_id'] }}')">{{ r['worker_name'] }} <i class="bi bi-info-circle text-[10px]"></i></span>
+        <span class="text-xs text-muted font-mono block"><i class="bi bi-briefcase text-[10px] mr-1"></i>{{ r['client_name'] }}</span>
       </div>
-      <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% else %}badge-warning{% endif %}" id="status-mob-{{ r['id'] }}">
-        <span class="badge-dot" style="background:{% if r['payment_status'] == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
+      <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% elif r['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}" id="status-mob-{{ r['id'] }}">
         {{ r['payment_status'] }}
       </span>
     </div>
     
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--card-border);border-bottom:1px solid var(--card-border);font-size:12px;">
+    <div class="grid grid-cols-2 gap-2 py-2 border-y border-card-border text-xs">
       <div>
-        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Date / Location</span>
-        <span class="font-mono" style="color:var(--text2);">{{ r['working_date'] }}</span>
-        <div class="text-muted text-[10px] mt-0.5" style="color:var(--text3);"><i class="bi bi-geo-alt text-[9px]"></i> {{ r['delivery_location'] }}</div>
+        <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Date / Location</span>
+        <span class="font-mono text-text2">{{ r['working_date'] }}</span>
+        <div class="text-text3 text-[10px] mt-0.5">{{ r['delivery_location'] }}</div>
       </div>
-      <div style="text-align:right;">
-        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Volume & Price</span>
-        <span class="font-semibold" style="color:var(--text2);">{{ r['slab_quantity'] }} slabs</span>
-        <div class="text-muted font-mono text-[10px] mt-0.5" style="color:var(--text3);">@ ₹{{ "{:,.2f}".format(r['slab_price']) }}</div>
+      <div class="text-right">
+        <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Volume & Price</span>
+        <span class="font-semibold text-text2">{{ r['slab_quantity'] }} slabs</span>
+        <div class="text-text3 font-mono text-[10px] mt-0.5">@ ₹{{ "{:,.2f}".format(r['slab_price']) }}</div>
       </div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding-top:4px;">
+    <div class="flex justify-between items-center text-xs pt-1">
       <div>
-        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Total Amount</span>
-        <span class="mono font-bold" style="font-size:14px;color:var(--text);">₹{{ "{:,.2f}".format(r['total_price']) }}</span>
+        <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Gross Amount</span>
+        <span class="mono font-bold text-[14px] text-text">₹{{ "{:,.2f}".format(r['total_price']) }}</span>
       </div>
-      <div style="text-align:right;">
-        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Net Payable</span>
+      <div class="text-right">
+        <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Net Payable</span>
         <span id="net-mob-{{ r['id'] }}">
           {% set true_net = r['total_price'] - r['advance_paid'] %}
           {% if true_net < 0 %}
             <span class="mono font-bold text-amber-500">−₹{{ "{:,.2f}".format(true_net|abs) }}</span>
-            <div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹{{ "{:,.2f}".format(true_net|abs) }}</div>
           {% elif true_net == 0 %}
             <span class="mono font-bold text-muted">₹0.00</span>
-            <div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>
           {% else %}
-            <span class="mono font-bold" style="color:var(--success);font-size:13px;">₹{{ "{:,.2f}".format(true_net) }}</span>
+            <span class="mono font-bold text-success text-[13px]">₹{{ "{:,.2f}".format(true_net) }}</span>
           {% endif %}
         </span>
       </div>
     </div>
 
-    <!-- Advance input & Mark paid button on mobile -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px dashed var(--card-border);">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span class="text-muted text-[10px] uppercase font-bold" style="color:var(--text3);">Adv:</span>
-        <input type="number" step="0.01" min="0" value="{{ r['advance_paid'] or 0 }}"
-               id="advance-input-mob-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
-               placeholder="0.00"
-               style="width:74px;font-family:monospace;font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
-        <button onclick="setAdvancePart(this)" data-record-id="{{ r['id'] }}"
-                class="btn-saas btn-saas-icon" style="color:var(--primary);padding:4px;" title="Save advance">
-          <i class="bi bi-save" style="font-size:12px;"></i>
-        </button>
+    <!-- Advance Actions -->
+    <div class="flex items-center justify-between pt-2 border-t border-dashed border-card-border">
+      <div class="flex flex-col">
+        <span class="text-text3 text-[9px] uppercase font-bold">Total Advance</span>
+        <span class="mono font-bold text-danger text-[13px]" id="total-adv-mob-{{ r['id'] }}">₹{{ "{:,.2f}".format(r['advance_paid']) }}</span>
       </div>
-      
-      {% if r['payment_status'] != 'Paid' %}
-      <button onclick="markPartTimePaid(this)" id="pay-btn-mob-{{ r['id'] }}" data-record-id="{{ r['id'] }}"
-              class="btn-saas btn-saas-xs btn-saas-success" style="font-size:11px;padding:4px 10px;border-radius:8px;">
-        <i class="bi bi-check2-circle"></i> Mark Paid
-      </button>
-      {% endif %}
+      <div class="flex gap-2">
+        <button onclick="openAddAdvance('{{ r['id'] }}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg"><i class="bi bi-plus"></i> Add</button>
+        <button onclick="openAdvanceHistory('{{ r['id'] }}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg"><i class="bi bi-clock-history"></i> Hist</button>
+      </div>
     </div>
-    <div id="advance-msg-mob-{{ r['id'] }}" style="font-size:9px;font-family:monospace;color:var(--text3);text-align:left;margin-top:2px;"></div>
-  </div>
-  {% else %}
-  <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
-    <i class="bi bi-clipboard-x text-2xl text-muted block mb-2"></i>
-    No slab work entries found.
   </div>
   {% endfor %}
 </div>
+
+<!-- Pagination Controls -->
+<div class="flex justify-center items-center gap-4 mb-8" id="pagination-controls">
+  {% if current_page > 1 %}
+  <a href="?page={{ current_page - 1 }}" class="px-4 py-2 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Previous</a>
+  {% else %}
+  <button disabled class="px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed">Previous</button>
+  {% endif %}
+  
+  <span class="text-sm font-medium text-slate-600 dark:text-slate-300">Page <span id="current-page-num">{{ current_page }}</span> of {{ total_pages }}</span>
+  
+  {% if current_page < total_pages %}
+  <a href="?page={{ current_page + 1 }}" class="px-4 py-2 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Next</a>
+  {% else %}
+  <button disabled class="px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed">Next</button>
+  {% endif %}
+</div>
+
+
+<!-- MODALS -->
+
+<!-- Add Advance Modal -->
+<div id="addAdvanceModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform" id="addAdvanceModalInner">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center">
+      <h3 class="font-bold text-lg dark:text-white"><i class="bi bi-cash-stack text-primary mr-2"></i>Add Advance</h3>
+      <button onclick="closeModal('addAdvanceModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="p-6 space-y-4">
+      <input type="hidden" id="add-adv-record-id">
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount (₹)</label>
+        <input type="number" id="add-adv-amount" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-lg font-mono outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label>
+        <input type="date" id="add-adv-date" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Notes (Optional)</label>
+        <input type="text" id="add-adv-notes" placeholder="e.g. For fuel" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary">
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex justify-end gap-3">
+      <button onclick="closeModal('addAdvanceModal')" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-colors">Cancel</button>
+      <button onclick="submitAddAdvance()" class="px-6 py-2 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-glow transition-all" id="btn-submit-add">Save Advance</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Advance Modal -->
+<div id="editAdvanceModal" class="fixed inset-0 z-[60] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform" id="editAdvanceModalInner">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center">
+      <h3 class="font-bold text-lg dark:text-white"><i class="bi bi-pencil-square text-amber-500 mr-2"></i>Edit Advance</h3>
+      <button onclick="closeModal('editAdvanceModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="p-6 space-y-4">
+      <input type="hidden" id="edit-adv-id">
+      <input type="hidden" id="edit-adv-record-id">
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount (₹)</label>
+        <input type="number" id="edit-adv-amount" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-lg font-mono outline-none focus:ring-2 focus:ring-amber-500">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label>
+        <input type="date" id="edit-adv-date" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Notes</label>
+        <input type="text" id="edit-adv-notes" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500">
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex justify-between gap-3">
+      <button onclick="deleteAdvance()" class="px-4 py-2 rounded-xl text-sm font-medium text-danger hover:bg-danger/10 transition-colors"><i class="bi bi-trash mr-1"></i>Delete</button>
+      <div class="flex gap-2">
+          <button onclick="closeModal('editAdvanceModal')" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-colors">Cancel</button>
+          <button onclick="submitEditAdvance()" class="px-6 py-2 rounded-xl text-sm font-bold bg-amber-500 text-white hover:bg-amber-600 transition-all" id="btn-submit-edit">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div id="historyModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] transform scale-95 transition-transform" id="historyModalInner">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
+      <h3 class="font-bold text-lg dark:text-white"><i class="bi bi-clock-history text-primary mr-2"></i>Advance Ledger</h3>
+      <button onclick="closeModal('historyModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="p-0 overflow-y-auto flex-1">
+      <div id="history-loading" class="p-8 text-center text-slate-500"><i class="bi bi-arrow-repeat animate-spin text-2xl"></i></div>
+      <div id="history-content" class="hidden divide-y divide-slate-100 dark:divide-white/5">
+        <!-- populated via js -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Worker Summary Modal -->
+<div id="workerSummaryModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="bg-white dark:bg-[#1f2937] rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform" id="workerSummaryModalInner">
+    <div class="bg-gradient-to-br from-primary to-purpleaccent p-6 text-white text-center">
+      <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl mx-auto mb-3 backdrop-blur-sm border border-white/30"><i class="bi bi-person"></i></div>
+      <h3 class="font-bold text-xl" id="ws-name">Worker Name</h3>
+      <p class="text-white/80 text-xs font-medium tracking-wider uppercase mt-1">Lifetime Statistics</p>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl text-center">
+            <span class="block text-[10px] uppercase font-bold text-slate-500 dark:text-textsecondary mb-1">Total Jobs</span>
+            <span class="text-xl font-bold dark:text-white" id="ws-jobs">0</span>
+        </div>
+        <div class="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl text-center">
+            <span class="block text-[10px] uppercase font-bold text-slate-500 dark:text-textsecondary mb-1">Total Slabs</span>
+            <span class="text-xl font-bold dark:text-white" id="ws-slabs">0</span>
+        </div>
+      </div>
+      <div class="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl flex justify-between items-center">
+          <span class="text-xs uppercase font-bold text-slate-500 dark:text-textsecondary">Gross Earnings</span>
+          <span class="font-mono font-bold text-lg text-success" id="ws-earnings">₹0</span>
+      </div>
+      <div class="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl flex justify-between items-center">
+          <span class="text-xs uppercase font-bold text-slate-500 dark:text-textsecondary">Advances Taken</span>
+          <span class="font-mono font-bold text-lg text-danger" id="ws-advances">₹0</span>
+      </div>
+      <div class="bg-slate-100 dark:bg-white/10 p-4 rounded-2xl flex justify-between items-center border border-slate-200 dark:border-white/10">
+          <span class="text-xs uppercase font-bold text-slate-700 dark:text-white">Outstanding Balance</span>
+          <span class="font-mono font-black text-xl text-primary" id="ws-balance">₹0</span>
+      </div>
+    </div>
+    <div class="px-6 pb-6 text-center">
+        <button onclick="closeModal('workerSummaryModal')" class="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 font-bold text-sm transition-colors">Close Profile</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const qtyInput = document.getElementById("slab_qty");
-  const priceInput = document.getElementById("slab_price");
-  const totalInput = document.getElementById("total_price");
-
-  function calculateTotal() {
-    const qty = parseFloat(qtyInput.value) || 0;
-    const price = parseFloat(priceInput.value) || 0;
-    totalInput.value = (qty * price).toFixed(2);
+  // UI Helpers
+  function openModal(id) {
+    const m = document.getElementById(id);
+    const inner = document.getElementById(id + 'Inner');
+    m.classList.remove('hidden');
+    // trigger reflow
+    void m.offsetWidth;
+    m.classList.remove('opacity-0');
+    if(inner) { inner.classList.remove('scale-95'); inner.classList.add('scale-100'); }
+  }
+  function closeModal(id) {
+    const m = document.getElementById(id);
+    const inner = document.getElementById(id + 'Inner');
+    m.classList.add('opacity-0');
+    if(inner) { inner.classList.remove('scale-100'); inner.classList.add('scale-95'); }
+    setTimeout(() => m.classList.add('hidden'), 200);
   }
 
-  qtyInput.addEventListener("input", calculateTotal);
-  priceInput.addEventListener("input", calculateTotal);
+  // Format currency
+  function fmt(n) { return '₹' + parseFloat(n).toLocaleString('en-IN', {minimumFractionDigits:2}); }
 
-  function setAdvancePart(button) {
-    var recordId = button.dataset.recordId;
-    var isMobile = button.closest('.mobile-only') !== null;
-    var inputId = isMobile ? 'advance-input-mob-' + recordId : 'advance-input-' + recordId;
-    var input = document.getElementById(inputId);
-    var msg = document.getElementById('advance-msg-' + recordId);
-    var msgMob = document.getElementById('advance-msg-mob-' + recordId);
-    if (!input) return;
+  // Auto-fill today's date for modal
+  function getToday() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
 
-    var value = parseFloat(input.value) || 0;
-    if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'Saving...'; }
-    if (msgMob) { msgMob.style.color = 'var(--primary)'; msgMob.textContent = 'Saving...'; }
+  // Add Advance
+  function openAddAdvance(recordId) {
+      document.getElementById('add-adv-record-id').value = recordId;
+      document.getElementById('add-adv-amount').value = '';
+      document.getElementById('add-adv-date').value = getToday();
+      document.getElementById('add-adv-notes').value = '';
+      openModal('addAdvanceModal');
+  }
 
-    fetch('/part-time/set_advance', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ record_id: recordId, advance_amount_paid: value })
-    })
-    .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
-    .then(function(res) {
-      if (res.ok && res.data.success) {
-        if (msg) { msg.style.color = 'var(--success)'; msg.textContent = 'Saved ✓'; }
-        if (msgMob) { msgMob.style.color = 'var(--success)'; msgMob.textContent = 'Saved ✓'; }
+  function submitAddAdvance() {
+      const btn = document.getElementById('btn-submit-add');
+      const recId = document.getElementById('add-adv-record-id').value;
+      const amt = document.getElementById('add-adv-amount').value;
+      const date = document.getElementById('add-adv-date').value;
+      const notes = document.getElementById('add-adv-notes').value;
+      
+      if(!amt || amt <= 0) { showToast('Enter valid amount', 'danger'); return; }
+      
+      btn.innerText = 'Saving...'; btn.disabled = true;
+      fetch('/api/part-time/advance/add', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({record_id: recId, amount: amt, payment_date: date, notes: notes})
+      })
+      .then(r=>r.json()).then(d => {
+          btn.innerText = 'Save Advance'; btn.disabled = false;
+          if(d.success) {
+              updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              closeModal('addAdvanceModal');
+              showToast('Advance Added Successfully', 'success');
+          } else showToast(d.message, 'danger');
+      }).catch(e => {
+          btn.innerText = 'Save Advance'; btn.disabled = false;
+          showToast('Network error', 'danger');
+      });
+  }
 
-        var bal = res.data.remaining_balance || 0;
-        var fmt = function(n){ return '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:2}); };
-
-        // Update Net Payable cell (Desktop)
-        var netCell = document.getElementById('net-' + recordId);
-        var netTrue = res.data.net_payable !== undefined ? res.data.net_payable : bal;
-        var netLabel, netColor;
-        if (netTrue < 0) {
-          netColor = 'var(--warning)';
-          netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">−₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>'
-                   + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</div>';
-        } else if (netTrue === 0) {
-          netColor = 'var(--text3)';
-          netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹0.00</span>'
-                   + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
-        } else {
-          netColor = 'var(--success)';
-          netLabel = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹' + netTrue.toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
-        }
-        var advHtml = value > 0
-          ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−' + fmt(value) + ' advance</div>'
-          : '';
-        if (netCell) {
-          netCell.innerHTML = netLabel + advHtml;
-        }
-
-        // Update Net Payable (Mobile)
-        var netCellMob = document.getElementById('net-mob-' + recordId);
-        if (netCellMob) {
-          var netLabelMob;
-          if (netTrue < 0) {
-            netLabelMob = '<span class="mono font-bold text-amber-500">−₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>'
-                        + '<div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹' + Math.abs(netTrue).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</div>';
-          } else if (netTrue === 0) {
-            netLabelMob = '<span class="mono font-bold text-muted">₹0.00</span>'
-                        + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
-          } else {
-            netLabelMob = '<span class="mono font-bold" style="color:var(--success);font-size:13px;">₹' + netTrue.toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
+  // History & Editing
+  let currentHistoryRecId = null;
+  function openAdvanceHistory(recordId) {
+      currentHistoryRecId = recordId;
+      document.getElementById('history-loading').classList.remove('hidden');
+      document.getElementById('history-content').classList.add('hidden');
+      document.getElementById('history-content').innerHTML = '';
+      openModal('historyModal');
+      
+      fetch('/api/part-time/advance/history/' + recordId)
+      .then(r=>r.json()).then(d => {
+          document.getElementById('history-loading').classList.add('hidden');
+          const hc = document.getElementById('history-content');
+          hc.classList.remove('hidden');
+          if(!d.success || d.advances.length === 0) {
+              hc.innerHTML = '<div class="p-6 text-center text-slate-500"><i class="bi bi-inbox text-3xl mb-2 block"></i>No advances recorded yet.</div>';
+              return;
           }
-          var advHtmlMob = value > 0
-            ? '<div style="font-size:9px;color:var(--danger);font-family:monospace;margin-top:1px;">−' + fmt(value) + ' advance</div>'
-            : '';
-          netCellMob.innerHTML = netLabelMob + advHtmlMob;
-        }
-
-        // Update payment status badge (Desktop)
-        var statusBadge = document.getElementById('status-' + recordId);
-        var paid = res.data.payment_status === 'Paid';
-        if (statusBadge) {
-          statusBadge.className = 'badge ' + (paid ? 'badge-success' : 'badge-warning');
-          statusBadge.innerHTML =
-            '<span class="badge-dot" style="background:' + (paid ? 'var(--success)' : 'var(--warning)') + ';"></span> ' +
-            res.data.payment_status;
-        }
-
-        // Update payment status badge (Mobile)
-        var statusBadgeMob = document.getElementById('status-mob-' + recordId);
-        if (statusBadgeMob) {
-          statusBadgeMob.className = 'badge ' + (paid ? 'badge-success' : 'badge-warning');
-          statusBadgeMob.innerHTML =
-            '<span class="badge-dot" style="background:' + (paid ? 'var(--success)' : 'var(--warning)') + ';"></span> ' +
-            res.data.payment_status;
-        }
-
-        showToast('Advance ' + fmt(value) + ' saved — Net Payable: ' + fmt(bal), 'success');
-      } else {
-        if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = res.data.message ? res.data.message : 'Failed'; }
-        if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = res.data.message ? res.data.message : 'Failed'; }
-        showToast(res.data.message || 'Validation failed', 'danger');
-      }
-    })
-    .catch(function() {
-      if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Connection failed'; }
-      if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = 'Connection failed'; }
-      showToast('Failed to connect to server', 'danger');
-    });
+          let html = '';
+          d.advances.forEach(a => {
+              html += `
+              <div class="px-6 py-4 flex justify-between items-center group hover:bg-slate-50 dark:hover:bg-white/[0.02]">
+                  <div>
+                      <div class="font-mono font-bold text-danger text-lg">₹${parseFloat(a.amount).toLocaleString('en-IN')}</div>
+                      <div class="text-xs text-slate-500 font-mono mt-1"><i class="bi bi-calendar3 mr-1 text-[10px]"></i>${a.payment_date}</div>
+                      ${a.notes ? `<div class="text-xs text-slate-600 dark:text-slate-400 mt-1"><i class="bi bi-card-text mr-1"></i>${a.notes}</div>` : ''}
+                  </div>
+                  <button onclick="editAdvance('${a.id}', '${a.amount}', '${a.payment_date}', '${a.notes.replace(/'/g,"\\'")}')" class="btn-saas btn-saas-icon bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-opacity"><i class="bi bi-pencil"></i></button>
+              </div>`;
+          });
+          hc.innerHTML = html;
+      });
   }
 
-  function markPartTimePaid(button) {
-    var recordId = button.dataset.recordId;
-    button.disabled = true;
-    button.innerHTML = '<span style="opacity:.7">Saving...</span>';
+  function editAdvance(advId, amt, date, notes) {
+      document.getElementById('edit-adv-id').value = advId;
+      document.getElementById('edit-adv-record-id').value = currentHistoryRecId;
+      document.getElementById('edit-adv-amount').value = amt;
+      document.getElementById('edit-adv-date').value = date;
+      document.getElementById('edit-adv-notes').value = notes;
+      closeModal('historyModal');
+      setTimeout(()=> openModal('editAdvanceModal'), 250);
+  }
 
-    fetch('/part-time/mark_paid', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ record_id: recordId })
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (data && data.success) {
-        // Update Net Payable cell (Desktop)
-        var netCell = document.getElementById('net-' + recordId);
-        if (netCell) {
-          var netColor = 'var(--text3)';
-          netCell.innerHTML = '<span class="mono" style="font-size:16px;font-weight:800;color:' + netColor + ';">₹0.00</span>'
-                            + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
-        }
+  function submitEditAdvance() {
+      const btn = document.getElementById('btn-submit-edit');
+      const advId = document.getElementById('edit-adv-id').value;
+      const recId = document.getElementById('edit-adv-record-id').value;
+      const amt = document.getElementById('edit-adv-amount').value;
+      const date = document.getElementById('edit-adv-date').value;
+      const notes = document.getElementById('edit-adv-notes').value;
+      
+      btn.innerText = 'Updating...'; btn.disabled = true;
+      fetch('/api/part-time/advance/edit', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({advance_id: advId, amount: amt, payment_date: date, notes: notes})
+      })
+      .then(r=>r.json()).then(d => {
+          btn.innerText = 'Update'; btn.disabled = false;
+          if(d.success) {
+              updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              closeModal('editAdvanceModal');
+              showToast('Advance Updated', 'success');
+          } else showToast(d.message, 'danger');
+      });
+  }
 
-        // Update Net Payable cell (Mobile)
-        var netCellMob = document.getElementById('net-mob-' + recordId);
-        if (netCellMob) {
-          netCellMob.innerHTML = '<span class="mono font-bold text-muted">₹0.00</span>'
-                            + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
-        }
+  function deleteAdvance() {
+      if(!confirm("Are you sure you want to delete this advance entry?")) return;
+      const advId = document.getElementById('edit-adv-id').value;
+      const recId = document.getElementById('edit-adv-record-id').value;
+      
+      fetch('/api/part-time/advance/delete', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({advance_id: advId})
+      })
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              closeModal('editAdvanceModal');
+              showToast('Advance Deleted', 'success');
+          } else showToast(d.message, 'danger');
+      });
+  }
 
-        // Update status badge (Desktop)
-        var statusBadge = document.getElementById('status-' + recordId);
-        if (statusBadge) {
-          statusBadge.className = 'badge badge-success';
-          statusBadge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
-        }
-
-        // Update status badge (Mobile)
-        var statusBadgeMob = document.getElementById('status-mob-' + recordId);
-        if (statusBadgeMob) {
-          statusBadgeMob.className = 'badge badge-success';
-          statusBadgeMob.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
-        }
-
-        // Remove the mark paid buttons
-        var desktopBtn = document.getElementById('pay-btn-' + recordId);
-        if (desktopBtn) desktopBtn.remove();
-        var mobileBtn = document.getElementById('pay-btn-mob-' + recordId);
-        if (mobileBtn) mobileBtn.remove();
-
-        showToast('Work entry marked as paid!', 'success');
-      } else {
-        button.disabled = false;
-        button.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid';
-        showToast(data.message || 'Failed to update status', 'danger');
+  // Update DOM without reload
+  function updateDOMStatus(recId, totalAdv, netBal, status) {
+      // Desktop
+      const dAdv = document.getElementById('total-adv-' + recId);
+      const dNet = document.getElementById('net-' + recId);
+      const dStat = document.getElementById('status-' + recId);
+      if(dAdv) dAdv.innerText = fmt(totalAdv);
+      if(dNet) {
+          if (netBal < 0) dNet.innerHTML = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--warning);">−${fmt(Math.abs(netBal))}</span>`;
+          else if (netBal === 0) dNet.innerHTML = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>`;
+          else dNet.innerHTML = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--success);">${fmt(netBal)}</span>`;
       }
-    })
-    .catch(function(err) {
-      button.disabled = false;
-      button.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid';
-      showToast('Connection failed', 'danger');
-    });
+      if(dStat) {
+          dStat.className = `badge ${status==='Paid'?'badge-success':status==='Overpaid'?'badge-danger':'badge-warning'}`;
+          dStat.innerText = status;
+      }
+      // Mobile
+      const mAdv = document.getElementById('total-adv-mob-' + recId);
+      const mNet = document.getElementById('net-mob-' + recId);
+      const mStat = document.getElementById('status-mob-' + recId);
+      if(mAdv) mAdv.innerText = fmt(totalAdv);
+      if(mNet) {
+          if (netBal < 0) mNet.innerHTML = `<span class="mono font-bold text-amber-500">−${fmt(Math.abs(netBal))}</span>`;
+          else if (netBal === 0) mNet.innerHTML = `<span class="mono font-bold text-muted">₹0.00</span>`;
+          else mNet.innerHTML = `<span class="mono font-bold text-success text-[13px]">${fmt(netBal)}</span>`;
+      }
+      if(mStat) {
+          mStat.className = `badge ${status==='Paid'?'badge-success':status==='Overpaid'?'badge-danger':'badge-warning'}`;
+          mStat.innerText = status;
+      }
+  }
+
+  // Worker Summary
+  function openWorkerSummary(workerId) {
+      openModal('workerSummaryModal');
+      document.getElementById('ws-name').innerText = 'Loading...';
+      document.getElementById('ws-jobs').innerText = '-';
+      document.getElementById('ws-slabs').innerText = '-';
+      document.getElementById('ws-earnings').innerText = '-';
+      document.getElementById('ws-advances').innerText = '-';
+      document.getElementById('ws-balance').innerText = '-';
+      
+      fetch('/api/part-time/worker/' + workerId + '/summary')
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              document.getElementById('ws-name').innerText = d.name;
+              document.getElementById('ws-jobs').innerText = d.total_jobs;
+              document.getElementById('ws-slabs').innerText = d.total_slabs;
+              document.getElementById('ws-earnings').innerText = fmt(d.total_earnings);
+              document.getElementById('ws-advances').innerText = fmt(d.total_advance);
+              document.getElementById('ws-balance').innerText = fmt(d.outstanding_balance);
+              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${d.outstanding_balance > 0 ? 'text-primary' : d.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
+          }
+      });
+  }
+
+  // Live Search (Debounced)
+  let searchTimeout = null;
+  const searchInput = document.getElementById('live-search');
+  searchInput.addEventListener('input', function(e) {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+          const q = e.target.value.toLowerCase();
+          // If search is active, hide pagination
+          document.getElementById('pagination-controls').style.display = q ? 'none' : 'flex';
+          
+          fetch('/api/part-time/search?q=' + encodeURIComponent(q))
+          .then(r=>r.json()).then(d => {
+              if(d.success) {
+                  renderDesktopTable(d.records);
+                  renderMobileList(d.records);
+                  document.getElementById('total-entries-badge').innerText = d.records.length + " Match" + (d.records.length!==1?'es':'');
+              }
+          });
+      }, 300);
+  });
+
+  function renderDesktopTable(records) {
+      const tbody = document.getElementById('desktop-tbody');
+      if(records.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="py-16 text-center text-slate-500"><i class="bi bi-search text-3xl mb-2 block"></i>No matching records found.</td></tr>`;
+          return;
+      }
+      let html = '';
+      records.forEach(r => {
+          const net = r.remaining_balance;
+          const statusClass = r.payment_status==='Paid'?'badge-success':r.payment_status==='Overpaid'?'badge-danger':'badge-warning';
+          let netHtml = '';
+          if(net < 0) netHtml = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--warning);">−${fmt(Math.abs(net))}</span>`;
+          else if(net === 0) netHtml = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>`;
+          else netHtml = `<span class="mono net-val" style="font-size:16px;font-weight:800;color:var(--success);">${fmt(net)}</span>`;
+          
+          html += `
+          <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all" id="row-${r.id}">
+            <td class="py-4 px-6">
+              <div class="font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-primary" onclick="openWorkerSummary('${r.worker_id}')">${r.worker_name} <i class="bi bi-info-circle text-[10px]"></i></div>
+              <div class="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5"><i class="bi bi-briefcase-fill text-[9px]"></i> Client: ${r.client_name}</div>
+            </td>
+            <td class="py-4 px-6 font-mono text-xs text-slate-500">${r.working_date}</td>
+            <td class="py-4 px-6 font-medium text-slate-500">${r.delivery_location}</td>
+            <td class="py-4 px-6 font-mono text-slate-900 dark:text-white font-semibold">${r.slab_quantity} slabs</td>
+            <td style="padding:14px 20px;">
+              <span class="mono" style="font-weight:700;font-size:14px;" id="gross-${r.id}">${fmt(r.total_price)}</span>
+              <div style="font-size:10px;color:var(--text3);font-family:monospace;margin-top:2px;">${r.slab_quantity} × ${fmt(r.slab_price)}</div>
+            </td>
+            <td style="padding:14px 20px;">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="mono font-bold text-danger text-[14px]" id="total-adv-${r.id}">${fmt(r.advance_paid)}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <button onclick="openAddAdvance('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] rounded"><i class="bi bi-plus"></i> Add</button>
+                <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] rounded"><i class="bi bi-clock-history"></i> History</button>
+              </div>
+            </td>
+            <td style="padding:14px 20px;" id="net-${r.id}">${netHtml}</td>
+            <td style="padding:14px 20px;text-align:right;">
+              <span class="badge ${statusClass}" id="status-${r.id}">${r.payment_status}</span>
+            </td>
+          </tr>`;
+      });
+      tbody.innerHTML = html;
+  }
+
+  function renderMobileList(records) {
+      const container = document.getElementById('mobile-list-container');
+      if(records.length === 0) {
+          container.innerHTML = `<div class="card p-8 text-center text-slate-500"><i class="bi bi-search text-3xl mb-2 block"></i>No matching records.</div>`;
+          return;
+      }
+      let html = '';
+      records.forEach(r => {
+          const net = r.remaining_balance;
+          const statusClass = r.payment_status==='Paid'?'badge-success':r.payment_status==='Overpaid'?'badge-danger':'badge-warning';
+          let netHtml = '';
+          if(net < 0) netHtml = `<span class="mono font-bold text-amber-500">−${fmt(Math.abs(net))}</span>`;
+          else if(net === 0) netHtml = `<span class="mono font-bold text-muted">₹0.00</span>`;
+          else netHtml = `<span class="mono font-bold text-success text-[13px]">${fmt(net)}</span>`;
+          
+          html += `
+          <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);" id="row-mob-${r.id}">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-bold text-[14px] text-text cursor-pointer hover:text-primary" onclick="openWorkerSummary('${r.worker_id}')">${r.worker_name} <i class="bi bi-info-circle text-[10px]"></i></span>
+                <span class="text-xs text-muted font-mono block"><i class="bi bi-briefcase text-[10px] mr-1"></i>${r.client_name}</span>
+              </div>
+              <span class="badge ${statusClass}" id="status-mob-${r.id}">${r.payment_status}</span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 py-2 border-y border-card-border text-xs">
+              <div>
+                <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Date / Location</span>
+                <span class="font-mono text-text2">${r.working_date}</span>
+                <div class="text-text3 text-[10px] mt-0.5">${r.delivery_location}</div>
+              </div>
+              <div class="text-right">
+                <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Volume & Price</span>
+                <span class="font-semibold text-text2">${r.slab_quantity} slabs</span>
+                <div class="text-text3 font-mono text-[10px] mt-0.5">@ ${fmt(r.slab_price)}</div>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center text-xs pt-1">
+              <div>
+                <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Gross Amount</span>
+                <span class="mono font-bold text-[14px] text-text">${fmt(r.total_price)}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-text3 text-[9px] uppercase font-bold tracking-wider block mb-0.5">Net Payable</span>
+                <span id="net-mob-${r.id}">${netHtml}</span>
+              </div>
+            </div>
+
+            <!-- Advance Actions -->
+            <div class="flex items-center justify-between pt-2 border-t border-dashed border-card-border">
+              <div class="flex flex-col">
+                <span class="text-text3 text-[9px] uppercase font-bold">Total Advance</span>
+                <span class="mono font-bold text-danger text-[13px]" id="total-adv-mob-${r.id}">${fmt(r.advance_paid)}</span>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="openAddAdvance('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg"><i class="bi bi-plus"></i> Add</button>
+                <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg"><i class="bi bi-clock-history"></i> Hist</button>
+              </div>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
   }
 </script>
 {% endblock %}
