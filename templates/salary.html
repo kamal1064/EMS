@@ -32,11 +32,11 @@
     <div>
       <div class="info-panel-title">Payroll Formula</div>
       <div class="info-panel-body" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:4px;">
-        <span>Daily Rate: <code>Monthly Salary ÷ Days in Month</code></span>
+        <span>Daily Rate: <code>Monthly Salary ÷ 30</code></span>
         <span style="color:var(--text3);">•</span>
         <span>Earned: <code>Daily Rate × Present Days</code></span>
         <span style="color:var(--text3);">•</span>
-        <span style="font-weight:700;color:var(--primary);">Net Payable: <code>Earned − Advance Given</code></span>
+        <span style="font-weight:700;color:var(--primary);">Net Payable: <code>Earned − Total Advances</code></span>
       </div>
     </div>
   </div>
@@ -92,72 +92,59 @@
           <!-- Earned Salary -->
           <td class="mono" style="font-weight:700;font-size:14px;">₹{{ "{:,.2f}".format(s.final_salary) }}</td>
 
-          <!-- Advance Input -->
+          <!-- Advance Ledger -->
           <td style="min-width:180px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input type="number" step="0.01" min="0"
-                     value="{{ s.advance_amount_paid }}"
-                     id="advance-input-{{ s.id }}"
-                     data-emp-id="{{ s.id }}"
-                     data-month="{{ month_filter }}"
-                     data-earned="{{ s.final_salary }}"
-                     {% if s.payment_status == 'Paid' %}disabled{% endif %}
-                     placeholder="0.00"
-                     style="width:100px;font-family:monospace;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
-              <button onclick="setAdvance(this)"
-                      id="advance-btn-{{ s.id }}"
-                      data-emp-id="{{ s.id }}"
-                      data-month="{{ month_filter }}"
-                      {% if s.payment_status == 'Paid' %}disabled{% endif %}
-                      class="btn-saas btn-saas-icon" style="color:var(--primary);" title="Save advance">
-                <i class="bi bi-save"></i>
-              </button>
+            <div id="adv-total-{{ s.record_id }}" class="mono" style="font-weight:700;font-size:13px;color:var(--danger);margin-bottom:4px;">
+              {% if s.advance_amount_paid > 0 %}−₹{{ "{:,.2f}".format(s.advance_amount_paid) }}{% else %}₹0.00{% endif %}
             </div>
-            <div id="advance-msg-{{ s.id }}" style="font-size:10px;font-family:monospace;margin-top:4px;color:var(--text3);">
-              {% if s.advance_paid_at %}Saved: {{ s.advance_paid_at[:10] }}{% endif %}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button onclick="openAddAdvance('{{ s.record_id }}','{{ s.name }}','{{ s.final_salary }}')"
+                      class="btn-saas btn-saas-sm" style="font-size:11px;padding:4px 8px;border-radius:8px;color:var(--primary);border:1px solid var(--primary);background:transparent;">
+                <i class="bi bi-plus-circle"></i> Add
+              </button>
+              <button onclick="openHistory('{{ s.record_id }}','{{ s.name }}')"
+                      class="btn-saas btn-saas-sm" style="font-size:11px;padding:4px 8px;border-radius:8px;color:var(--text2);border:1px solid var(--card-border);background:transparent;">
+                <i class="bi bi-clock-history"></i> History
+              </button>
             </div>
           </td>
 
-          <!-- Net Payable (Earned - Advance) -->
-          <td id="net-{{ s.id }}">
+          <!-- Net Payable (Earned - Total Advances) -->
+          <td id="net-{{ s.record_id }}">
             {% set net = s.net_payable %}
             {% if net < 0 %}
               <span class="mono" style="font-size:16px;font-weight:800;color:var(--warning);">−₹{{ "{:,.2f}".format(net|abs) }}</span>
-              <div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹{{ "{:,.2f}".format(net|abs) }}</div>
-            {% elif net > 0 %}
-              <span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹{{ "{:,.2f}".format(net) }}</span>
-            {% else %}
+              <div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid</div>
+            {% elif net == 0 and s.final_salary > 0 %}
               <span class="mono" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>
               <div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>
-            {% endif %}
-            {% if s.advance_amount_paid > 0 %}
-            <div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">
-              −₹{{ "{:,.2f}".format(s.advance_amount_paid) }} advance
-            </div>
+            {% else %}
+              <span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹{{ "{:,.2f}".format(net) }}</span>
             {% endif %}
           </td>
 
           <!-- Status -->
           <td>
-            <span id="pay-badge-{{ s.id }}" class="badge {% if s.payment_status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}">
-              <span class="badge-dot" style="background:{% if s.payment_status == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
-              {{ s.payment_status }}
+            {% set st = s.payment_status %}
+            <span id="pay-badge-{{ s.record_id }}" class="badge {% if st == 'Settled' %}badge-success{% elif st == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}">
+              <span class="badge-dot" style="background:{% if st == 'Settled' %}var(--success){% elif st == 'Overpaid' %}var(--danger){% else %}var(--warning){% endif %};"></span>
+              {{ st }}
             </span>
-            <div id="paid-date-{{ s.id }}" style="font-size:10px;font-family:monospace;color:var(--text3);margin-top:4px;">
+            <div id="paid-date-{{ s.record_id }}" style="font-size:10px;font-family:monospace;color:var(--text3);margin-top:4px;">
               {% if s.paid_at %}Paid: {{ s.paid_at[:10] }}{% endif %}
             </div>
           </td>
 
           <!-- Action -->
           <td class="text-right">
-            {% if s.payment_status != 'Paid' %}
-            <button onclick="markPaid(this)" id="pay-btn-{{ s.id }}"
-                    data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
+            {% if s.payment_status not in ['Settled'] %}
+            <button onclick="markPaid(this)" id="pay-btn-{{ s.record_id }}"
+                    data-record-id="{{ s.record_id }}" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
                     class="btn-saas btn-saas-sm btn-saas-success">
               <i class="bi bi-check2-circle"></i> Mark Paid
             </button>
             {% else %}
-            <span class="text-muted mono" id="pay-btn-{{ s.id }}">—</span>
+            <span class="text-muted mono" id="pay-btn-{{ s.record_id }}">✓</span>
             {% endif %}
           </td>
         </tr>
@@ -203,9 +190,10 @@
           <span class="text-xs text-muted" style="color:var(--text3);">Rate: ₹{{ "{:,.0f}".format(s.monthly_salary) }}/mo</span>
         </div>
       </div>
-      <span class="badge {% if s.payment_status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}" id="pay-badge-mob-{{ s.id }}">
-        <span class="badge-dot" style="background:{% if s.payment_status == 'Paid' %}var(--success){% else %}var(--warning){% endif %};"></span>
-        {{ s.payment_status }}
+      {% set st = s.payment_status %}
+      <span class="badge {% if st == 'Settled' %}badge-success{% elif st == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}" id="pay-badge-mob-{{ s.record_id }}">
+        <span class="badge-dot" style="background:{% if st == 'Settled' %}var(--success){% elif st == 'Overpaid' %}var(--danger){% else %}var(--warning){% endif %};"></span>
+        {{ st }}
       </span>
     </div>
     
@@ -223,48 +211,44 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding-top:4px;">
       <div>
+        <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Total Advances</span>
+        <span id="adv-total-mob-{{ s.record_id }}" class="mono font-bold" style="color:var(--danger);">
+          {% if s.advance_amount_paid > 0 %}−₹{{ "{:,.2f}".format(s.advance_amount_paid) }}{% else %}₹0.00{% endif %}
+        </span>
+      </div>
+      <div style="text-align:right;">
         <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Net Payable</span>
-        <span id="net-mob-{{ s.id }}">
+        <span id="net-mob-{{ s.record_id }}">
           {% set net = s.net_payable %}
           {% if net < 0 %}
             <span class="mono font-bold text-amber-500">−₹{{ "{:,.2f}".format(net|abs) }}</span>
-            <div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹{{ "{:,.2f}".format(net|abs) }}</div>
-          {% elif net > 0 %}
-            <span class="mono font-bold" style="color:var(--success);font-size:13px;">₹{{ "{:,.2f}".format(net) }}</span>
+          {% elif net == 0 and s.final_salary > 0 %}
+            <span class="mono font-bold text-muted">₹0.00 ✓</span>
           {% else %}
-            <span class="mono font-bold text-muted">₹0.00</span>
-            <div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>
+            <span class="mono font-bold" style="color:var(--success);font-size:13px;">₹{{ "{:,.2f}".format(net) }}</span>
           {% endif %}
         </span>
       </div>
     </div>
 
-    <!-- Advance input & Mark paid button on mobile -->
+    <!-- Mobile Advance Ledger Buttons -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px dashed var(--card-border);">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span class="text-muted text-[10px] uppercase font-bold" style="color:var(--text3);">Adv:</span>
-        <input type="number" step="0.01" min="0" value="{{ s.advance_amount_paid or 0 }}"
-               id="advance-input-mob-{{ s.id }}" data-record-id="{{ s.id }}"
-               placeholder="0.00"
-               {% if s.payment_status == 'Paid' %}disabled{% endif %}
-               style="width:74px;font-family:monospace;font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--danger);font-weight:700;outline:none;"/>
-        <button onclick="setAdvance(this)" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
-                id="advance-btn-mob-{{ s.id }}"
-                {% if s.payment_status == 'Paid' %}disabled{% endif %}
-                class="btn-saas btn-saas-icon" style="color:var(--primary);padding:4px;" title="Save advance">
-          <i class="bi bi-save" style="font-size:12px;"></i>
+      <div style="display:flex;gap:6px;">
+        <button onclick="openAddAdvance('{{ s.record_id }}','{{ s.name }}','{{ s.final_salary }}')"
+                style="font-size:11px;padding:4px 10px;border-radius:8px;color:var(--primary);border:1px solid var(--primary);background:transparent;cursor:pointer;">
+          <i class="bi bi-plus-circle"></i> Add Advance
+        </button>
+        <button onclick="openHistory('{{ s.record_id }}','{{ s.name }}')"
+                style="font-size:11px;padding:4px 10px;border-radius:8px;color:var(--text2);border:1px solid var(--card-border);background:transparent;cursor:pointer;">
+          <i class="bi bi-clock-history"></i>
         </button>
       </div>
-      
-      {% if s.payment_status != 'Paid' %}
-      <button onclick="markPaid(this)" id="pay-btn-mob-{{ s.id }}" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
+      {% if st not in ['Settled'] %}
+      <button onclick="markPaid(this)" id="pay-btn-mob-{{ s.record_id }}" data-record-id="{{ s.record_id }}" data-emp-id="{{ s.id }}" data-month="{{ month_filter }}"
               class="btn-saas btn-saas-xs btn-saas-success" style="font-size:11px;padding:4px 10px;border-radius:8px;">
         <i class="bi bi-check2-circle"></i> Mark Paid
       </button>
       {% endif %}
-    </div>
-    <div id="advance-msg-mob-{{ s.id }}" style="font-size:9px;font-family:monospace;color:var(--text3);text-align:left;margin-top:2px;">
-      {% if s.advance_paid_at %}Saved: {{ s.advance_paid_at[:10] }}{% endif %}
     </div>
   </div>
   {% else %}
@@ -276,169 +260,299 @@
 </div>
 {% endblock %}
 
+<!-- ── ADD ADVANCE MODAL ─────────────────────────── -->
+<div id="addAdvModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:28px 32px;max-width:420px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;">Add Advance</div>
+        <div id="addAdvSubtitle" style="font-size:11px;color:var(--text3);margin-top:2px;"></div>
+      </div>
+      <button onclick="closeModal('addAdvModal')" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">✕</button>
+    </div>
+    <input type="hidden" id="addAdv_recordId"/>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Amount (₹) *</label>
+        <input type="number" id="addAdv_amount" min="1" step="0.01" placeholder="e.g. 2000"
+               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-family:monospace;font-size:14px;font-weight:700;outline:none;"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Payment Date *</label>
+        <input type="date" id="addAdv_date" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Notes (optional)</label>
+        <input type="text" id="addAdv_notes" placeholder="e.g. Emergency loan"
+               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:22px;">
+      <button onclick="closeModal('addAdvModal')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text2);cursor:pointer;font-weight:600;">Cancel</button>
+      <button onclick="submitAddAdvance()" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:700;">Save Advance</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── EDIT ADVANCE MODAL ─────────────────────────── -->
+<div id="editAdvModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:28px 32px;max-width:420px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:16px;font-weight:800;">Edit Advance</div>
+      <button onclick="closeModal('editAdvModal')" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">✕</button>
+    </div>
+    <input type="hidden" id="editAdv_id"/>
+    <input type="hidden" id="editAdv_recordId"/>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Amount (₹) *</label>
+        <input type="number" id="editAdv_amount" min="1" step="0.01"
+               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-family:monospace;font-size:14px;font-weight:700;outline:none;"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Payment Date *</label>
+        <input type="date" id="editAdv_date" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">Notes (optional)</label>
+        <input type="text" id="editAdv_notes"
+               style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:22px;">
+      <button onclick="closeModal('editAdvModal')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text2);cursor:pointer;font-weight:600;">Cancel</button>
+      <button onclick="submitEditAdvance()" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--primary);color:#fff;cursor:pointer;font-weight:700;">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HISTORY MODAL ─────────────────────────── -->
+<div id="historyModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:28px 32px;max-width:520px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;">Advance History</div>
+        <div id="histSubtitle" style="font-size:11px;color:var(--text3);margin-top:2px;"></div>
+      </div>
+      <button onclick="closeModal('historyModal')" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">✕</button>
+    </div>
+    <div id="historyContent" style="min-height:80px;"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;align-items:center;">
+      <div id="historyTotal" style="flex:1;font-size:13px;font-weight:700;font-family:monospace;"></div>
+      <button onclick="closeModal('historyModal')" style="padding:10px 24px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text2);cursor:pointer;font-weight:600;">Close</button>
+    </div>
+  </div>
+</div>
+
 {% block scripts %}
 <script>
-function markPaid(button) {
-  var empId = button.dataset.empId;
-  var month = button.dataset.month;
-  setLoaderState(true);
-  fetch('/salary/mark_paid', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ emp_id: empId, month: month })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    setLoaderState(false);
-    if (data && data.success) {
-      showToast('Salary marked as paid', 'success');
-      
-      var paidDateStr = 'Paid: ' + (data.paid_at || '').slice(0, 10);
+var _currentRecordId = null;
 
-      // 1. Update Desktop elements
-      var badge = document.getElementById('pay-badge-' + empId);
-      if (badge) {
-        badge.className = 'badge badge-success';
-        badge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
-      }
-      var dateEl = document.getElementById('paid-date-' + empId);
-      if (dateEl) {
-        dateEl.textContent = paidDateStr;
-      }
-      var payBtn = document.getElementById('pay-btn-' + empId);
-      if (payBtn) {
-        payBtn.outerHTML = '<span class="text-muted mono" id="pay-btn-' + empId + '">—</span>';
-      }
-      var advInput = document.getElementById('advance-input-' + empId);
-      if (advInput) advInput.disabled = true;
-      var advBtn = document.getElementById('advance-btn-' + empId);
-      if (advBtn) advBtn.disabled = true;
-
-      // 2. Update Mobile elements
-      var badgeMob = document.getElementById('pay-badge-mob-' + empId);
-      if (badgeMob) {
-        badgeMob.className = 'badge badge-success';
-        badgeMob.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span> Paid';
-      }
-      var msgMob = document.getElementById('advance-msg-mob-' + empId);
-      if (msgMob) {
-        msgMob.textContent = paidDateStr;
-      }
-      var advInputMob = document.getElementById('advance-input-mob-' + empId);
-      if (advInputMob) advInputMob.disabled = true;
-      var advBtnMob = document.getElementById('advance-btn-mob-' + empId);
-      if (advBtnMob) advBtnMob.disabled = true;
-      var payBtnMob = document.getElementById('pay-btn-mob-' + empId);
-      if (payBtnMob) payBtnMob.remove();
-
-    } else {
-      showToast(data.message || 'Failed', 'danger');
-    }
-  })
-  .catch(function(){ 
-    setLoaderState(false); 
-    showToast('Request failed', 'danger'); 
-  });
+function fmt(n) {
+  return parseFloat(n).toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
-function setAdvance(button) {
-  var empId = button.dataset.empId;
-  var month = button.dataset.month;
-  var isMobile = button.closest('.mobile-only') !== null;
-  var inputId = isMobile ? 'advance-input-mob-' + empId : 'advance-input-' + empId;
-  var input = document.getElementById(inputId);
-  if (!input) return;
+function openModal(id) {
+  var m = document.getElementById(id);
+  if (m) { m.style.display = 'flex'; }
+}
+function closeModal(id) {
+  var m = document.getElementById(id);
+  if (m) { m.style.display = 'none'; }
+}
 
-  var msg = document.getElementById('advance-msg-' + empId);
-  var msgMob = document.getElementById('advance-msg-mob-' + empId);
-  var value = parseFloat(input.value) || 0;
+function updateRowUI(recordId, data) {
+  var net = data.net_payable;
+  var total_adv = data.total_advance;
+  var st = data.payment_status;
 
-  if (msg) { msg.style.color = 'var(--primary)'; msg.textContent = 'Saving...'; }
-  if (msgMob) { msgMob.style.color = 'var(--primary)'; msgMob.textContent = 'Saving...'; }
+  // Update advance total display
+  var advEl = document.getElementById('adv-total-' + recordId);
+  if (advEl) advEl.innerHTML = total_adv > 0 ? '−₹' + fmt(total_adv) : '₹0.00';
+  var advElMob = document.getElementById('adv-total-mob-' + recordId);
+  if (advElMob) advElMob.innerHTML = total_adv > 0 ? '−₹' + fmt(total_adv) : '₹0.00';
 
-  fetch('/salary/set_advance', {
+  // Net payable
+  function netHtml(cls) {
+    if (net < 0) return '<span class="mono ' + cls + '" style="color:var(--warning);">−₹' + fmt(Math.abs(net)) + '</span>';
+    if (net === 0) return '<span class="mono ' + cls + '" style="color:var(--text3);">₹0.00 ✓</span>';
+    return '<span class="mono ' + cls + '" style="color:var(--success);">₹' + fmt(net) + '</span>';
+  }
+  var netEl = document.getElementById('net-' + recordId);
+  if (netEl) netEl.innerHTML = netHtml('font-weight:800;font-size:16px;');
+  var netElMob = document.getElementById('net-mob-' + recordId);
+  if (netElMob) netElMob.innerHTML = netHtml('font-bold;font-size:13px;');
+
+  // Status badge
+  function badgeClass() {
+    if (st === 'Settled') return 'badge badge-success';
+    if (st === 'Overpaid') return 'badge badge-danger';
+    return 'badge badge-warning';
+  }
+  function dotColor() {
+    if (st === 'Settled') return 'var(--success)';
+    if (st === 'Overpaid') return 'var(--danger)';
+    return 'var(--warning)';
+  }
+  var badgeHtml = '<span class="badge-dot" style="background:' + dotColor() + ';"></span> ' + st;
+  var badge = document.getElementById('pay-badge-' + recordId);
+  if (badge) { badge.className = badgeClass(); badge.innerHTML = badgeHtml; }
+  var badgeMob = document.getElementById('pay-badge-mob-' + recordId);
+  if (badgeMob) { badgeMob.className = badgeClass(); badgeMob.innerHTML = badgeHtml; }
+}
+
+// ── ADD ADVANCE ────────────────────────────
+function openAddAdvance(recordId, name, earned) {
+  _currentRecordId = recordId;
+  document.getElementById('addAdv_recordId').value = recordId;
+  document.getElementById('addAdvSubtitle').textContent = name + ' — Earned: ₹' + parseFloat(earned).toLocaleString('en-IN', {minimumFractionDigits:2});
+  document.getElementById('addAdv_amount').value = '';
+  document.getElementById('addAdv_date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('addAdv_notes').value = '';
+  openModal('addAdvModal');
+}
+
+function submitAddAdvance() {
+  var recordId = document.getElementById('addAdv_recordId').value;
+  var amount = parseFloat(document.getElementById('addAdv_amount').value);
+  var dt = document.getElementById('addAdv_date').value;
+  var notes = document.getElementById('addAdv_notes').value.trim();
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'danger'); return; }
+  if (!dt) { showToast('Select a payment date', 'danger'); return; }
+  fetch('/api/salary/advance/add', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ emp_id: empId, month: month, advance_amount_paid: value })
+    body: JSON.stringify({record_id: recordId, amount: amount, payment_date: dt, notes: notes})
   })
-  .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
-  .then(function(res) {
-    if (res.ok && res.data && res.data.success) {
-      var when = res.data.advance_paid_at ? res.data.advance_paid_at.slice(0,10) : '';
-      if (msg) {
-        msg.style.color = 'var(--success)';
-        msg.textContent = when ? 'Saved: ' + when : 'Saved';
-      }
-      if (msgMob) {
-        msgMob.style.color = 'var(--success)';
-        msgMob.textContent = when ? 'Saved: ' + when : 'Saved';
-      }
-
-      // Update Net Payable cells live
-      var net = res.data.net_payable !== undefined ? res.data.net_payable : 0;
-      
-      // Helper function to format INR currency
-      var fmt = function(n) {
-        return n.toLocaleString('en-IN', {minimumFractionDigits: 2});
-      };
-
-      // 1. Update Desktop view elements
-      var netCell = document.getElementById('net-' + empId);
-      if (netCell) {
-        var label;
-        if (net < 0) {
-          label = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--warning);">−₹' + fmt(Math.abs(net)) + '</span>'
-                + '<div style="font-size:10px;color:var(--warning);font-family:monospace;margin-top:2px;font-weight:700;">⚠ Overpaid by ₹' + fmt(Math.abs(net)) + '</div>';
-        } else if (net === 0) {
-          label = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--text3);">₹0.00</span>'
-                + '<div style="font-size:10px;color:var(--success);font-family:monospace;margin-top:2px;">✓ Settled</div>';
-        } else {
-          label = '<span class="mono" style="font-size:16px;font-weight:800;color:var(--success);">₹' + fmt(net) + '</span>';
-        }
-        var advHtml = value > 0 ? '<div style="font-size:10px;color:var(--danger);font-family:monospace;margin-top:2px;">−₹' + fmt(value) + ' advance</div>' : '';
-        netCell.innerHTML = label + advHtml;
-      }
-      
-      var deskInput = document.getElementById('advance-input-' + empId);
-      if (deskInput) {
-        deskInput.value = value;
-      }
-
-      // 2. Update Mobile view elements
-      var netCellMob = document.getElementById('net-mob-' + empId);
-      if (netCellMob) {
-        var labelMob;
-        if (net < 0) {
-          labelMob = '<span class="mono font-bold text-amber-500">−₹' + fmt(Math.abs(net)) + '</span>'
-                   + '<div style="font-size:9px;color:var(--warning);font-family:monospace;margin-top:1px;font-weight:700;">⚠ Overpaid by ₹' + fmt(Math.abs(net)) + '</div>';
-        } else if (net === 0) {
-          labelMob = '<span class="mono font-bold text-muted">₹0.00</span>'
-                   + '<div style="font-size:9px;color:var(--success);font-family:monospace;margin-top:1px;">✓ Settled</div>';
-        } else {
-          labelMob = '<span class="mono font-bold" style="color:var(--success);font-size:13px;">₹' + fmt(net) + '</span>';
-        }
-        var advHtmlMob = value > 0 ? '<div style="font-size:9px;color:var(--danger);font-family:monospace;margin-top:1px;">−₹' + fmt(value) + ' advance</div>' : '';
-        netCellMob.innerHTML = labelMob + advHtmlMob;
-      }
-      
-      var mobInput = document.getElementById('advance-input-mob-' + empId);
-      if (mobInput) {
-        mobInput.value = value;
-      }
-
-      showToast('Advance of ₹' + value.toLocaleString('en-IN') + ' saved. Net: ₹' + net.toLocaleString('en-IN'), 'success');
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showToast('Advance of ₹' + fmt(amount) + ' saved!', 'success');
+      updateRowUI(recordId, d);
+      closeModal('addAdvModal');
     } else {
-      var failMsg = (res.data && res.data.message) ? res.data.message : 'Save failed';
-      if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = failMsg; }
-      if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = failMsg; }
-      showToast('Save failed: ' + failMsg, 'danger');
+      showToast(d.message || 'Failed', 'danger');
     }
+  }).catch(function(){ showToast('Request failed','danger'); });
+}
+
+// ── HISTORY ────────────────────────────
+function openHistory(recordId, name) {
+  _currentRecordId = recordId;
+  document.getElementById('histSubtitle').textContent = name;
+  document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);">Loading...</div>';
+  document.getElementById('historyTotal').textContent = '';
+  openModal('historyModal');
+  fetch('/api/salary/advance/history/' + recordId)
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (!d.success) { document.getElementById('historyContent').innerHTML = '<div style="color:var(--danger);">Error loading history</div>'; return; }
+    var advances = d.advances;
+    if (!advances.length) {
+      document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);"><i class="bi bi-inbox" style="font-size:32px;"></i><div style="margin-top:8px;">No advances recorded</div></div>';
+      return;
+    }
+    var total = 0;
+    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    advances.forEach(function(a) {
+      total += parseFloat(a.amount);
+      var isMigrated = a.is_migrated ? '<span style="font-size:9px;color:var(--text3);margin-left:4px;">(migrated)</span>' : '';
+      html += '<div style="background:var(--input-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+      html += '<div><span class="mono" style="font-size:15px;font-weight:800;color:var(--danger);">₹' + fmt(a.amount) + '</span>' + isMigrated + '</div>';
+      html += '<div style="display:flex;gap:6px;">';
+      html += '<button onclick="openEditAdvance(\'' + a.id + '\',\'' + recordId + '\',' + a.amount + ',\'' + (a.payment_date||'') + '\',\'' + (a.notes||'').replace(/'/g,"\\'") + '\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--card-border);background:transparent;color:var(--primary);cursor:pointer;">Edit</button>';
+      html += '<button onclick="deleteAdvance(\'' + a.id + '\',\'' + recordId + '\',this)" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--card-border);background:transparent;color:var(--danger);cursor:pointer;">Delete</button>';
+      html += '</div></div>';
+      html += '<div style="font-size:11px;color:var(--text3);margin-top:4px;">' + (a.payment_date ? a.payment_date.slice(0,10) : 'No date') + (a.notes ? ' &mdash; ' + a.notes : '') + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    document.getElementById('historyContent').innerHTML = html;
+    document.getElementById('historyTotal').textContent = 'Total: ₹' + fmt(total);
+  }).catch(function(){ document.getElementById('historyContent').innerHTML = '<div style="color:var(--danger);">Failed to load</div>'; });
+}
+
+// ── EDIT ADVANCE ────────────────────────────
+function openEditAdvance(advId, recordId, amount, date, notes) {
+  document.getElementById('editAdv_id').value = advId;
+  document.getElementById('editAdv_recordId').value = recordId;
+  document.getElementById('editAdv_amount').value = amount;
+  document.getElementById('editAdv_date').value = date ? date.slice(0,10) : '';
+  document.getElementById('editAdv_notes').value = notes || '';
+  closeModal('historyModal');
+  openModal('editAdvModal');
+}
+
+function submitEditAdvance() {
+  var advId = document.getElementById('editAdv_id').value;
+  var recordId = document.getElementById('editAdv_recordId').value;
+  var amount = parseFloat(document.getElementById('editAdv_amount').value);
+  var dt = document.getElementById('editAdv_date').value;
+  var notes = document.getElementById('editAdv_notes').value.trim();
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'danger'); return; }
+  fetch('/api/salary/advance/edit', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({advance_id: advId, amount: amount, payment_date: dt, notes: notes})
   })
-  .catch(function(){
-    if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Request failed'; }
-    if (msgMob) { msgMob.style.color = 'var(--danger)'; msgMob.textContent = 'Request failed'; }
-    showToast('Request failed', 'danger');
-  });
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showToast('Advance updated!', 'success');
+      updateRowUI(recordId, d);
+      closeModal('editAdvModal');
+    } else {
+      showToast(d.message || 'Failed', 'danger');
+    }
+  }).catch(function(){ showToast('Request failed','danger'); });
+}
+
+// ── DELETE ADVANCE ────────────────────────────
+function deleteAdvance(advId, recordId, btn) {
+  if (!confirm('Delete this advance entry? This cannot be undone.')) return;
+  var row = btn.closest('[style*="background:var"]');
+  fetch('/api/salary/advance/delete', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({advance_id: advId})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showToast('Advance deleted', 'success');
+      updateRowUI(recordId, d);
+      if (row) row.remove();
+      var t = parseFloat(d.total_advance);
+      document.getElementById('historyTotal').textContent = 'Total: ₹' + fmt(t);
+    } else {
+      showToast(d.message || 'Failed', 'danger');
+    }
+  }).catch(function(){ showToast('Request failed','danger'); });
+}
+
+// ── MARK PAID ────────────────────────────
+function markPaid(button) {
+  var recordId = button.dataset.recordId;
+  var empId = button.dataset.empId;
+  var month = button.dataset.month;
+  if (!confirm('Mark salary as fully paid? This will record a final settlement advance for any remaining balance.')) return;
+  fetch('/api/salary/advance/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({record_id: recordId, amount: 999999999, payment_date: new Date().toISOString().slice(0,10), notes: 'Marked Paid'})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showToast('Salary marked as paid!', 'success');
+      updateRowUI(recordId, d);
+      var btn = document.getElementById('pay-btn-' + recordId);
+      if (btn) btn.outerHTML = '<span class="text-muted mono" id="pay-btn-' + recordId + '">&#10003;</span>';
+      var btnMob = document.getElementById('pay-btn-mob-' + recordId);
+      if (btnMob) btnMob.remove();
+    } else { showToast(d.message || 'Failed','danger'); }
+  }).catch(function(){ showToast('Request failed','danger'); });
 }
 </script>
 {% endblock %}

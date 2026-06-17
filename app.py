@@ -1041,17 +1041,44 @@ def attendance_summary():
     emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
     emps = serialize_docs(emps)
     
-    year, month_num = map(int, month_filter.split('-'))
-    total_days = calendar.monthrange(year, month_num)[1]
+    try:
+        year, month_num = map(int, month_filter.split('-'))
+    except ValueError:
+        year, month_num = datetime.now().year, datetime.now().month
+        month_filter = f"{year}-{month_num:02d}"
+        
+    total_days = 30
+    
+    current_date = datetime.now()
+    if year == current_date.year and month_num == current_date.month:
+        effective_days = min(current_date.day, 30)
+    elif (year > current_date.year) or (year == current_date.year and month_num > current_date.month):
+        effective_days = 0
+    else:
+        effective_days = total_days
+
+    # Batch query for absences (Fixes N+1 issue)
+    emp_ids = [ObjectId(e['id']) for e in emps] if emps else []
+    absent_map = {}
+    if emp_ids:
+        pipeline = [
+            {"$match": {
+                "emp_id": {"$in": emp_ids},
+                "status": "Absent",
+                "date": {"$regex": f"^{month_filter}"}
+            }},
+            {"$group": {
+                "_id": "$emp_id",
+                "absent_count": {"$sum": 1}
+            }}
+        ]
+        absent_cursor = db.attendance.aggregate(pipeline)
+        absent_map = {str(doc['_id']): doc['absent_count'] for doc in absent_cursor}
 
     summary = []
     for e in emps:
-        absent_days = db.attendance.count_documents({
-            "emp_id": ObjectId(e['id']),
-            "status": "Absent",
-            "date": {"$regex": f"^{month_filter}"}
-        })
-        present_days = total_days - absent_days
+        absent_days = absent_map.get(e['id'], 0)
+        present_days = max(effective_days - absent_days, 0)
         summary.append({
             'name': e['name'],
             'present': present_days,
@@ -1076,63 +1103,112 @@ def salary():
     emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
     emps = serialize_docs(emps)
     
-    year, month_num = map(int, month_filter.split('-'))
-    total_days = calendar.monthrange(year, month_num)[1]
+    try:
+        year, month_num = map(int, month_filter.split('-'))
+    except ValueError:
+        year, month_num = datetime.now().year, datetime.now().month
+        month_filter = f"{year}-{month_num:02d}"
+        
+    total_days = 30
+    
+    current_date = datetime.now()
+    if year == current_date.year and month_num == current_date.month:
+        effective_days = min(current_date.day, 30)
+    elif (year > current_date.year) or (year == current_date.year and month_num > current_date.month):
+        effective_days = 0
+    else:
+        effective_days = total_days
+
+    # Batch query for absences (Fixes N+1 issue)
+    emp_ids = [ObjectId(e['id']) for e in emps] if emps else []
+    absent_map = {}
+    salary_records_map = {}
+    advance_map = {}
+    
+    if emp_ids:
+        pipeline = [
+            {"$match": {
+                "emp_id": {"$in": emp_ids},
+                "status": "Absent",
+                "date": {"$regex": f"^{month_filter}"}
+            }},
+            {"$group": {
+                "_id": "$emp_id",
+                "absent_count": {"$sum": 1}
+            }}
+        ]
+        absent_cursor = db.attendance.aggregate(pipeline)
+        absent_map = {str(doc['_id']): doc['absent_count'] for doc in absent_cursor}
+        
+        records_cursor = db.salary_records.find({"emp_id": {"$in": emp_ids}, "month": month_filter})
+        for r in records_cursor:
+            salary_records_map[str(r['emp_id'])] = r
+            
+        record_ids = [r['_id'] for r in salary_records_map.values()]
+        if record_ids:
+            advances_cursor = db.salary_advance_payments.find({"salary_record_id": {"$in": record_ids}})
+            for adv in advances_cursor:
+                wid = str(adv['salary_record_id'])
+                advance_map[wid] = advance_map.get(wid, 0) + adv['amount']
 
     salary_details = []
     for e in emps:
-        absent_days = db.attendance.count_documents({
-            "emp_id": ObjectId(e['id']),
-            "status": "Absent",
-            "date": {"$regex": f"^{month_filter}"}
-        })
-        present_days = total_days - absent_days
+        absent_days = absent_map.get(e['id'], 0)
+        present_days = max(effective_days - absent_days, 0)
 
         salary_per_day = e.get('salary', 0.0) / total_days
         final_salary = round(salary_per_day * present_days, 2)
 
-        # Check existing record
-        rec = db.salary_records.find_one({"emp_id": ObjectId(e['id']), "month": month_filter})
+        rec = salary_records_map.get(e['id'])
 
         if not rec:
-            db.salary_records.insert_one({
+            res = db.salary_records.insert_one({
                 "emp_id": ObjectId(e['id']),
                 "month": month_filter,
                 "present_days": present_days,
                 "total_salary": final_salary,
                 "advance_amount_paid": 0.0,
                 "advance_paid_at": None,
-                "payment_status": "Unpaid",
+                "payment_status": "Pending",
                 "paid_at": None
             })
-            
-            payment_status = 'Unpaid'
+            record_id_str = str(res.inserted_id)
             paid_at = None
             advance_amount_paid = 0.0
-            advance_paid_at = None
         else:
-            if rec.get('payment_status') == 'Unpaid':
+            record_id_str = str(rec['_id'])
+            if rec.get('payment_status') in ['Unpaid', 'Pending']:
                 db.salary_records.update_one(
                     {"_id": rec['_id']},
                     {"$set": {"present_days": present_days, "total_salary": final_salary}}
                 )
             
-            payment_status = rec.get('payment_status', 'Unpaid')
             paid_at = rec.get('paid_at')
-            advance_amount_paid = rec.get('advance_amount_paid', 0.0)
-            advance_paid_at = rec.get('advance_paid_at')
+            advance_amount_paid = advance_map.get(record_id_str, 0.0)
 
         net_payable = round(final_salary - advance_amount_paid, 2)
+        
+        if advance_amount_paid > final_salary:
+            payment_status = 'Overpaid'
+        elif net_payable <= 0 and final_salary > 0:
+            payment_status = 'Settled'
+        elif final_salary == 0 and advance_amount_paid == 0:
+            payment_status = 'Pending'
+        else:
+            payment_status = 'Pending'
+            
+        if rec and rec.get('payment_status') != payment_status:
+            db.salary_records.update_one({"_id": ObjectId(record_id_str)}, {"$set": {"payment_status": payment_status}})
 
         salary_details.append({
             'id': e['id'],
+            'record_id': record_id_str,
             'name': e['name'],
             'monthly_salary': e['salary'],
             'present_days': present_days,
             'salary_per_day': round(salary_per_day, 2),
             'final_salary': final_salary,
             'advance_amount_paid': advance_amount_paid,
-            'advance_paid_at': advance_paid_at,
             'net_payable': net_payable,
             'payment_status': payment_status,
             'paid_at': paid_at
@@ -1419,6 +1495,175 @@ def salary_set_advance():
         'advance_paid_at': advance_paid_at,
         'net_payable': net_payable
     })
+
+
+# ─────────────────────────────────────────
+# SALARY ADVANCE LEDGER APIs
+# ─────────────────────────────────────────
+
+@app.route('/api/salary/advance/add', methods=['POST'])
+@limiter.limit("30 per minute")
+@login_required
+def api_salary_advance_add():
+    uid = get_current_user_id()
+    data = request.get_json() or {}
+    record_id = data.get('record_id')
+    amount = data.get('amount')
+    payment_date = data.get('payment_date')
+    notes = data.get('notes', '')
+
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            return jsonify({'success': False, 'message': 'Amount must be > 0'}), 400
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+
+    record_id_obj = safe_object_id(record_id)
+    if not record_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid Record ID'}), 400
+
+    rec = db.salary_records.find_one({"_id": record_id_obj})
+    if not rec:
+        return jsonify({'success': False, 'message': 'Salary record not found'}), 404
+
+    emp = db.employees.find_one({"_id": rec['emp_id'], "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+    db.salary_advance_payments.insert_one({
+        "salary_record_id": record_id_obj,
+        "emp_id": rec['emp_id'],
+        "user_id": ObjectId(uid),
+        "month": rec.get('month'),
+        "amount": amount,
+        "payment_date": payment_date,
+        "notes": notes,
+        "is_migrated": False,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
+    })
+
+    advances = list(db.salary_advance_payments.find({"salary_record_id": record_id_obj}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_salary = float(rec.get('total_salary', 0))
+    net_payable = round(total_salary - total_adv, 2)
+
+    if total_adv > total_salary:
+        status = 'Overpaid'
+    elif net_payable <= 0 and total_salary > 0:
+        status = 'Settled'
+    else:
+        status = 'Pending'
+
+    db.salary_records.update_one({"_id": record_id_obj}, {"$set": {"payment_status": status}})
+
+    return jsonify({'success': True, 'total_advance': total_adv, 'net_payable': net_payable, 'payment_status': status})
+
+
+@app.route('/api/salary/advance/edit', methods=['POST'])
+@limiter.limit("30 per minute")
+@login_required
+def api_salary_advance_edit():
+    uid = get_current_user_id()
+    data = request.get_json() or {}
+    adv_id = data.get('advance_id')
+    amount = data.get('amount')
+    payment_date = data.get('payment_date')
+    notes = data.get('notes', '')
+
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            return jsonify({'success': False, 'message': 'Amount must be > 0'}), 400
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+
+    adv_id_obj = safe_object_id(adv_id)
+    adv = db.salary_advance_payments.find_one({"_id": adv_id_obj})
+    if not adv:
+        return jsonify({'success': False, 'message': 'Advance not found'}), 404
+
+    emp = db.employees.find_one({"_id": adv['emp_id'], "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+    db.salary_advance_payments.update_one({"_id": adv_id_obj}, {"$set": {
+        "amount": amount, "payment_date": payment_date,
+        "notes": notes, "updated_at": datetime.now().isoformat()
+    }})
+
+    rec = db.salary_records.find_one({"_id": adv['salary_record_id']})
+    advances = list(db.salary_advance_payments.find({"salary_record_id": adv['salary_record_id']}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_salary = float(rec.get('total_salary', 0)) if rec else 0
+    net_payable = round(total_salary - total_adv, 2)
+
+    if total_adv > total_salary:
+        status = 'Overpaid'
+    elif net_payable <= 0 and total_salary > 0:
+        status = 'Settled'
+    else:
+        status = 'Pending'
+
+    db.salary_records.update_one({"_id": adv['salary_record_id']}, {"$set": {"payment_status": status}})
+
+    return jsonify({'success': True, 'total_advance': total_adv, 'net_payable': net_payable, 'payment_status': status})
+
+
+@app.route('/api/salary/advance/delete', methods=['POST'])
+@limiter.limit("30 per minute")
+@login_required
+def api_salary_advance_delete():
+    uid = get_current_user_id()
+    data = request.get_json() or {}
+    adv_id = data.get('advance_id')
+
+    adv_id_obj = safe_object_id(adv_id)
+    adv = db.salary_advance_payments.find_one({"_id": adv_id_obj})
+    if not adv:
+        return jsonify({'success': False, 'message': 'Advance not found'}), 404
+
+    emp = db.employees.find_one({"_id": adv['emp_id'], "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+    db.salary_advance_payments.delete_one({"_id": adv_id_obj})
+
+    rec = db.salary_records.find_one({"_id": adv['salary_record_id']})
+    advances = list(db.salary_advance_payments.find({"salary_record_id": adv['salary_record_id']}))
+    total_adv = sum(a['amount'] for a in advances)
+    total_salary = float(rec.get('total_salary', 0)) if rec else 0
+    net_payable = round(total_salary - total_adv, 2)
+
+    if total_adv > total_salary:
+        status = 'Overpaid'
+    elif net_payable <= 0 and total_salary > 0:
+        status = 'Settled'
+    else:
+        status = 'Pending'
+
+    db.salary_records.update_one({"_id": adv['salary_record_id']}, {"$set": {"payment_status": status}})
+
+    return jsonify({'success': True, 'total_advance': total_adv, 'net_payable': net_payable, 'payment_status': status})
+
+
+@app.route('/api/salary/advance/history/<record_id>', methods=['GET'])
+@login_required
+def api_salary_advance_history(record_id):
+    uid = get_current_user_id()
+    record_id_obj = safe_object_id(record_id)
+
+    rec = db.salary_records.find_one({"_id": record_id_obj})
+    if not rec:
+        return jsonify({'success': False, 'message': 'Not found'}), 404
+
+    emp = db.employees.find_one({"_id": rec['emp_id'], "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+    advances = list(db.salary_advance_payments.find({"salary_record_id": record_id_obj}).sort("created_at", 1))
+    return jsonify({'success': True, 'advances': serialize_docs(advances)})
 
 
 @app.route('/api/part-time/search', methods=['GET'])
