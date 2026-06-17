@@ -406,11 +406,7 @@
       <div class="topbar-left">
         <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
 
-        <div class="search-bar">
-          <i class="bi bi-search"></i>
-          <input type="text" id="global-search" placeholder="Search employees..." onkeyup="handleGlobalSearch(event)" style="border:none;outline:none;background:transparent;font-size:13px;width:100%;font-family:inherit;color:inherit;"/>
-          <span class="search-kbd">⌘K</span>
-        </div>
+
       </div>
 
       <div class="topbar-right">
@@ -1163,20 +1159,7 @@
     window.addEventListener('beforeunload',function(){ setLoaderState(true); });
   });
 
-  /* ── Ctrl/Cmd+K ── */
-  window.addEventListener('keydown',function(e){
-    if((e.metaKey||e.ctrlKey)&&e.key==='k'){
-      e.preventDefault();
-      var s=document.getElementById('global-search');
-      if(s) s.focus();
-    }
-  });
-  function handleGlobalSearch(e){
-    if(e.key==='Enter'){
-      var q=e.target.value.trim();
-      if(q){ setLoaderState(true); window.location.href='/employees?q='+encodeURIComponent(q); }
-    }
-  }
+
 
   /* ── Theme ── */
   function toggleTheme(){
