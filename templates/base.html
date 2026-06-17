@@ -55,6 +55,268 @@
   </script>
 
   {% block styles %}{% endblock %}
+
+  <style>
+  /* Global Premium Modal CSS */
+  .premium-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  .premium-modal-container {
+    background: #0F172A; /* Solid dark background */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    color: #FFFFFF;
+    animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    max-height: 90vh;
+  }
+
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .premium-modal-container {
+      max-width: 90%;
+      border-radius: 16px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .premium-modal-container {
+      max-width: 100% !important;
+      width: 100% !important;
+      height: auto;
+      max-height: 100vh;
+      border-radius: 20px 20px 0 0 !important;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .premium-modal-backdrop {
+      align-items: flex-end;
+    }
+  }
+
+  @keyframes modalSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .premium-modal-header {
+    padding: 24px 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .premium-modal-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1.2;
+  }
+
+  .premium-modal-subtitle {
+    font-size: 13px;
+    color: #CBD5E1;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  .premium-modal-close-btn {
+    background: transparent;
+    border: none;
+    color: #94A3B8;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+  }
+
+  .premium-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #FFFFFF;
+  }
+
+  .premium-modal-body {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  .premium-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .premium-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #CBD5E1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .premium-input {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .premium-input::placeholder {
+    color: #94A3B8;
+  }
+
+  .premium-input:focus {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    background: #1E293B;
+  }
+
+  .premium-modal-footer {
+    padding: 24px 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .btn-premium-cancel {
+    background: transparent;
+    border: 1px solid #475569;
+    color: #FFFFFF;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-premium-cancel:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: #64748b;
+  }
+
+  .btn-premium-save {
+    background: linear-gradient(135deg, #2563EB, #3B82F6);
+    border: none;
+    color: #FFFFFF;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  }
+
+  .btn-premium-save:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  }
+
+  .btn-premium-save:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Searchable Select Widget */
+  .premium-select-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  .premium-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 4px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  }
+
+  .premium-select-option {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #FFFFFF;
+    transition: background 0.15s ease;
+  }
+
+  .premium-select-option:hover {
+    background: #3B82F6;
+  }
+
+  .premium-select-option.no-results {
+    color: #94A3B8;
+    cursor: default;
+    text-align: center;
+  }
+  </style>
 </head>
 
 <body style="min-height:100vh;">
@@ -106,8 +368,8 @@
       <div>
         <span class="nav-section-label">Data</span>
         <div class="nav-links">
-          <a href="{{ url_for('export_data') }}" class="nav-link">
-            <i class="bi bi-download"></i><span>Export CSV</span>
+          <a href="#" onclick="openExportModal(event)" class="nav-link">
+            <i class="bi bi-download"></i><span>Export Data</span>
           </a>
         </div>
       </div>
@@ -772,6 +1034,70 @@
   </div>
 </div><!-- end legal-panel -->
 
+<!-- ── EXPORT DATA MODAL ─────────────────────────── -->
+<div id="exportModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'exportModal')">
+  <div class="premium-modal-container" style="max-width: 600px;">
+    <div class="premium-modal-header">
+      <div>
+        <div class="premium-modal-title">Export Data</div>
+        <div class="premium-modal-subtitle">Configure format, filters, and target records</div>
+      </div>
+      <button class="premium-modal-close-btn" onclick="closeModal('exportModal')" aria-label="Close">&times;</button>
+    </div>
+    
+    <div class="premium-modal-body">
+      <div class="premium-field-group">
+        <label for="exportTypeSelect" class="premium-label">Export Option *</label>
+        <select id="exportTypeSelect" class="premium-input" onchange="handleExportTypeChange()">
+          <option value="all_employees">Export All Employees (Standard)</option>
+          <option value="specific_employee">Export Specific Employee</option>
+          <option value="all_part_time">Export All Part-Time Workers</option>
+          <option value="specific_part_time">Export Specific Part-Time Worker</option>
+        </select>
+      </div>
+
+      <!-- Searchable Employee Field -->
+      <div class="premium-field-group" id="employeeSelectGroup" style="display:none; position:relative;">
+        <label for="employeeSearchInput" class="premium-label">Select Employee *</label>
+        <div class="premium-select-wrapper">
+          <input type="text" id="employeeSearchInput" class="premium-input" placeholder="Type to search employee..." onfocus="showSearchDropdown('employee')" oninput="filterSearchOptions('employee')" autocomplete="off"/>
+          <input type="hidden" id="selectedEmployeeId"/>
+          <div id="employeeDropdownList" class="premium-select-dropdown" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Searchable Worker Field -->
+      <div class="premium-field-group" id="workerSelectGroup" style="display:none; position:relative;">
+        <label for="workerSearchInput" class="premium-label">Select Part-Time Worker *</label>
+        <div class="premium-select-wrapper">
+          <input type="text" id="workerSearchInput" class="premium-input" placeholder="Type to search worker..." onfocus="showSearchDropdown('worker')" oninput="filterSearchOptions('worker')" autocomplete="off"/>
+          <input type="hidden" id="selectedWorkerId"/>
+          <div id="workerDropdownList" class="premium-select-dropdown" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Date Range Fields -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="premium-field-group">
+          <label for="export_start_date" class="premium-label">Start Date</label>
+          <input type="date" id="export_start_date" class="premium-input"/>
+        </div>
+        <div class="premium-field-group">
+          <label for="export_end_date" class="premium-label">End Date</label>
+          <input type="date" id="export_end_date" class="premium-input"/>
+        </div>
+      </div>
+    </div>
+    
+    <div class="premium-modal-footer">
+      <button class="btn-premium-cancel" onclick="closeModal('exportModal')">Cancel</button>
+      <button id="triggerExportBtn" class="btn-premium-save" onclick="triggerExport()">
+        <i class="bi bi-download"></i> Export Excel
+      </button>
+    </div>
+  </div>
+</div>
+
 {% else %}
   {% block auth_content %}{% endblock %}
 {% endif %}
@@ -1108,8 +1434,148 @@ function toggleSection(headerEl) {
 
 /* Close on Escape */
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeLegalPanel();
+  if (e.key === 'Escape') {
+    closeLegalPanel();
+    closeModal('exportModal');
+  }
 });
+
+/* ══ EXPORT MODAL JS ══════════════════════════════════ */
+var _exportEmployees = [];
+var _exportWorkers = [];
+
+function openExportModal(event, defaultType) {
+  if (event) event.preventDefault();
+  
+  // Reset fields
+  document.getElementById('exportTypeSelect').value = defaultType || 'all_employees';
+  handleExportTypeChange();
+  
+  openModal('exportModal');
+  
+  // Fetch lists
+  fetch('/api/export/options')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        _exportEmployees = d.employees;
+        _exportWorkers = d.part_time_workers;
+        
+        renderDropdownOptions('employee', _exportEmployees);
+        renderDropdownOptions('worker', _exportWorkers);
+      }
+    })
+    .catch(function(err) { console.error("Failed to load export options", err); });
+}
+
+function renderDropdownOptions(type, items) {
+  var list = document.getElementById(type + 'DropdownList');
+  if (!list) return;
+  list.innerHTML = '';
+  
+  if (items.length === 0) {
+    list.innerHTML = '<div class="premium-select-option no-results">No matches found</div>';
+    return;
+  }
+  
+  items.forEach(function(item) {
+    var opt = document.createElement('div');
+    opt.className = 'premium-select-option';
+    opt.textContent = item.name;
+    opt.onclick = function() {
+      document.getElementById(type + 'SearchInput').value = item.name;
+      document.getElementById('selected' + capitalize(type) + 'Id').value = item.id;
+      list.style.display = 'none';
+    };
+    list.appendChild(opt);
+  });
+}
+
+function showSearchDropdown(type) {
+  closeAllSearchDropdowns();
+  var list = document.getElementById(type + 'DropdownList');
+  if (list) {
+    list.style.display = 'block';
+  }
+}
+
+// Global outside click handler for dropdown closing
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.premium-select-wrapper')) {
+    closeAllSearchDropdowns();
+  }
+});
+
+function filterSearchOptions(type) {
+  var input = document.getElementById(type + 'SearchInput');
+  var query = input.value.toLowerCase().trim();
+  
+  var items = (type === 'employee') ? _exportEmployees : _exportWorkers;
+  var filtered = items.filter(function(item) {
+    return item.name.toLowerCase().indexOf(query) !== -1;
+  });
+  
+  renderDropdownOptions(type, filtered);
+}
+
+function closeAllSearchDropdowns() {
+  var elList = document.getElementById('employeeDropdownList');
+  var wList = document.getElementById('workerDropdownList');
+  if (elList) elList.style.display = 'none';
+  if (wList) wList.style.display = 'none';
+}
+
+function handleExportTypeChange() {
+  var type = document.getElementById('exportTypeSelect').value;
+  var empGroup = document.getElementById('employeeSelectGroup');
+  var workerGroup = document.getElementById('workerSelectGroup');
+  
+  if (empGroup) empGroup.style.display = 'none';
+  if (workerGroup) workerGroup.style.display = 'none';
+  
+  // Clear values
+  document.getElementById('selectedEmployeeId').value = '';
+  document.getElementById('employeeSearchInput').value = '';
+  document.getElementById('selectedWorkerId').value = '';
+  document.getElementById('workerSearchInput').value = '';
+  
+  if (type === 'specific_employee') {
+    if (empGroup) empGroup.style.display = 'block';
+  } else if (type === 'specific_part_time') {
+    if (workerGroup) workerGroup.style.display = 'block';
+  }
+}
+
+function triggerExport() {
+  var type = document.getElementById('exportTypeSelect').value;
+  var empId = document.getElementById('selectedEmployeeId').value;
+  var workerId = document.getElementById('selectedWorkerId').value;
+  var start = document.getElementById('export_start_date').value;
+  var end = document.getElementById('export_end_date').value;
+  
+  if (type === 'specific_employee' && !empId) {
+    showToast('Please select an employee', 'danger');
+    return;
+  }
+  if (type === 'specific_part_time' && !workerId) {
+    showToast('Please select a worker', 'danger');
+    return;
+  }
+  
+  var params = new URLSearchParams();
+  params.append('export_type', type);
+  if (empId) params.append('employee_id', empId);
+  if (workerId) params.append('worker_id', workerId);
+  if (start) params.append('start_date', start);
+  if (end) params.append('end_date', end);
+  
+  window.location.href = '/export?' + params.toString();
+  closeModal('exportModal');
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 </script>
 </body>
 </html>

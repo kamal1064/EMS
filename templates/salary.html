@@ -358,9 +358,9 @@
 {% endblock %}
 
 {% block top_actions %}
-<a href="{{ url_for('export_data') }}" class="btn-saas btn-saas-md btn-saas-secondary">
+<a href="#" onclick="openExportModal(event, 'all_employees')" class="btn-saas btn-saas-md btn-saas-secondary">
   <i class="bi bi-download"></i>
-  <span>Export CSV</span>
+  <span>Export Data</span>
 </a>
 {% endblock %}
 

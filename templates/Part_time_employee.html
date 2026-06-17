@@ -2,14 +2,12 @@
 {% block title %}Part Time Work{% endblock %}
 {% block page_title %}Part Time Work{% endblock %}
 {% block page_subtitle %}Track slab deliveries, per-unit pricing, and advance payments{% endblock %}
-
 {% block top_actions %}
-<span class="text-xs text-slate-500 dark:text-textsecondary flex items-center gap-2 font-medium bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-xl px-3 py-1.5">
-  <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
-  <span>Freelance Slab Tracking System</span>
-</span>
+<a href="#" onclick="openExportModal(event, 'all_part_time')" class="btn-saas btn-saas-md btn-saas-secondary">
+  <i class="bi bi-download"></i>
+  <span>Export Data</span>
+</a>
 {% endblock %}
-
 {% block content %}
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
   <!-- Log Work Entry Form -->

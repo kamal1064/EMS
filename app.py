@@ -2023,69 +2023,507 @@ def api_worker_summary(worker_id):
 # EXPORT
 # ─────────────────────────────────────────
 
+# ─────────────────────────────────────────
+# EXPORT
+# ─────────────────────────────────────────
+
+@app.route('/api/export/options')
+@limiter.limit("60 per minute")
+@login_required
+def get_export_options():
+    uid = get_current_user_id()
+    employees = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    
+    return jsonify({
+        "success": True,
+        "employees": [{"id": str(e['_id']), "name": e.get('name')} for e in employees],
+        "part_time_workers": [{"id": str(w['_id']), "name": w.get('name')} for w in pt_workers]
+    })
+
 @app.route('/export')
-@limiter.limit("10 per minute")         # CSV export is expensive — cap it
+@limiter.limit("10 per minute")         # Excel export is expensive — cap it
 @login_required
 def export_data():
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
     uid = get_current_user_id()
+    export_type = request.args.get('export_type', 'all_employees')
+    employee_id = request.args.get('employee_id')
+    worker_id = request.args.get('worker_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
 
-    output = io.StringIO()
-    writer = csv.writer(output)
+    # Validate date formats
+    if start_date:
+        try:
+            datetime.strptime(start_date, '%Y-%m-%d')
+        except ValueError:
+            start_date = None
+    if end_date:
+        try:
+            datetime.strptime(end_date, '%Y-%m-%d')
+        except ValueError:
+            end_date = None
 
-    # === EMPLOYEES ===
-    writer.writerow(['=== EMPLOYEES ==='])
-    writer.writerow(['ID', 'Name', 'Phone', 'Age', 'Gender',
-                    'Monthly Salary', 'Leaves', 'Working Hours/Week'])
-    emps = list(db.employees.find({"user_id": ObjectId(uid)}))
-    emp_map = {}
-    for e in emps:
-        emp_id_str = str(e['_id'])
-        emp_map[e['_id']] = e.get('name', 'Unknown')
-        writer.writerow([
-            emp_id_str, e.get('name'), e.get('phone'), e.get('age'),
-            e.get('gender'), e.get('salary'), e.get('leaves'), e.get('working_hours')
-        ])
+    # Default date range to current month-to-date if not provided
+    today_val = date.today()
+    start_date_str = start_date or today_val.replace(day=1).isoformat()
+    end_date_str = end_date or today_val.isoformat()
 
-    writer.writerow([])
+    try:
+        d1 = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        d2 = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+        if d1 > d2:
+            d1, d2 = d2, d1
+        delta = d2 - d1
+        date_list = [(d1 + timedelta(days=i)).isoformat() for i in range(delta.days + 1)]
+    except Exception:
+        date_list = [today_val.isoformat()]
 
-    # === ATTENDANCE ===
-    writer.writerow(['=== ATTENDANCE ==='])
-    writer.writerow(['Employee ID', 'Employee Name', 'Date', 'Status'])
-    emp_ids = list(emp_map.keys())
-    attendance_records = list(db.attendance.find({"emp_id": {"$in": emp_ids}}).sort("date", -1))
-    for a in attendance_records:
-        writer.writerow([
-            str(a['emp_id']),
-            emp_map.get(a['emp_id'], 'Unknown'),
-            a.get('date'),
-            a.get('status')
-        ])
+    # Styling Palettes
+    thin_border = Border(
+        left=Side(style='thin', color='DDDDDD'),
+        right=Side(style='thin', color='DDDDDD'),
+        top=Side(style='thin', color='DDDDDD'),
+        bottom=Side(style='thin', color='DDDDDD')
+    )
+    header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+    header_font = Font(name="Plus Jakarta Sans", size=11, bold=True, color="FFFFFF")
+    data_font = Font(name="Plus Jakarta Sans", size=10)
+    total_font = Font(name="Plus Jakarta Sans", size=11, bold=True)
+    title_font = Font(name="Plus Jakarta Sans", size=16, bold=True, color="1E293B")
 
-    writer.writerow([])
+    def style_ws(ws, title=None, headers=None, rows=None, summary_row=None):
+        ws.views.sheetView[0].showGridLines = True
+        current_row = 1
+        if title:
+            ws.cell(row=current_row, column=1, value=title).font = title_font
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(headers) if headers else 4)
+            current_row += 2
+            
+        if headers:
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=current_row, column=col_num, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                cell.border = thin_border
+            ws.row_dimensions[current_row].height = 28
+            current_row += 1
+            
+        if rows:
+            for r_idx, r_data in enumerate(rows, current_row):
+                for c_idx, val in enumerate(r_data, 1):
+                    cell = ws.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = data_font
+                    cell.border = thin_border
+                    
+                    if isinstance(val, (int, float)):
+                        header_name = headers[c_idx - 1].lower() if headers and c_idx - 1 < len(headers) else ""
+                        if any(term in header_name for term in ["salary", "amount", "advance", "deduction", "net", "price", "balance", "total"]):
+                            cell.number_format = '₹#,##0.00'
+                            cell.alignment = Alignment(horizontal="right")
+                        else:
+                            cell.number_format = '#,##0'
+                            cell.alignment = Alignment(horizontal="right")
+                    elif isinstance(val, (datetime, date)):
+                        cell.number_format = 'YYYY-MM-DD'
+                        cell.alignment = Alignment(horizontal="center")
+                    elif isinstance(val, str) and len(val) == 10 and val.count('-') == 2:
+                        cell.alignment = Alignment(horizontal="center")
+                    else:
+                        cell.alignment = Alignment(horizontal="left")
+                ws.row_dimensions[r_idx].height = 20
+                current_row += 1
+                
+        if summary_row:
+            for c_idx, val in enumerate(summary_row, 1):
+                if val is not None:
+                    cell = ws.cell(row=current_row, column=c_idx, value=val)
+                    cell.font = total_font
+                    cell.border = thin_border
+                    
+                    header_name = headers[c_idx - 1].lower() if headers and c_idx - 1 < len(headers) else ""
+                    if any(term in header_name for term in ["salary", "amount", "advance", "deduction", "net", "price", "balance", "total"]):
+                        cell.number_format = '₹#,##0.00'
+                    
+                    if isinstance(val, str):
+                        cell.alignment = Alignment(horizontal="left")
+                    elif isinstance(val, (int, float)):
+                        cell.alignment = Alignment(horizontal="right")
+            ws.row_dimensions[current_row].height = 24
+            
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                if cell.value is not None:
+                    val_str = str(cell.value)
+                    if cell.number_format == '₹#,##0.00' and isinstance(cell.value, (int, float)):
+                        val_str = f"Rs. {val_str}"
+                    max_len = max(max_len, len(val_str))
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
-    # === SALARY ===
-    writer.writerow(['=== SALARY RECORDS ==='])
-    writer.writerow(['Employee ID', 'Employee Name', 'Month',
-                    'Present Days', 'Total Salary', 'Advance Amount Paid', 'Payment Status', 'Paid At'])
-    salary_records = list(db.salary_records.find({"emp_id": {"$in": emp_ids}}).sort("month", -1))
-    for s in salary_records:
-        writer.writerow([
-            str(s['emp_id']),
-            emp_map.get(s['emp_id'], 'Unknown'),
-            s.get('month'),
-            s.get('present_days'),
-            s.get('total_salary'),
-            s.get('advance_amount_paid'),
-            s.get('payment_status'),
-            s.get('paid_at')
-        ])
+    wb = openpyxl.Workbook()
 
-    output.seek(0)
+    if export_type in ['all_employees', 'specific_employee']:
+        # Fetch Employees
+        emp_filter = {"user_id": ObjectId(uid)}
+        if export_type == 'specific_employee' and employee_id:
+            emp_id_obj = safe_object_id(employee_id)
+            if emp_id_obj:
+                emp_filter["_id"] = emp_id_obj
+        
+        emps = list(db.employees.find(emp_filter).sort("name", 1))
+        emp_ids = [e['_id'] for e in emps]
+        emp_map = {e['_id']: e for e in emps}
+
+        # 1. Fetch Attendance Logs
+        att_query = {"emp_id": {"$in": emp_ids}}
+        if start_date or end_date:
+            att_query["date"] = {}
+            if start_date:
+                att_query["date"]["$gte"] = start_date
+            if end_date:
+                att_query["date"]["$lte"] = end_date
+        attendance_list = list(db.attendance.find(att_query))
+        
+        att_by_emp = {}
+        for a in attendance_list:
+            eid = str(a['emp_id'])
+            if eid not in att_by_emp:
+                att_by_emp[eid] = {}
+            att_by_emp[eid][a['date']] = a.get('status', 'Absent')
+
+        # 2. Fetch Salary Records (for the unique months spanned)
+        months = sorted(list(set(dt[:7] for dt in date_list)))
+        salary_records_list = list(db.salary_records.find({
+            "emp_id": {"$in": emp_ids},
+            "month": {"$in": months}
+        }))
+        
+        sal_by_emp = {}
+        for s in salary_records_list:
+            eid = str(s['emp_id'])
+            m = s['month']
+            if eid not in sal_by_emp:
+                sal_by_emp[eid] = {}
+            sal_by_emp[eid][m] = s
+
+        # 3. Fetch Advances
+        adv_query = {"emp_id": {"$in": emp_ids}}
+        if start_date or end_date:
+            adv_query["payment_date"] = {}
+            if start_date:
+                adv_query["payment_date"]["$gte"] = start_date
+            if end_date:
+                adv_query["payment_date"]["$lte"] = end_date
+        advances_list = list(db.salary_advance_payments.find(adv_query).sort("payment_date", -1))
+        
+        adv_sum_by_emp = {}
+        for adv in advances_list:
+            eid = str(adv['emp_id'])
+            adv_sum_by_emp[eid] = adv_sum_by_emp.get(eid, 0.0) + adv['amount']
+
+        # --- SHEET 1: SUMMARY ---
+        ws_summary = wb.active
+        ws_summary.title = "Summary"
+        summary_headers = [
+            "Employee ID", "Employee Name", "Department", "Phone Number", 
+            "Joining Date", "Base Salary", "Present Days", "Absent Days", 
+            "Leave Days", "Half Days", "Gross Salary", "Salary Advances", 
+            "Deductions", "Net Salary", "Payment Status"
+        ]
+        
+        summary_rows = []
+        tot_base = tot_gross = tot_adv = tot_ded = tot_net = 0.0
+        
+        for e in emps:
+            eid_str = str(e['_id'])
+            p_days = a_days = l_days = h_days = 0
+            
+            for dt in date_list:
+                status = att_by_emp.get(eid_str, {}).get(dt)
+                if status == 'Absent':
+                    a_days += 1
+                elif status == 'Leave':
+                    l_days += 1
+                elif status == 'Half Day':
+                    h_days += 1
+                else:
+                    p_days += 1
+            
+            base_sal = float(e.get('salary', 0.0))
+            daily_rate = base_sal / 30.0
+            # Gross based on present + half days
+            gross = round(daily_rate * (p_days + (h_days * 0.5)), 2)
+            adv_paid = round(adv_sum_by_emp.get(eid_str, 0.0), 2)
+            deductions = adv_paid
+            net = round(gross - deductions, 2)
+            
+            # Aggregate status
+            statuses = [sal_by_emp.get(eid_str, {}).get(m, {}).get('payment_status', 'Pending') for m in months]
+            if not statuses:
+                p_status = 'Pending'
+            elif 'Overpaid' in statuses:
+                p_status = 'Overpaid'
+            elif all(st == 'Settled' for st in statuses):
+                p_status = 'Settled'
+            else:
+                p_status = 'Pending'
+                
+            tot_base += base_sal
+            tot_gross += gross
+            tot_adv += adv_paid
+            tot_ded += deductions
+            tot_net += net
+            
+            joining_date = e.get('joining_date') or (e.get('created_at')[:10] if e.get('created_at') else 'N/A')
+            
+            summary_rows.append([
+                eid_str,
+                e.get('name', 'Unknown'),
+                e.get('department', 'N/A'),
+                e.get('phone', 'N/A'),
+                joining_date,
+                base_sal,
+                p_days,
+                a_days,
+                l_days,
+                h_days,
+                gross,
+                adv_paid,
+                deductions,
+                net,
+                p_status
+            ])
+            
+        summary_totals = [
+            "TOTAL", "", "", "", "", tot_base, None, None, None, None, 
+            tot_gross, tot_adv, tot_ded, tot_net, ""
+        ]
+        
+        title_suffix = f" ({start_date_str} to {end_date_str})"
+        style_ws(ws_summary, f"Employee Summary{title_suffix}", summary_headers, summary_rows, summary_totals)
+
+        # --- SHEET 2: ATTENDANCE ---
+        ws_attendance = wb.create_sheet(title="Attendance")
+        att_headers = ["Employee ID", "Employee Name", "Date", "Status"]
+        att_rows = []
+        for e in emps:
+            eid_str = str(e['_id'])
+            for dt in date_list:
+                status = att_by_emp.get(eid_str, {}).get(dt, 'Present')
+                att_rows.append([
+                    eid_str,
+                    e.get('name', 'Unknown'),
+                    dt,
+                    status
+                ])
+        style_ws(ws_attendance, f"Attendance Logs{title_suffix}", att_headers, att_rows)
+
+        # --- SHEET 3: SALARY ---
+        ws_salary = wb.create_sheet(title="Salary")
+        sal_headers = [
+            "Employee ID", "Employee Name", "Month", "Base Salary", 
+            "Present Days", "Gross Salary", "Total Advances", "Net Salary", "Payment Status"
+        ]
+        sal_rows = []
+        for e in emps:
+            eid_str = str(e['_id'])
+            for m in months:
+                rec = sal_by_emp.get(eid_str, {}).get(m, {})
+                base_sal = float(e.get('salary', 0.0))
+                p_days = rec.get('present_days', 30)
+                gross = rec.get('total_salary', base_sal)
+                adv = rec.get('advance_amount_paid', 0.0)
+                net = round(gross - adv, 2)
+                st = rec.get('payment_status', 'Pending')
+                
+                sal_rows.append([
+                    eid_str,
+                    e.get('name', 'Unknown'),
+                    m,
+                    base_sal,
+                    p_days,
+                    gross,
+                    adv,
+                    net,
+                    st
+                ])
+        style_ws(ws_salary, f"Monthly Salary Records", sal_headers, sal_rows)
+
+        # --- SHEET 4: ADVANCES ---
+        ws_advances = wb.create_sheet(title="Advances")
+        adv_headers = ["Employee ID", "Employee Name", "Advance Amount", "Payment Date", "Notes", "Is Migrated"]
+        adv_rows = []
+        for adv in advances_list:
+            emp = emp_map.get(adv['emp_id'], {})
+            adv_rows.append([
+                str(adv['emp_id']),
+                emp.get('name', 'Unknown'),
+                adv['amount'],
+                adv.get('payment_date', 'N/A'),
+                adv.get('notes', ''),
+                adv.get('is_migrated', False)
+            ])
+        style_ws(ws_advances, f"Salary Advances Ledger{title_suffix}", adv_headers, adv_rows)
+
+    elif export_type in ['all_part_time', 'specific_part_time']:
+        # Fetch Workers
+        worker_filter = {"user_id": ObjectId(uid)}
+        if export_type == 'specific_part_time' and worker_id:
+            w_id_obj = safe_object_id(worker_id)
+            if w_id_obj:
+                worker_filter["_id"] = w_id_obj
+                
+        workers = list(db.part_time_workers.find(worker_filter).sort("name", 1))
+        worker_ids = [w['_id'] for w in workers]
+        worker_map = {w['_id']: w for w in workers}
+
+        # Fetch Work Logs
+        log_query = {"worker_id": {"$in": worker_ids}}
+        if start_date or end_date:
+            log_query["working_date"] = {}
+            if start_date:
+                log_query["working_date"]["$gte"] = start_date
+            if end_date:
+                log_query["working_date"]["$lte"] = end_date
+        work_logs = list(db.part_time_work_logs.find(log_query).sort("working_date", -1))
+        log_ids = [l['_id'] for l in work_logs]
+        log_map = {l['_id']: l for l in work_logs}
+
+        # Fetch Advances
+        adv_query = {"work_log_id": {"$in": log_ids}}
+        advances = list(db.advance_payments.find(adv_query).sort("payment_date", -1))
+        
+        # Aggregate totals
+        totals_by_worker = {}
+        advances_by_log = {}
+        
+        for adv in advances:
+            lid = adv['work_log_id']
+            advances_by_log[lid] = advances_by_log.get(lid, 0.0) + adv['amount']
+            
+        for w in workers:
+            totals_by_worker[w['_id']] = {
+                "total_work": 0.0,
+                "total_adv": 0.0,
+                "pending_count": 0
+            }
+            
+        for log in work_logs:
+            wid = log['worker_id']
+            l_adv = advances_by_log.get(log['_id'], 0.0)
+            totals_by_worker[wid]["total_work"] += float(log.get('total_price', 0.0))
+            totals_by_worker[wid]["total_adv"] += l_adv
+            if log.get('payment_status') == 'Pending':
+                totals_by_worker[wid]["pending_count"] += 1
+
+        # --- SHEET 1: WORKER SUMMARY ---
+        ws_summary = wb.active
+        ws_summary.title = "Worker Summary"
+        worker_headers = [
+            "Worker ID", "Worker Name", "Total Work Amount", 
+            "Total Advances", "Remaining Balance", "Payment Status"
+        ]
+        worker_rows = []
+        tot_work = tot_adv = tot_bal = 0.0
+        
+        for w in workers:
+            stats = totals_by_worker[w['_id']]
+            work_amt = stats["total_work"]
+            adv_amt = stats["total_adv"]
+            bal = round(work_amt - adv_amt, 2)
+            
+            p_status = 'Paid' if stats["pending_count"] == 0 and work_amt > 0 else 'Pending'
+            if adv_amt > work_amt:
+                p_status = 'Overpaid'
+                
+            tot_work += work_amt
+            tot_adv += adv_amt
+            tot_bal += bal
+            
+            worker_rows.append([
+                str(w['_id']),
+                w.get('name', 'Unknown'),
+                work_amt,
+                adv_amt,
+                bal,
+                p_status
+            ])
+            
+        summary_totals = [
+            "TOTAL", "", tot_work, tot_adv, tot_bal, ""
+        ]
+        title_suffix = f" ({start_date_str} to {end_date_str})"
+        style_ws(ws_summary, f"Part-Time Worker Summary{title_suffix}", worker_headers, worker_rows, summary_totals)
+
+        # --- SHEET 2: WORK LOGS ---
+        ws_logs = wb.create_sheet(title="Work Logs")
+        log_headers = [
+            "Worker ID", "Worker Name", "Work Log ID", "Working Date", 
+            "Client Name", "Delivery Location", "Slab Quantity", 
+            "Price Per Slab", "Gross Amount", "Total Advances", "Remaining Balance", "Payment Status"
+        ]
+        log_rows = []
+        for log in work_logs:
+            w = worker_map.get(log['worker_id'], {})
+            lid = log['_id']
+            l_adv = advances_by_log.get(lid, 0.0)
+            gross = float(log.get('total_price', 0.0))
+            bal = round(gross - l_adv, 2)
+            
+            log_rows.append([
+                str(log['worker_id']),
+                w.get('name', 'Unknown'),
+                str(lid),
+                log.get('working_date', 'N/A'),
+                log.get('client_name', 'N/A'),
+                log.get('delivery_location', 'N/A'),
+                log.get('slab_quantity', 0),
+                log.get('slab_price', 0.0),
+                gross,
+                l_adv,
+                bal,
+                log.get('payment_status', 'Pending')
+            ])
+        style_ws(ws_logs, f"Part-Time Work Logs{title_suffix}", log_headers, log_rows)
+
+        # --- SHEET 3: ADVANCE HISTORY ---
+        ws_advances = wb.create_sheet(title="Advance History")
+        adv_headers = [
+            "Worker ID", "Worker Name", "Work Log ID", 
+            "Advance Amount", "Advance Date", "Advance Notes"
+        ]
+        adv_rows = []
+        for adv in advances:
+            log = log_map.get(adv['work_log_id'], {})
+            w = worker_map.get(log.get('worker_id'), {})
+            adv_rows.append([
+                str(log.get('worker_id', '')),
+                w.get('name', 'Unknown'),
+                str(adv['work_log_id']),
+                adv['amount'],
+                adv.get('payment_date', 'N/A'),
+                adv.get('notes', '')
+            ])
+        style_ws(ws_advances, f"Part-Time Advances Ledger{title_suffix}", adv_headers, adv_rows)
+
+    # Output to buffer
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+    
+    filename = f"export_{export_type}_{date.today().isoformat()}.xlsx"
     return send_file(
-        io.BytesIO(output.getvalue().encode('utf-8')),
-        mimetype='text/csv',
+        out,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name=f'employee_data_{date.today().isoformat()}.csv'
+        download_name=filename
     )
 
 
