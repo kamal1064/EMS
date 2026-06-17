@@ -2180,15 +2180,13 @@ def export_data():
         emps = list(db.employees.find(emp_filter).sort("name", 1))
         emp_ids = [e['_id'] for e in emps]
         emp_map = {e['_id']: e for e in emps}
+        months = sorted(list(set(dt[:7] for dt in date_list)))
 
-        # 1. Fetch Attendance Logs
+        # 1. Fetch Attendance Logs (defaults to current month if dates are omitted)
         att_query = {"emp_id": {"$in": emp_ids}}
-        if start_date or end_date:
-            att_query["date"] = {}
-            if start_date:
-                att_query["date"]["$gte"] = start_date
-            if end_date:
-                att_query["date"]["$lte"] = end_date
+        q_start = start_date or start_date_str
+        q_end = end_date or end_date_str
+        att_query["date"] = {"$gte": q_start, "$lte": q_end}
         attendance_list = list(db.attendance.find(att_query))
         
         att_by_emp = {}
@@ -2198,12 +2196,11 @@ def export_data():
                 att_by_emp[eid] = {}
             att_by_emp[eid][a['date']] = a.get('status', 'Absent')
 
-        # 2. Fetch Salary Records (for the unique months spanned)
-        months = sorted(list(set(dt[:7] for dt in date_list)))
-        salary_records_list = list(db.salary_records.find({
-            "emp_id": {"$in": emp_ids},
-            "month": {"$in": months}
-        }))
+        # 2. Fetch Salary Records (all-time if no explicit dates, otherwise restricted to selected range)
+        sal_query = {"emp_id": {"$in": emp_ids}}
+        if start_date or end_date:
+            sal_query["month"] = {"$in": months}
+        salary_records_list = list(db.salary_records.find(sal_query))
         
         sal_by_emp = {}
         for s in salary_records_list:
@@ -2213,7 +2210,7 @@ def export_data():
                 sal_by_emp[eid] = {}
             sal_by_emp[eid][m] = s
 
-        # 3. Fetch Advances
+        # 3. Fetch Advances (all-time if no explicit dates, otherwise restricted to selected range)
         adv_query = {"emp_id": {"$in": emp_ids}}
         if start_date or end_date:
             adv_query["payment_date"] = {}
@@ -2223,8 +2220,15 @@ def export_data():
                 adv_query["payment_date"]["$lte"] = end_date + " 23:59:59"
         advances_list = list(db.salary_advance_payments.find(adv_query).sort("payment_date", -1))
         
+        # 4. Fetch Advances for Summary calculation (must default to current month's advances if dates omitted)
+        summary_adv_query = {"emp_id": {"$in": emp_ids}}
+        s_start = start_date or start_date_str
+        s_end = end_date or end_date_str
+        summary_adv_query["payment_date"] = {"$gte": s_start, "$lte": s_end + " 23:59:59"}
+        summary_advances_list = list(db.salary_advance_payments.find(summary_adv_query))
+        
         adv_sum_by_emp = {}
-        for adv in advances_list:
+        for adv in summary_advances_list:
             eid = str(adv['emp_id'])
             adv_sum_by_emp[eid] = adv_sum_by_emp.get(eid, 0.0) + adv['amount']
 
@@ -2332,9 +2336,17 @@ def export_data():
             "Present Days", "Gross Salary", "Total Advances", "Net Salary", "Payment Status"
         ]
         sal_rows = []
+        # Determine the months to show in the Salary sheet
+        if start_date or end_date:
+            sal_months = months
+        else:
+            sal_months = sorted(list(set(s['month'] for s in salary_records_list)))
+            if not sal_months:
+                sal_months = [today_val.strftime('%Y-%m')]
+
         for e in emps:
             eid_str = str(e['_id'])
-            for m in months:
+            for m in sal_months:
                 rec = sal_by_emp.get(eid_str, {}).get(m, {})
                 base_sal = float(e.get('salary', 0.0))
                 p_days = rec.get('present_days', 30)
@@ -2354,7 +2366,8 @@ def export_data():
                     net,
                     st
                 ])
-        style_ws(ws_salary, f"Monthly Salary Records", sal_headers, sal_rows)
+        sal_title_suffix = f" ({start_date} to {end_date})" if (start_date or end_date) else " (All Time)"
+        style_ws(ws_salary, f"Monthly Salary Records{sal_title_suffix}", sal_headers, sal_rows)
 
         # --- SHEET 4: ADVANCES ---
         ws_advances = wb.create_sheet(title="Advances")
@@ -2370,7 +2383,8 @@ def export_data():
                 adv.get('notes', ''),
                 adv.get('is_migrated', False)
             ])
-        style_ws(ws_advances, f"Salary Advances Ledger{title_suffix}", adv_headers, adv_rows)
+        adv_title_suffix = f" ({start_date} to {end_date})" if (start_date or end_date) else " (All Time)"
+        style_ws(ws_advances, f"Salary Advances Ledger{adv_title_suffix}", adv_headers, adv_rows)
 
     elif export_type in ['all_part_time', 'specific_part_time']:
         # Fetch Workers
@@ -2399,7 +2413,17 @@ def export_data():
         # Fetch Advances (use all logs of matching workers to ensure we capture all advances paid in this range)
         all_logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}))
         all_log_ids = [l['_id'] for l in all_logs]
+        all_log_map = {l['_id']: l for l in all_logs}
+        log_worker_map = {l['_id']: l['worker_id'] for l in all_logs}
         
+        # Fetch all-time advances for mapping remaining balances of logs accurately
+        all_advances = list(db.advance_payments.find({"work_log_id": {"$in": all_log_ids}}))
+        all_advances_by_log = {}
+        for adv in all_advances:
+            lid = adv['work_log_id']
+            all_advances_by_log[lid] = all_advances_by_log.get(lid, 0.0) + adv['amount']
+        
+        # Fetch advances filtered by date range (for Advance History sheet & date range worker summary)
         adv_query = {"work_log_id": {"$in": all_log_ids}}
         if start_date or end_date:
             adv_query["payment_date"] = {}
@@ -2411,12 +2435,6 @@ def export_data():
         
         # Aggregate totals
         totals_by_worker = {}
-        advances_by_log = {}
-        
-        for adv in advances:
-            lid = adv['work_log_id']
-            advances_by_log[lid] = advances_by_log.get(lid, 0.0) + adv['amount']
-            
         for w in workers:
             totals_by_worker[w['_id']] = {
                 "total_work": 0.0,
@@ -2426,11 +2444,15 @@ def export_data():
             
         for log in work_logs:
             wid = log['worker_id']
-            l_adv = advances_by_log.get(log['_id'], 0.0)
             totals_by_worker[wid]["total_work"] += float(log.get('total_price', 0.0))
-            totals_by_worker[wid]["total_adv"] += l_adv
             if log.get('payment_status') == 'Pending':
                 totals_by_worker[wid]["pending_count"] += 1
+                
+        for adv in advances:
+            lid = adv['work_log_id']
+            wid = log_worker_map.get(lid)
+            if wid in totals_by_worker:
+                totals_by_worker[wid]["total_adv"] += adv['amount']
 
         # --- SHEET 1: WORKER SUMMARY ---
         ws_summary = wb.active
@@ -2468,8 +2490,8 @@ def export_data():
         summary_totals = [
             "TOTAL", "", tot_work, tot_adv, tot_bal, ""
         ]
-        title_suffix = f" ({start_date_str} to {end_date_str})"
-        style_ws(ws_summary, f"Part-Time Worker Summary{title_suffix}", worker_headers, worker_rows, summary_totals)
+        pt_title_suffix = f" ({start_date} to {end_date})" if (start_date or end_date) else " (All Time)"
+        style_ws(ws_summary, f"Part-Time Worker Summary{pt_title_suffix}", worker_headers, worker_rows, summary_totals)
 
         # --- SHEET 2: WORK LOGS ---
         ws_logs = wb.create_sheet(title="Work Logs")
@@ -2482,7 +2504,7 @@ def export_data():
         for log in work_logs:
             w = worker_map.get(log['worker_id'], {})
             lid = log['_id']
-            l_adv = advances_by_log.get(lid, 0.0)
+            l_adv = all_advances_by_log.get(lid, 0.0)
             gross = float(log.get('total_price', 0.0))
             bal = round(gross - l_adv, 2)
             
@@ -2500,7 +2522,7 @@ def export_data():
                 bal,
                 log.get('payment_status', 'Pending')
             ])
-        style_ws(ws_logs, f"Part-Time Work Logs{title_suffix}", log_headers, log_rows)
+        style_ws(ws_logs, f"Part-Time Work Logs{pt_title_suffix}", log_headers, log_rows)
 
         # --- SHEET 3: ADVANCE HISTORY ---
         ws_advances = wb.create_sheet(title="Advance History")
@@ -2510,7 +2532,7 @@ def export_data():
         ]
         adv_rows = []
         for adv in advances:
-            log = log_map.get(adv['work_log_id'], {})
+            log = all_log_map.get(adv['work_log_id'], {})
             w = worker_map.get(log.get('worker_id'), {})
             adv_rows.append([
                 str(log.get('worker_id', '')),
@@ -2520,7 +2542,7 @@ def export_data():
                 adv.get('payment_date', 'N/A'),
                 adv.get('notes', '')
             ])
-        style_ws(ws_advances, f"Part-Time Advances Ledger{title_suffix}", adv_headers, adv_rows)
+        style_ws(ws_advances, f"Part-Time Advances Ledger{pt_title_suffix}", adv_headers, adv_rows)
 
     # Output to buffer
     out = io.BytesIO()
