@@ -2220,7 +2220,7 @@ def export_data():
             if start_date:
                 adv_query["payment_date"]["$gte"] = start_date
             if end_date:
-                adv_query["payment_date"]["$lte"] = end_date
+                adv_query["payment_date"]["$lte"] = end_date + " 23:59:59"
         advances_list = list(db.salary_advance_payments.find(adv_query).sort("payment_date", -1))
         
         adv_sum_by_emp = {}
@@ -2396,8 +2396,17 @@ def export_data():
         log_ids = [l['_id'] for l in work_logs]
         log_map = {l['_id']: l for l in work_logs}
 
-        # Fetch Advances
-        adv_query = {"work_log_id": {"$in": log_ids}}
+        # Fetch Advances (use all logs of matching workers to ensure we capture all advances paid in this range)
+        all_logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}))
+        all_log_ids = [l['_id'] for l in all_logs]
+        
+        adv_query = {"work_log_id": {"$in": all_log_ids}}
+        if start_date or end_date:
+            adv_query["payment_date"] = {}
+            if start_date:
+                adv_query["payment_date"]["$gte"] = start_date
+            if end_date:
+                adv_query["payment_date"]["$lte"] = end_date + " 23:59:59"
         advances = list(db.advance_payments.find(adv_query).sort("payment_date", -1))
         
         # Aggregate totals
