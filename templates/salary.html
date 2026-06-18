@@ -286,6 +286,9 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block modals %}
 <!-- ── ADD ADVANCE MODAL ─────────────────────────── -->
 <div id="addAdvModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'addAdvModal')">
   <div class="premium-modal-container">
@@ -398,6 +401,8 @@ function fmt(n) {
 }
 
 function openModal(id) {
+  var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.paddingRight = scrollbarWidth + 'px';
   document.body.style.overflow = 'hidden';
   var m = document.getElementById(id);
   if (m) {
@@ -410,6 +415,7 @@ function openModal(id) {
 }
 function closeModal(id) {
   document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
   var m = document.getElementById(id);
   if (m) {
     m.style.opacity = '0';
