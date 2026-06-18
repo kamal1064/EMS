@@ -370,7 +370,11 @@
 <div class="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4 items-stretch">
   <!-- Month picker -->
   <div class="card" style="padding:14px 18px;">
-    <form method="GET" style="display:flex;align-items:center;gap:10px;">
+    <form method="GET" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div class="input-icon-wrap" style="position:relative;flex:1;min-width:200px;">
+        <i class="bi bi-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3);"></i>
+        <input type="text" name="q" placeholder="Search employee..." value="{{ search or '' }}" style="font-size:13px;padding:6px 12px 6px 36px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;width:100%;"/>
+      </div>
       <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap;">
         <i class="bi bi-calendar-month" style="color:var(--primary);"></i> Payroll Month:
       </label>
@@ -612,6 +616,25 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Pagination -->
+{% if total_pages > 1 or total_records > limit %}
+<div class="card p-4 flex items-center justify-between mt-4" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+  <div class="flex items-center gap-3">
+    <span class="text-xs text-muted" style="color:var(--text3);">Showing {{ salary_details|length }} of {{ total_records }}</span>
+    <select id="paginationLimit" onchange="changeLimit(this.value)" class="text-xs rounded px-2 py-1" style="background:var(--bg);border:1px solid var(--card-border);color:var(--text2);outline:none;">
+      <option value="25" {% if limit == 25 %}selected{% endif %}>25 per page</option>
+      <option value="50" {% if limit == 50 %}selected{% endif %}>50 per page</option>
+      <option value="100" {% if limit == 100 %}selected{% endif %}>100 per page</option>
+    </select>
+  </div>
+  <div class="flex items-center gap-2">
+    <button onclick="changePage({{ page - 1 }})" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 rounded" {% if page <= 1 %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}><i class="bi bi-chevron-left"></i></button>
+    <span class="text-xs font-medium px-2" style="color:var(--text2);">Page {{ page }} of {{ total_pages }}</span>
+    <button onclick="changePage({{ page + 1 }})" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 rounded" {% if page >= total_pages %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}><i class="bi bi-chevron-right"></i></button>
+  </div>
+</div>
+{% endif %}
 
 <!-- ── ADD ADVANCE MODAL ─────────────────────────── -->
 <div id="addAdvModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'addAdvModal')">
@@ -994,5 +1017,27 @@ function markPaid(button) {
     } else { showToast(d.message || 'Failed','danger'); }
   }).catch(function(){ showToast('Request failed','danger'); });
 }
+
+function changePage(p) {
+    let url = new URL(window.location.href);
+    url.searchParams.set('page', p);
+    window.location.href = url.toString();
+}
+function changeLimit(l) {
+    localStorage.setItem('ems_pagination_limit', l);
+    let url = new URL(window.location.href);
+    url.searchParams.set('limit', l);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    let savedLimit = localStorage.getItem('ems_pagination_limit');
+    let url = new URL(window.location.href);
+    if(savedLimit && !url.searchParams.has('limit')) {
+        url.searchParams.set('limit', savedLimit);
+        window.location.replace(url.toString());
+    }
+});
 </script>
 {% endblock %}

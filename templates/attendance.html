@@ -13,13 +13,20 @@
 {% block content %}
 <!-- ── Date Filter Bar ── -->
 <div class="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-  <form method="GET" class="flex flex-wrap items-center gap-3">
+  <form method="GET" class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1">
+    <div class="input-icon-wrap" style="flex:1; max-width: 300px; position:relative;">
+      <i class="bi bi-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3);"></i>
+      <input type="text" name="q" placeholder="Search employee..." value="{{ search or '' }}" class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 w-full" style="padding-left:36px;"/>
+    </div>
+    
     <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase flex items-center gap-2">
       <i class="bi bi-calendar-event text-primary"></i>
-      <span>Selected Date:</span>
+      <span>Date:</span>
     </label>
     <input type="date" name="date" value="{{ selected_date }}" onchange="setLoaderState(true); this.form.submit();"
            class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono"/>
+           
+    <button type="submit" class="btn-saas btn-saas-sm btn-saas-primary">Search</button>
     <a href="{{ url_for('attendance') }}" class="btn-saas btn-saas-sm btn-saas-secondary">
       Today
     </a>
@@ -141,6 +148,26 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Pagination -->
+{% if total_pages > 1 or total_records > limit %}
+<div class="card p-4 flex items-center justify-between mt-4" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+  <div class="flex items-center gap-3">
+    <span class="text-xs text-muted" style="color:var(--text3);">Showing {{ employees|length }} of {{ total_records }}</span>
+    <select id="paginationLimit" onchange="changeLimit(this.value)" class="text-xs rounded px-2 py-1" style="background:var(--bg);border:1px solid var(--card-border);color:var(--text2);outline:none;">
+      <option value="25" {% if limit == 25 %}selected{% endif %}>25 per page</option>
+      <option value="50" {% if limit == 50 %}selected{% endif %}>50 per page</option>
+      <option value="100" {% if limit == 100 %}selected{% endif %}>100 per page</option>
+    </select>
+  </div>
+  <div class="flex items-center gap-2">
+    <button onclick="changePage({{ page - 1 }})" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 rounded" {% if page <= 1 %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}><i class="bi bi-chevron-left"></i></button>
+    <span class="text-xs font-medium px-2" style="color:var(--text2);">Page {{ page }} of {{ total_pages }}</span>
+    <button onclick="changePage({{ page + 1 }})" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 rounded" {% if page >= total_pages %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}><i class="bi bi-chevron-right"></i></button>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -178,37 +205,54 @@ function markAttendance(empId, status) {
   // Optimistic UI updates (Mobile)
   if (status === 'Present') {
     if (badgeMob) {
-      badgeMob.style.color = 'var(--success)';
-      badgeMob.innerHTML = '<span style="width:5px;height:5px;border-radius:50%;background:var(--success);display:inline-block;"></span><span>Present</span>';
+      badgeMob.className = 'badge badge-success';
+      badgeMob.innerText = 'Present';
     }
     if (btnPresentMob) btnPresentMob.className = 'btn-saas btn-saas-success';
     if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-secondary';
   } else {
     if (badgeMob) {
-      badgeMob.style.color = 'var(--danger)';
-      badgeMob.innerHTML = '<span style="width:5px;height:5px;border-radius:50%;background:var(--danger);display:inline-block;"></span><span>Absent</span>';
+      badgeMob.className = 'badge badge-danger';
+      badgeMob.innerText = 'Absent';
     }
     if (btnPresentMob) btnPresentMob.className = 'btn-saas btn-saas-secondary';
     if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-danger';
   }
 
-  fetch('/attendance/mark', {
+  fetch('{{ url_for("mark_attendance") }}', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ emp_id: empId, date: date, status: status })
   })
-  .then(res => res.json())
+  .then(response => response.json())
   .then(data => {
-    if (data && data.success) {
-      showLiveToast('Attendance record saved', 'success');
-    } else {
-      showLiveToast(data.message || 'Error updating status', 'danger');
+    if (!data.success) {
+      alert('Failed to save attendance. Page will reload.');
+      window.location.reload();
     }
-  })
-  .catch(err => {
-    console.error('Error:', err);
-    showLiveToast('Server connection failed', 'danger');
   });
 }
+
+function changePage(p) {
+    let url = new URL(window.location.href);
+    url.searchParams.set('page', p);
+    window.location.href = url.toString();
+}
+function changeLimit(l) {
+    localStorage.setItem('ems_pagination_limit', l);
+    let url = new URL(window.location.href);
+    url.searchParams.set('limit', l);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    let savedLimit = localStorage.getItem('ems_pagination_limit');
+    let url = new URL(window.location.href);
+    if(savedLimit && !url.searchParams.has('limit')) {
+        url.searchParams.set('limit', savedLimit);
+        window.location.replace(url.toString());
+    }
+});
 </script>
 {% endblock %}

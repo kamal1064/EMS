@@ -761,6 +761,26 @@ def logout():
 
 
 # ─────────────────────────────────────────
+# DASHBOARD CACHE
+# ─────────────────────────────────────────
+from datetime import datetime, timedelta
+
+DASHBOARD_CACHE = {}
+
+def get_dashboard_cache(uid):
+    cache = DASHBOARD_CACHE.get(uid)
+    if cache and datetime.now() - cache['time'] < timedelta(minutes=5):
+        return cache['data']
+    return None
+
+def set_dashboard_cache(uid, data):
+    DASHBOARD_CACHE[uid] = {'time': datetime.now(), 'data': data}
+
+def invalidate_dashboard_cache(uid):
+    if uid in DASHBOARD_CACHE:
+        del DASHBOARD_CACHE[uid]
+
+# ─────────────────────────────────────────
 # DASHBOARD
 # ─────────────────────────────────────────
 
@@ -770,33 +790,51 @@ def logout():
 def dashboard():
     uid = get_current_user_id()
 
-    # Employees
-    employees = list(db.employees.find({"user_id": ObjectId(uid)}))
-    employees = serialize_docs(employees)
-    
-    total_emp = len(employees)
-    avg_salary = round(sum(e.get('salary', 0.0) for e in employees) / total_emp, 2) if total_emp else 0
-    avg_age = round(sum(e.get('age', 0) for e in employees) / total_emp, 1) if total_emp else 0
-    total_hrs = sum(e.get('working_hours', 40.0) for e in employees)
+    cached_data = get_dashboard_cache(uid)
+    if cached_data:
+        return render_template('dashboard.html', **cached_data)
 
-    # Attendance summary
-    emp_ids = [ObjectId(e['id']) for e in employees]
+    emp_pipeline = [
+        {"$match": {"user_id": ObjectId(uid)}},
+        {"$group": {
+            "_id": None,
+            "total_emp": {"$sum": 1},
+            "avg_salary": {"$avg": "$salary"},
+            "avg_age": {"$avg": "$age"},
+            "total_hrs": {"$sum": "$working_hours"},
+            "emp_ids": {"$push": "$_id"}
+        }}
+    ]
+    emp_agg = list(db.employees.aggregate(emp_pipeline))
+    
+    total_emp = 0
+    avg_salary = 0.0
+    avg_age = 0.0
+    total_hrs = 0.0
+    emp_ids = []
+    
+    if emp_agg:
+        data = emp_agg[0]
+        total_emp = data.get('total_emp', 0)
+        avg_salary = round(data.get('avg_salary') or 0.0, 2)
+        avg_age = round(data.get('avg_age') or 0.0, 1)
+        total_hrs = data.get('total_hrs', 0.0)
+        emp_ids = data.get('emp_ids', [])
+
     present_count = 0
     absent_count = 0
+    salary_data = []
+    recent_att = []
     
     if emp_ids:
-        # In SQLite, missing date = Present, absent rows = Absent.
+        emps = list(db.employees.find({"_id": {"$in": emp_ids}}, {"name": 1, "salary": 1}))
+        salary_data = [{'name': e['name'], 'salary': e.get('salary', 0)} for e in emps]
+        
         absent_count = db.attendance.count_documents({"emp_id": {"$in": emp_ids}, "status": "Absent"})
         present_count = db.attendance.count_documents({"emp_id": {"$in": emp_ids}, "status": "Present"})
 
-    # Salary distribution for chart
-    salary_data = [{'name': e['name'], 'salary': e['salary']} for e in employees]
-
-    # Recent attendance (last 10 records)
-    recent_att = []
-    if emp_ids:
         recent_rows = list(db.attendance.find({"emp_id": {"$in": emp_ids}}).sort("date", -1).limit(10))
-        emp_dict = {ObjectId(e['id']): e['name'] for e in employees}
+        emp_dict = {e['_id']: e['name'] for e in emps}
         for r in recent_rows:
             recent_att.append({
                 'name': emp_dict.get(r['emp_id'], 'Unknown'),
@@ -805,17 +843,22 @@ def dashboard():
             })
 
     today = date.today().isoformat()
-
-    return render_template('dashboard.html',
-                           total_emp=total_emp,
-                           avg_salary=avg_salary,
-                           avg_age=avg_age,
-                           total_hrs=total_hrs,
-                           present_count=present_count,
-                           absent_count=absent_count,
-                           salary_data=salary_data,
-                           recent_att=recent_att,
-                           today=today)
+    
+    template_data = {
+        'total_emp': total_emp,
+        'avg_salary': avg_salary,
+        'avg_age': avg_age,
+        'total_hrs': total_hrs,
+        'present_count': present_count,
+        'absent_count': absent_count,
+        'salary_data': salary_data,
+        'recent_att': recent_att,
+        'today': today
+    }
+    
+    set_dashboard_cache(uid, template_data)
+    
+    return render_template('dashboard.html', **template_data)
 
 
 # ─────────────────────────────────────────
@@ -828,17 +871,32 @@ def dashboard():
 def employees():
     uid = get_current_user_id()
     search = request.args.get('q', '').strip()
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 25))
+    except ValueError:
+        page = 1
+        limit = 25
+        
+    skip = (page - 1) * limit
 
+    query = {"user_id": ObjectId(uid)}
     if search:
-        emps = list(db.employees.find({
-            "user_id": ObjectId(uid),
-            "name": {"$regex": search, "$options": "i"}
-        }).sort("name", 1))
-    else:
-        emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+        query["name"] = {"$regex": search, "$options": "i"}
 
+    total_records = db.employees.count_documents(query)
+    total_pages = (total_records + limit - 1) // limit if limit > 0 else 1
+    
+    emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
-    return render_template('employees.html', employees=emps, search=search)
+    
+    return render_template('employees.html', 
+                           employees=emps, 
+                           search=search,
+                           page=page,
+                           limit=limit,
+                           total_pages=total_pages,
+                           total_records=total_records)
 
 
 @app.route('/employees/add', methods=['POST'])
@@ -846,6 +904,7 @@ def employees():
 @login_required
 def add_employee():
     uid = get_current_user_id()
+    invalidate_dashboard_cache(uid)
     name = request.form.get('name', '').strip()
     if not name:
         redirect_to = request.form.get('redirect_to')
@@ -904,6 +963,7 @@ def add_employee():
 @login_required
 def edit_employee(emp_id):
     uid = get_current_user_id()
+    invalidate_dashboard_cache(uid)
     emp_id_obj = safe_object_id(emp_id)
     if not emp_id_obj:
         return redirect(url_for('employees'))
@@ -960,6 +1020,7 @@ def edit_employee(emp_id):
 @login_required
 def delete_employee(emp_id):
     uid = get_current_user_id()
+    invalidate_dashboard_cache(uid)
     emp_id_obj = safe_object_id(emp_id)
     if not emp_id_obj:
         return redirect(url_for('employees'))
@@ -982,7 +1043,24 @@ def attendance():
     uid = get_current_user_id()
     selected_date = request.args.get('date', date.today().isoformat())
 
-    emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    search = request.args.get('q', '').strip()
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 25))
+    except ValueError:
+        page = 1
+        limit = 25
+        
+    skip = (page - 1) * limit
+    
+    query = {"user_id": ObjectId(uid)}
+    if search:
+        query["name"] = {"$regex": search, "$options": "i"}
+
+    total_records = db.employees.count_documents(query)
+    total_pages = (total_records + limit - 1) // limit if limit > 0 else 1
+
+    emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
     att_map = {e['id']: 'Present' for e in emps}
 
@@ -1000,7 +1078,12 @@ def attendance():
         employees=emps,
         att_map=att_map,
         selected_date=selected_date,
-        today=date.today().isoformat()
+        today=date.today().isoformat(),
+        search=search,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
+        total_records=total_records
     )
 
 
@@ -1008,6 +1091,7 @@ def attendance():
 @limiter.limit("120 per minute")        # high limit — real-time marking via JS clicks
 @login_required
 def mark_attendance():
+    invalidate_dashboard_cache(get_current_user_id())
     data = request.get_json()
     emp_id = data.get('emp_id')
     att_date = data.get('date')
@@ -1100,7 +1184,24 @@ def salary():
     uid = get_current_user_id()
     month_filter = request.args.get('month', datetime.now().strftime('%Y-%m'))
 
-    emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    search = request.args.get('q', '').strip()
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 25))
+    except ValueError:
+        page = 1
+        limit = 25
+        
+    skip = (page - 1) * limit
+    
+    query = {"user_id": ObjectId(uid)}
+    if search:
+        query["name"] = {"$regex": search, "$options": "i"}
+
+    total_records = db.employees.count_documents(query)
+    total_pages = (total_records + limit - 1) // limit if limit > 0 else 1
+
+    emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
     
     try:
@@ -1151,18 +1252,17 @@ def salary():
                 wid = str(adv['salary_record_id'])
                 advance_map[wid] = advance_map.get(wid, 0) + adv['amount']
 
-    salary_details = []
-    for e in emps:
-        absent_days = absent_map.get(e['id'], 0)
-        present_days = max(effective_days - absent_days, 0)
-
-        salary_per_day = e.get('salary', 0.0) / total_days
-        final_salary = round(salary_per_day * present_days, 2)
-
-        rec = salary_records_map.get(e['id'])
-
-        if not rec:
-            res = db.salary_records.insert_one({
+    missing_emps = [e for e in emps if e['id'] not in salary_records_map]
+    if missing_emps:
+        docs_to_insert = []
+        for e in missing_emps:
+            absent_days = absent_map.get(e['id'], 0)
+            present_days = max(effective_days - absent_days, 0)
+            salary_per_day = e.get('salary', 0.0) / total_days
+            final_salary = round(salary_per_day * present_days, 2)
+            
+            docs_to_insert.append({
+                "_id": ObjectId(),
                 "emp_id": ObjectId(e['id']),
                 "month": month_filter,
                 "present_days": present_days,
@@ -1172,20 +1272,30 @@ def salary():
                 "payment_status": "Pending",
                 "paid_at": None
             })
-            record_id_str = str(res.inserted_id)
-            paid_at = None
-            advance_amount_paid = 0.0
-        else:
-            record_id_str = str(rec['_id'])
-            if rec.get('payment_status') in ['Unpaid', 'Pending']:
-                db.salary_records.update_one(
-                    {"_id": rec['_id']},
-                    {"$set": {"present_days": present_days, "total_salary": final_salary}}
-                )
-            
-            paid_at = rec.get('paid_at')
-            advance_amount_paid = advance_map.get(record_id_str, 0.0)
+        if docs_to_insert:
+            db.salary_records.insert_many(docs_to_insert)
+            for doc in docs_to_insert:
+                salary_records_map[str(doc['emp_id'])] = doc
 
+    from pymongo import UpdateOne
+    bulk_ops = []
+    salary_details = []
+    
+    for e in emps:
+        absent_days = absent_map.get(e['id'], 0)
+        present_days = max(effective_days - absent_days, 0)
+        salary_per_day = e.get('salary', 0.0) / total_days
+        final_salary = round(salary_per_day * present_days, 2)
+        
+        rec = salary_records_map[e['id']]
+        record_id_str = str(rec['_id'])
+        
+        update_fields = {}
+        if rec.get('payment_status') in ['Unpaid', 'Pending']:
+            update_fields['present_days'] = present_days
+            update_fields['total_salary'] = final_salary
+            
+        advance_amount_paid = advance_map.get(record_id_str, 0.0)
         net_payable = round(final_salary - advance_amount_paid, 2)
         
         if advance_amount_paid > final_salary:
@@ -1197,8 +1307,11 @@ def salary():
         else:
             payment_status = 'Pending'
             
-        if rec and rec.get('payment_status') != payment_status:
-            db.salary_records.update_one({"_id": ObjectId(record_id_str)}, {"$set": {"payment_status": payment_status}})
+        if rec.get('payment_status') != payment_status:
+            update_fields['payment_status'] = payment_status
+            
+        if update_fields:
+            bulk_ops.append(UpdateOne({"_id": rec['_id']}, {"$set": update_fields}))
 
         salary_details.append({
             'id': e['id'],
@@ -1211,10 +1324,13 @@ def salary():
             'advance_amount_paid': advance_amount_paid,
             'net_payable': net_payable,
             'payment_status': payment_status,
-            'paid_at': paid_at
+            'paid_at': rec.get('paid_at')
         })
 
-    return render_template('salary.html', salary_details=salary_details, month_filter=month_filter)
+    if bulk_ops:
+        db.salary_records.bulk_write(bulk_ops)
+
+    return render_template('salary.html', salary_details=salary_details, month_filter=month_filter, search=search, page=page, limit=limit, total_pages=total_pages, total_records=total_records)
 
 
 # ─────────────────────────────────────────
@@ -1228,19 +1344,37 @@ def part_time():
     uid = get_current_user_id()
     search = request.args.get('q', '').strip()
     selected_client = request.args.get('client', '').strip()
-    page = int(request.args.get('page', 1))
-    per_page = 50
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 25))
+    except ValueError:
+        page = 1
+        limit = 25
+        
+    skip = (page - 1) * limit
     setup_error = None
     
-    # Get decoupled part-time workers
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
     worker_names = {str(w['_id']): w['name'] for w in pt_workers}
     worker_ids = [ObjectId(wid) for wid in worker_names.keys()]
     
-    # Fetch all logs for analytics (optimally this should be an aggregation, but keeping it memory-based for backwards compat)
-    logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}).sort("_id", -1))
+    match_query = {"worker_id": {"$in": worker_ids}}
+    if selected_client:
+        match_query["client_name"] = {"$regex": f"^{selected_client}$", "$options": "i"}
+    if search:
+        matching_workers = [w['_id'] for w in pt_workers if search.lower() in w['name'].lower()]
+        match_query["$or"] = [
+            {"client_name": {"$regex": search, "$options": "i"}},
+            {"delivery_location": {"$regex": search, "$options": "i"}},
+            {"worker_id": {"$in": matching_workers}}
+        ]
+        
+    total_records = db.part_time_work_logs.count_documents(match_query)
+    total_pages = (total_records + limit - 1) // limit if limit > 0 else 1
     
-    # Fetch all advances in one batch
+    logs = list(db.part_time_work_logs.find(match_query).sort("_id", -1).skip(skip).limit(limit))
+    
+    # Fetch advances only for paginated logs
     log_ids = [log['_id'] for log in logs]
     advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
     advances_map = {}
@@ -1249,11 +1383,6 @@ def part_time():
         advances_map[wid] = advances_map.get(wid, 0) + adv['amount']
         
     records = []
-    client_map = {}
-    worker_map = {}
-    monthly_map = {}
-    recent_clients = []
-    
     for log in logs:
         record = serialize_doc(log)
         record['worker_name'] = worker_names.get(str(log['worker_id']), 'Unknown Worker')
@@ -1261,12 +1390,10 @@ def part_time():
         record['total_price'] = float(record.get('total_price') or 0)
         record['slab_quantity'] = int(record.get('slab_quantity') or 0)
         
-        # Calculate multiple advances
         total_advance = float(advances_map.get(str(log['_id']), 0))
         record['advance_paid'] = total_advance
         record['remaining_balance'] = float(record['total_price'] - total_advance)
         
-        # Determine strict status
         if total_advance > record['total_price']:
             record['payment_status'] = 'Overpaid'
         elif record['remaining_balance'] <= 0:
@@ -1275,34 +1402,57 @@ def part_time():
             record['payment_status'] = 'Pending'
             
         records.append(record)
+
+    # Lightweight analytics loop
+    client_map = {}
+    worker_map = {}
+    monthly_map = {}
+    recent_clients = []
+    total_payout = 0
+    total_advance_all = 0
+    total_remaining = 0
+    total_slabs = 0
+
+    analytics_cursor = db.part_time_work_logs.find(match_query, {
+        "worker_id": 1, "client_name": 1, "total_price": 1, "slab_quantity": 1, "working_date": 1, "remaining_balance": 1
+    })
+    
+    for log in analytics_cursor:
+        client = (log.get('client_name') or 'Unassigned').strip()
+        worker = worker_names.get(str(log['worker_id']), 'Unknown Worker')
+        t_price = float(log.get('total_price') or 0)
+        r_bal = float(log.get('remaining_balance') or t_price) # fallback to t_price if missing
+        adv_paid = t_price - r_bal
+        sq = int(log.get('slab_quantity') or 0)
         
-        # Analytics mapping
-        client = record['client_name']
-        worker = record['worker_name']
-        
+        total_payout += t_price
+        total_advance_all += adv_paid
+        total_remaining += r_bal
+        total_slabs += sq
+
         client_stats = client_map.setdefault(client, {
             'name': client, 'entries': 0, 'total_payout': 0, 'advance_paid': 0,
             'remaining_balance': 0, 'slabs': 0, 'workers': set()
         })
         client_stats['entries'] += 1
-        client_stats['total_payout'] += record['total_price']
-        client_stats['advance_paid'] += total_advance
-        client_stats['remaining_balance'] += record['remaining_balance']
-        client_stats['slabs'] += record['slab_quantity']
+        client_stats['total_payout'] += t_price
+        client_stats['advance_paid'] += adv_paid
+        client_stats['remaining_balance'] += r_bal
+        client_stats['slabs'] += sq
         client_stats['workers'].add(worker)
 
         worker_stats = worker_map.setdefault(worker, {
             'name': worker, 'clients': set(), 'earnings': 0, 'recent_assignments': []
         })
         worker_stats['clients'].add(client)
-        worker_stats['earnings'] += record['total_price']
+        worker_stats['earnings'] += t_price
         if len(worker_stats['recent_assignments']) < 3:
             worker_stats['recent_assignments'].append({
-                'client': client, 'date': record.get('working_date'), 'total': record['total_price']
+                'client': client, 'date': log.get('working_date'), 'total': t_price
             })
 
-        work_month = (record.get('working_date') or '')[:7] or 'Undated'
-        monthly_map[work_month] = monthly_map.get(work_month, 0) + record['total_price']
+        work_month = (log.get('working_date') or '')[:7] or 'Undated'
+        monthly_map[work_month] = monthly_map.get(work_month, 0) + t_price
 
         if client not in recent_clients:
             recent_clients.append(client)
@@ -1311,33 +1461,18 @@ def part_time():
     for summary in client_summaries:
         summary['worker_count'] = len(summary['workers'])
         summary['workers'] = sorted(summary['workers'])
-
-    filtered_records = records
-    if selected_client:
-        filtered_records = [r for r in filtered_records if r['client_name'].lower() == selected_client.lower()]
-    if search:
-        needle = search.lower()
-        filtered_records = [
-            r for r in filtered_records
-            if needle in r['client_name'].lower()
-            or needle in (r.get('worker_name') or '').lower()
-            or needle in (r.get('delivery_location') or '').lower()
-        ]
         
-    # Pagination
-    total_records = len(filtered_records)
-    total_pages = max((total_records + per_page - 1) // per_page, 1)
-    paginated_records = filtered_records[(page-1)*per_page : page*per_page]
+    paginated_records = records
 
     analytics = {
         'top_clients': client_summaries[:5],
         'workforce_allocation': sorted(client_summaries, key=lambda c: c['entries'], reverse=True)[:6],
         'monthly_client_expenses': [{'month': m, 'total': t} for m, t in sorted(monthly_map.items())],
         'client_productivity': sorted(client_summaries, key=lambda c: c['slabs'], reverse=True)[:6],
-        'total_payout': sum(r['total_price'] for r in filtered_records),
-        'total_advance': sum(r['advance_paid'] for r in filtered_records),
-        'total_remaining': sum(r['remaining_balance'] for r in filtered_records),
-        'total_slabs': sum(r['slab_quantity'] for r in filtered_records)
+        'total_payout': total_payout,
+        'total_advance': total_advance_all,
+        'total_remaining': total_remaining,
+        'total_slabs': total_slabs
     }
 
     worker_history = []
@@ -1371,6 +1506,7 @@ def part_time():
 @login_required
 def add_part_time_work():
     uid = get_current_user_id()
+    invalidate_dashboard_cache(uid)
     worker_id = request.form.get('worker_id')
     client_name = request.form.get('client_name', '').strip()
     working_date = request.form.get('working_date', '').strip()
@@ -1671,8 +1807,12 @@ def api_salary_advance_history(record_id):
 def api_part_time_search():
     uid = get_current_user_id()
     search = request.args.get('q', '').strip()
-    page = int(request.args.get('page', 1))
-    per_page = 50
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 25))
+    except ValueError:
+        page = 1
+        limit = 25
     
     # Get decoupled part-time workers map
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}))
@@ -1696,9 +1836,9 @@ def api_part_time_search():
         ]
         
     total_records = db.part_time_work_logs.count_documents(query)
-    total_pages = max((total_records + per_page - 1) // per_page, 1)
+    total_pages = max((total_records + limit - 1) // limit, 1) if limit > 0 else 1
     
-    logs = list(db.part_time_work_logs.find(query).sort("_id", -1).skip((page-1)*per_page).limit(per_page))
+    logs = list(db.part_time_work_logs.find(query).sort("_id", -1).skip((page-1)*limit).limit(limit))
     
     log_ids = [log['_id'] for log in logs]
     advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
@@ -2544,17 +2684,32 @@ def export_data():
             ])
         style_ws(ws_advances, f"Part-Time Advances Ledger{pt_title_suffix}", adv_headers, adv_rows)
 
-    # Output to buffer
-    out = io.BytesIO()
-    wb.save(out)
-    out.seek(0)
+    import tempfile, os
+    from flask import Response
     
+    fd, temp_path = tempfile.mkstemp(suffix=".xlsx")
+    os.close(fd)
+    
+    wb.save(temp_path)
     filename = f"export_{export_type}_{date.today().isoformat()}.xlsx"
-    return send_file(
-        out,
+
+    def generate_and_delete():
+        try:
+            with open(temp_path, 'rb') as f:
+                while chunk := f.read(8192):
+                    yield chunk
+        finally:
+            try:
+                os.remove(temp_path)
+            except Exception as e:
+                app.logger.error(f"Failed to delete temp file {temp_path}: {e}")
+
+    return Response(
+        generate_and_delete(),
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=filename
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
     )
 
 

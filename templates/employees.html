@@ -168,6 +168,23 @@
   {% endfor %}
 </div>
 
+<!-- Pagination -->
+<div class="card p-4 flex items-center justify-between" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+  <div class="flex items-center gap-3">
+    <span class="text-xs text-muted" style="color:var(--text3);">Showing {{ employees|length }} of {{ total_records }}</span>
+    <select id="paginationLimit" onchange="changeLimit(this.value)" class="text-xs rounded px-2 py-1" style="background:var(--bg);border:1px solid var(--card-border);color:var(--text2);outline:none;">
+      <option value="25" {% if limit == 25 %}selected{% endif %}>25 per page</option>
+      <option value="50" {% if limit == 50 %}selected{% endif %}>50 per page</option>
+      <option value="100" {% if limit == 100 %}selected{% endif %}>100 per page</option>
+    </select>
+  </div>
+  <div class="flex items-center gap-2">
+    <button onclick="changePage({{ page - 1 }})" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 rounded" {% if page <= 1 %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}><i class="bi bi-chevron-left"></i></button>
+    <span class="text-xs font-medium px-2" style="color:var(--text2);">Page {{ page }} of {{ total_pages }}</span>
+    <button onclick="changePage({{ page + 1 }})" class="btn-saas btn-saas-xs bg-slate-100 dark:bg-white/5 px-2 py-1 rounded" {% if page >= total_pages %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}><i class="bi bi-chevron-right"></i></button>
+  </div>
+</div>
+
 
 <!-- Add Employee Modal -->
 <div class="modal fade" id="addEmpModal" tabindex="-1" aria-hidden="true">
@@ -264,5 +281,28 @@
     };
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
   }
+
+  function changePage(p) {
+      let url = new URL(window.location.href);
+      url.searchParams.set('page', p);
+      window.location.href = url.toString();
+  }
+  function changeLimit(l) {
+      localStorage.setItem('ems_pagination_limit', l);
+      let url = new URL(window.location.href);
+      url.searchParams.set('limit', l);
+      url.searchParams.set('page', 1);
+      window.location.href = url.toString();
+  }
+  
+  // Set limit on load if not present in URL
+  document.addEventListener("DOMContentLoaded", function() {
+      let savedLimit = localStorage.getItem('ems_pagination_limit');
+      let url = new URL(window.location.href);
+      if(savedLimit && !url.searchParams.has('limit')) {
+          url.searchParams.set('limit', savedLimit);
+          window.location.replace(url.toString());
+      }
+  });
 </script>
 {% endblock %}
