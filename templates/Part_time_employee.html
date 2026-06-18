@@ -279,62 +279,63 @@
 <!-- MODALS -->
 
 <!-- Add Advance Modal -->
-<div id="addAdvanceModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
-  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform" id="addAdvanceModalInner">
-    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center">
-      <h3 class="font-bold text-lg dark:text-white"><i class="bi bi-cash-stack text-primary mr-2"></i>Add Advance</h3>
-      <button onclick="closeModal('addAdvanceModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+<div id="addAdvanceModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'addAdvanceModal')">
+  <div class="premium-modal-container">
+    <div class="premium-modal-header">
+      <div class="premium-modal-title" style="font-size:22px;"><i class="bi bi-cash-stack text-primary mr-2"></i>Add Advance</div>
+      <button class="premium-modal-close-btn" onclick="closeModal('addAdvanceModal')">&times;</button>
     </div>
-    <div class="p-6 space-y-4">
+    <div class="premium-modal-body">
       <input type="hidden" id="add-adv-record-id">
-      <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount (₹)</label>
-        <input type="number" id="add-adv-amount" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-lg font-mono outline-none focus:ring-2 focus:ring-primary">
+      <div class="premium-field-group">
+        <label class="premium-label">Amount (₹)</label>
+        <input type="number" id="add-adv-amount" class="premium-input premium-input-amount">
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label>
-        <input type="date" id="add-adv-date" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary">
+      <div class="premium-field-group">
+        <label class="premium-label">Date</label>
+        <input type="date" id="add-adv-date" class="premium-input">
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Notes (Optional)</label>
-        <input type="text" id="add-adv-notes" placeholder="e.g. For fuel" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary">
+      <div class="premium-field-group">
+        <label class="premium-label">Notes (Optional)</label>
+        <input type="text" id="add-adv-notes" class="premium-input" placeholder="e.g. For fuel">
       </div>
     </div>
-    <div class="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex justify-end gap-3">
-      <button onclick="closeModal('addAdvanceModal')" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-colors">Cancel</button>
-      <button onclick="submitAddAdvance()" class="px-6 py-2 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-glow transition-all" id="btn-submit-add">Save Advance</button>
+    <div class="premium-modal-footer">
+      <button onclick="closeModal('addAdvanceModal')" class="btn-premium-cancel">Cancel</button>
+      <button onclick="submitAddAdvance()" id="btn-submit-add" class="btn-premium-save"><i class="bi bi-check-lg"></i> Save Advance</button>
     </div>
   </div>
 </div>
 
 <!-- Edit Advance Modal -->
-<div id="editAdvanceModal" class="fixed inset-0 z-[60] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
-  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform" id="editAdvanceModalInner">
-    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center">
-      <h3 class="font-bold text-lg dark:text-white"><i class="bi bi-pencil-square text-amber-500 mr-2"></i>Edit Advance</h3>
-      <button onclick="closeModal('editAdvanceModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+<!-- Edit Advance Modal -->
+<div id="editAdvanceModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'editAdvanceModal')">
+  <div class="premium-modal-container">
+    <div class="premium-modal-header">
+      <div class="premium-modal-title" style="font-size:22px;"><i class="bi bi-pencil-square text-amber-500 mr-2"></i>Edit Advance</div>
+      <button class="premium-modal-close-btn" onclick="closeModal('editAdvanceModal')">&times;</button>
     </div>
-    <div class="p-6 space-y-4">
+    <div class="premium-modal-body">
       <input type="hidden" id="edit-adv-id">
       <input type="hidden" id="edit-adv-record-id">
-      <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount (₹)</label>
-        <input type="number" id="edit-adv-amount" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-lg font-mono outline-none focus:ring-2 focus:ring-amber-500">
+      <div class="premium-field-group">
+        <label class="premium-label">Amount (₹)</label>
+        <input type="number" id="edit-adv-amount" class="premium-input premium-input-amount">
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label>
-        <input type="date" id="edit-adv-date" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500">
+      <div class="premium-field-group">
+        <label class="premium-label">Date</label>
+        <input type="date" id="edit-adv-date" class="premium-input">
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Notes</label>
-        <input type="text" id="edit-adv-notes" class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500">
+      <div class="premium-field-group">
+        <label class="premium-label">Notes</label>
+        <input type="text" id="edit-adv-notes" class="premium-input">
       </div>
     </div>
-    <div class="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex justify-between gap-3">
-      <button onclick="deleteAdvance()" class="px-4 py-2 rounded-xl text-sm font-medium text-danger hover:bg-danger/10 transition-colors"><i class="bi bi-trash mr-1"></i>Delete</button>
-      <div class="flex gap-2">
-          <button onclick="closeModal('editAdvanceModal')" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-colors">Cancel</button>
-          <button onclick="submitEditAdvance()" class="px-6 py-2 rounded-xl text-sm font-bold bg-amber-500 text-white hover:bg-amber-600 transition-all" id="btn-submit-edit">Update</button>
+    <div class="premium-modal-footer" style="justify-content: space-between;">
+      <button onclick="deleteAdvance()" class="btn-premium-cancel" style="border-color:var(--danger);color:var(--danger);"><i class="bi bi-trash mr-1"></i>Delete</button>
+      <div style="display:flex;gap:16px;">
+        <button onclick="closeModal('editAdvanceModal')" class="btn-premium-cancel">Cancel</button>
+        <button onclick="submitEditAdvance()" id="btn-submit-edit" class="btn-premium-save" style="background:var(--warning);"><i class="bi bi-check-lg"></i> Update</button>
       </div>
     </div>
   </div>
@@ -400,20 +401,35 @@
 <script>
   // UI Helpers
   function openModal(id) {
-    const m = document.getElementById(id);
-    const inner = document.getElementById(id + 'Inner');
-    m.classList.remove('hidden');
-    // trigger reflow
-    void m.offsetWidth;
-    m.classList.remove('opacity-0');
-    if(inner) { inner.classList.remove('scale-95'); inner.classList.add('scale-100'); }
+    document.body.style.overflow = 'hidden';
+    var m = document.getElementById(id);
+    if (m) {
+      if(m.classList.contains('premium-modal-backdrop')) {
+        m.style.display = 'flex';
+        m.style.opacity = '0';
+        setTimeout(function(){ m.style.opacity = '1'; }, 10);
+      } else {
+        m.classList.remove('hidden');
+        void m.offsetWidth;
+        m.classList.remove('opacity-0');
+      }
+    }
   }
   function closeModal(id) {
-    const m = document.getElementById(id);
-    const inner = document.getElementById(id + 'Inner');
-    m.classList.add('opacity-0');
-    if(inner) { inner.classList.remove('scale-100'); inner.classList.add('scale-95'); }
-    setTimeout(() => m.classList.add('hidden'), 200);
+    document.body.style.overflow = '';
+    var m = document.getElementById(id);
+    if (m) {
+      if(m.classList.contains('premium-modal-backdrop')) {
+        m.style.opacity = '0';
+        setTimeout(function(){ m.style.display = 'none'; }, 200);
+      } else {
+        m.classList.add('opacity-0');
+        setTimeout(() => m.classList.add('hidden'), 200);
+      }
+    }
+  }
+  function handleBackdropClick(event, id) {
+    if (event.target === event.currentTarget) closeModal(id);
   }
 
   // Format currency

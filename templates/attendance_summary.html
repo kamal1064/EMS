@@ -54,6 +54,7 @@
           <th class="py-4 px-6">Total Marked</th>
           <th class="py-4 px-6">Ratio %</th>
           <th class="py-4 px-6">Monthly Score</th>
+          <th class="py-4 px-6 text-right">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-white/90">
@@ -97,6 +98,11 @@
                 <div class="bg-danger h-full transition-all duration-500" style="width: {{ pct }}%"></div>
               {%   endif %}
             </div>
+          </td>
+          <td class="py-4 px-6 text-right">
+            <button onclick="openAbsentModal('{{ s.id }}', '{{ s.name }}', {{ s.present }}, {{ s.absent }}, '{{ month_filter }}')" class="btn-saas btn-saas-sm btn-saas-secondary" title="View Absent Days">
+              <i class="bi bi-calendar-x"></i> View Absent Days
+            </button>
           </td>
         </tr>
         {% else %}
@@ -186,6 +192,13 @@
         {% endif %}
       </div>
     </div>
+    
+    <!-- Action Button -->
+    <div class="pt-2">
+      <button onclick="openAbsentModal('{{ s.id }}', '{{ s.name }}', {{ s.present }}, {{ s.absent }}, '{{ month_filter }}')" class="btn-saas btn-saas-sm btn-saas-secondary w-full" style="justify-content:center;">
+        <i class="bi bi-calendar-x"></i> View Absent Days
+      </button>
+    </div>
   </div>
   {% else %}
   <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
@@ -194,4 +207,176 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Absent Days Modal -->
+<div id="absentDaysModal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-[#1a1c23] rounded-2xl shadow-xl w-full max-w-lg transform transition-all scale-95 border border-slate-200 dark:border-white/5 flex flex-col max-h-[90vh]">
+    
+    <!-- Modal Header -->
+    <div class="p-6 border-b border-slate-100 dark:border-white/5 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center text-lg">
+          <i class="bi bi-calendar-x"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="modalEmpName">Employee Name</h3>
+          <p class="text-xs text-slate-500 dark:text-textsecondary">Absent Days Detail</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeAbsentModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-textmuted transition-colors">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="grid grid-cols-2 gap-4 p-6 bg-slate-50/50 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5 shrink-0">
+      <div class="bg-white dark:bg-card p-3 rounded-xl border border-slate-200 dark:border-white/5 text-center">
+        <span class="block text-[10px] uppercase font-bold text-slate-500 dark:text-textsecondary mb-1">Present</span>
+        <span class="text-lg font-bold text-success font-mono" id="modalPresentCount">0</span>
+      </div>
+      <div class="bg-white dark:bg-card p-3 rounded-xl border border-slate-200 dark:border-white/5 text-center shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+        <span class="block text-[10px] uppercase font-bold text-slate-500 dark:text-textsecondary mb-1">Absent</span>
+        <span class="text-lg font-bold text-danger font-mono" id="modalAbsentCount">0</span>
+      </div>
+    </div>
+
+    <!-- Table Container (Scrollable) -->
+    <div class="p-6 overflow-y-auto flex-1">
+      <div id="absentLoading" class="hidden py-8 text-center text-slate-500">
+        <i class="bi bi-arrow-repeat animate-spin text-2xl"></i>
+        <p class="text-sm mt-2">Loading records...</p>
+      </div>
+      
+      <div id="absentTableContainer" class="hidden">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="text-xs uppercase text-slate-500 dark:text-textsecondary border-b border-slate-100 dark:border-white/5">
+              <th class="pb-3 font-semibold">Date</th>
+              <th class="pb-3 font-semibold">Day</th>
+              <th class="pb-3 font-semibold text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody id="absentTableBody" class="divide-y divide-slate-100 dark:divide-white/5">
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+      
+      <div id="absentEmpty" class="hidden py-8 text-center text-slate-400">
+        <i class="bi bi-check-circle text-3xl mb-2 block text-success/50"></i>
+        <p>No absent days recorded.</p>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="p-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex justify-end gap-3 shrink-0 rounded-b-2xl">
+      <button type="button" onclick="closeAbsentModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white transition-colors">
+        Close
+      </button>
+      <button type="button" onclick="exportAbsentDays()" id="btnExportAbsent" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-primary hover:bg-primary/90 text-white shadow-glow-primary transition-all flex items-center gap-2">
+        <i class="bi bi-download"></i> Export Absent Days
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentAbsentData = [];
+let currentEmpName = "";
+let currentEmpId = "";
+
+function openAbsentModal(empId, empName, present, absent, month) {
+    document.body.style.overflow = 'hidden';
+    currentEmpId = empId;
+    currentEmpName = empName;
+    document.getElementById('modalEmpName').textContent = empName;
+    document.getElementById('modalPresentCount').textContent = present;
+    document.getElementById('modalAbsentCount').textContent = absent;
+    
+    document.getElementById('absentLoading').classList.remove('hidden');
+    document.getElementById('absentTableContainer').classList.add('hidden');
+    document.getElementById('absentEmpty').classList.add('hidden');
+    document.getElementById('btnExportAbsent').disabled = true;
+    
+    const modal = document.getElementById('absentDaysModal');
+    modal.classList.remove('hidden');
+    // slight delay for transition
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.children[0].classList.remove('scale-95');
+    }, 10);
+
+    fetch(`/api/attendance/absent_days/${empId}?month=${month}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('absentLoading').classList.add('hidden');
+            if(data.success && data.data && data.data.length > 0) {
+                currentAbsentData = data.data;
+                const tbody = document.getElementById('absentTableBody');
+                tbody.innerHTML = '';
+                data.data.forEach(row => {
+                    tbody.innerHTML += `
+                        <tr class="text-slate-700 dark:text-white/90">
+                            <td class="py-3 font-mono text-sm">${row.date}</td>
+                            <td class="py-3">${row.day}</td>
+                            <td class="py-3 text-right">
+                                <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">${row.status}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('absentTableContainer').classList.remove('hidden');
+                document.getElementById('btnExportAbsent').disabled = false;
+            } else {
+                currentAbsentData = [];
+                document.getElementById('absentEmpty').classList.remove('hidden');
+                document.getElementById('btnExportAbsent').disabled = true;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('absentLoading').classList.add('hidden');
+            document.getElementById('absentEmpty').classList.remove('hidden');
+            document.getElementById('absentEmpty').innerHTML = '<p class="text-danger">Failed to load data.</p>';
+        });
+}
+
+function closeAbsentModal() {
+    document.body.style.overflow = '';
+    const modal = document.getElementById('absentDaysModal');
+    modal.classList.add('opacity-0');
+    modal.children[0].classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+function exportAbsentDays() {
+    if(currentAbsentData.length === 0) return;
+    
+    let csvContent = "Employee Name,Employee ID,Absent Date,Day\n";
+    currentAbsentData.forEach(r => {
+        // Enclose in quotes to handle commas safely
+        csvContent += `"${currentEmpName}","${currentEmpId}","${r.date}","${r.day}"\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Absent_Days_${currentEmpName.replace(/\\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function handleBackdropClick(event, id) {
+    if (event.target === event.currentTarget) {
+        if(id === 'absentDaysModal') closeAbsentModal();
+        else closeModal(id);
+    }
+}
+
+</script>
+
 {% endblock %}

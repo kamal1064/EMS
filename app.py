@@ -1164,6 +1164,7 @@ def attendance_summary():
         absent_days = absent_map.get(e['id'], 0)
         present_days = max(effective_days - absent_days, 0)
         summary.append({
+            'id': e['id'],
             'name': e['name'],
             'present': present_days,
             'absent': absent_days,
@@ -1171,6 +1172,50 @@ def attendance_summary():
         })
 
     return render_template('attendance_summary.html', summary=summary, month_filter=month_filter)
+
+
+@app.route('/api/attendance/absent_days/<emp_id>')
+@login_required
+def absent_days(emp_id):
+    try:
+        uid = get_current_user_id()
+        month_filter = request.args.get('month', datetime.now().strftime('%Y-%m'))
+        
+        # Verify employee belongs to current user
+        emp = db.employees.find_one({"_id": ObjectId(emp_id), "user_id": ObjectId(uid)})
+        if not emp:
+            return jsonify({'success': False, 'message': 'Employee not found or unauthorized'}), 404
+
+        # Fetch absent days for this month
+        pipeline = [
+            {"$match": {
+                "emp_id": ObjectId(emp_id),
+                "status": "Absent",
+                "date": {"$regex": f"^{month_filter}"}
+            }},
+            {"$sort": {"date": 1}}
+        ]
+        
+        absent_records = list(db.attendance.aggregate(pipeline))
+        
+        results = []
+        for r in absent_records:
+            # Parse date string "YYYY-MM-DD" to get the day name
+            date_obj = datetime.strptime(r['date'], '%Y-%m-%d')
+            day_name = date_obj.strftime('%A')
+            # Format output date as DD-Mon-YYYY
+            formatted_date = date_obj.strftime('%d-%b-%Y')
+            
+            results.append({
+                "date": formatted_date,
+                "day": day_name,
+                "status": r['status']
+            })
+
+        return jsonify({'success': True, 'data': results})
+    except Exception as e:
+        app.logger.error("Failed to fetch absent days", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # ─────────────────────────────────────────
