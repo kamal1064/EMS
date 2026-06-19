@@ -1067,9 +1067,12 @@ def add_employee():
     hours = max(hours, 0.0)
 
     profile_image_url = ""
-    if 'profile_image' in request.files:
-        p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
-        if p_url: profile_image_url = p_url
+    if 'profile_image' in request.files and request.files['profile_image'].filename != '':
+        try:
+            p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
+            if p_url: profile_image_url = p_url
+        except Exception as e:
+            flash(str(e), "error")
 
     db.employees.insert_one({
         "name": name,
@@ -1136,9 +1139,12 @@ def edit_employee(emp_id):
             "working_hours": hours
         }
 
-        if 'profile_image' in request.files:
-            p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
-            if p_url: update_data['profile_image_url'] = p_url
+        if 'profile_image' in request.files and request.files['profile_image'].filename != '':
+            try:
+                p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
+                if p_url: update_data['profile_image_url'] = p_url
+            except Exception as e:
+                flash(str(e), "error")
 
         db.employees.update_one(
             {"_id": emp_id_obj, "user_id": ObjectId(uid)},
@@ -1758,9 +1764,12 @@ def add_part_time_worker():
         return redirect(url_for('part_time'))
     
     profile_image_url = ""
-    if 'profile_image' in request.files:
-        p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
-        if p_url: profile_image_url = p_url
+    if 'profile_image' in request.files and request.files['profile_image'].filename != '':
+        try:
+            p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
+            if p_url: profile_image_url = p_url
+        except Exception as e:
+            flash(str(e), "error")
 
     db.part_time_workers.insert_one({
         "name": name,
@@ -2412,7 +2421,7 @@ def upload_avatar_to_cloudinary(file):
         return res.get('secure_url')
     except Exception as e:
         app.logger.error(f"Cloudinary upload error: {e}")
-        return None
+        raise RuntimeError(f"Cloudinary integration failed: {str(e)}")
 
 @app.route('/api/upload-avatar', methods=['POST'])
 @login_required
@@ -2455,6 +2464,8 @@ def upload_avatar():
         # Update MongoDB
         if target_type == 'user':
             db.users.update_one({"_id": ObjectId(uid)}, {"$set": {"profile_image_url": image_url}})
+            session['profile_image_url'] = image_url
+            session.modified = True
         elif target_type == 'employee':
             db.employees.update_one({"_id": ObjectId(target_id), "user_id": ObjectId(uid)}, {"$set": {"profile_image_url": image_url}})
         elif target_type == 'part_time_worker':
@@ -2483,6 +2494,8 @@ def remove_avatar():
         
         if target_type == 'user':
             db.users.update_one({"_id": ObjectId(uid)}, {"$unset": {"profile_image_url": ""}})
+            session.pop('profile_image_url', None)
+            session.modified = True
         elif target_type == 'employee':
             db.employees.update_one({"_id": ObjectId(target_id), "user_id": ObjectId(uid)}, {"$unset": {"profile_image_url": ""}})
         elif target_type == 'part_time_worker':
