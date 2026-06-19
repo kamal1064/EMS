@@ -1617,7 +1617,7 @@ def part_time():
     
     for log in analytics_cursor:
         client = (log.get('client_name') or 'Unassigned').strip()
-        worker = worker_names.get(str(log['worker_id']), 'Unknown Worker')
+        worker = worker_info.get(str(log['worker_id']), {}).get('name', 'Unknown Worker')
         t_price = float(log.get('total_price') or 0)
         r_bal = float(log.get('remaining_balance') or t_price) # fallback to t_price if missing
         adv_paid = t_price - r_bal
