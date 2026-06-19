@@ -1096,6 +1096,8 @@ def mark_attendance():
     emp_id = data.get('emp_id')
     att_date = data.get('date')
     status = data.get('status')
+    leave_reason = data.get('leave_reason')
+    leave_note = data.get('leave_note')
 
     if not all([emp_id, att_date, status]):
         return jsonify({'success': False})
@@ -1104,9 +1106,15 @@ def mark_attendance():
         if status == 'Present':
             db.attendance.delete_one({"emp_id": ObjectId(emp_id), "date": att_date})
         else:
+            update_data = {"status": status}
+            if leave_reason:
+                update_data["leave_reason"] = leave_reason
+            if leave_note:
+                update_data["leave_note"] = leave_note
+                
             db.attendance.update_one(
                 {"emp_id": ObjectId(emp_id), "date": att_date},
-                {"$set": {"status": status}},
+                {"$set": update_data},
                 upsert=True
             )
         return jsonify({'success': True, 'status': status})
@@ -1209,7 +1217,9 @@ def absent_days(emp_id):
             results.append({
                 "date": formatted_date,
                 "day": day_name,
-                "status": r['status']
+                "status": r['status'],
+                "leave_reason": r.get('leave_reason', '-'),
+                "leave_note": r.get('leave_note', '-')
             })
 
         return jsonify({'success': True, 'data': results})
@@ -2379,7 +2389,11 @@ def export_data():
             eid = str(a['emp_id'])
             if eid not in att_by_emp:
                 att_by_emp[eid] = {}
-            att_by_emp[eid][a['date']] = a.get('status', 'Absent')
+            att_by_emp[eid][a['date']] = {
+                'status': a.get('status', 'Absent'),
+                'leave_reason': a.get('leave_reason', ''),
+                'leave_note': a.get('leave_note', '')
+            }
 
         # 2. Fetch Salary Records (all-time if no explicit dates, otherwise restricted to selected range)
         sal_query = {"emp_id": {"$in": emp_ids}}
@@ -2500,17 +2514,19 @@ def export_data():
 
         # --- SHEET 2: ATTENDANCE ---
         ws_attendance = wb.create_sheet(title="Attendance")
-        att_headers = ["Employee ID", "Employee Name", "Date", "Status"]
+        att_headers = ["Employee ID", "Employee Name", "Date", "Status", "Reason", "Leave Note"]
         att_rows = []
         for e in emps:
             eid_str = str(e['_id'])
             for dt in date_list:
-                status = att_by_emp.get(eid_str, {}).get(dt, 'Present')
+                att_data = att_by_emp.get(eid_str, {}).get(dt, {'status': 'Present', 'leave_reason': '', 'leave_note': ''})
                 att_rows.append([
                     eid_str,
                     e.get('name', 'Unknown'),
                     dt,
-                    status
+                    att_data.get('status', 'Present'),
+                    att_data.get('leave_reason', ''),
+                    att_data.get('leave_note', '')
                 ])
         style_ws(ws_attendance, f"Attendance Logs{title_suffix}", att_headers, att_rows)
 

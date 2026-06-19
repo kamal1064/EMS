@@ -75,7 +75,7 @@
       </button>
       
       <button id="btn-absent-{{ e.id }}"
-              onclick="markAttendance('{{ e.id }}', 'Absent')"
+              onclick="openLeaveReasonModal('{{ e.id }}', '{{ e.name | replace(\"'\", \"\\\\'\") }}')"
               class="btn-saas btn-saas-sm {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}">
         <i class="bi bi-x-lg"></i>
         <span>Absent</span>
@@ -135,7 +135,7 @@
         <i class="bi bi-check-lg"></i> P
       </button>
       <button id="btn-absent-mob-{{ e.id }}"
-              onclick="markAttendance('{{ e.id }}', 'Absent')"
+              onclick="openLeaveReasonModal('{{ e.id }}', '{{ e.name | replace(\"'\", \"\\\\'\") }}')"
               class="btn-saas {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}"
               style="padding:6px 12px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:4px;">
         <i class="bi bi-x-lg"></i> A
@@ -170,9 +170,100 @@
 
 {% endblock %}
 
+{% block modals %}
+<div id="leaveReasonModal" class="premium-modal-backdrop" onclick="handleBackdropClick(event, 'leaveReasonModal')">
+  <div class="premium-modal-container" style="max-width:500px;">
+    <div class="premium-modal-header">
+      <div class="premium-modal-title">Employee Absence Details</div>
+      <button type="button" class="premium-modal-close-btn" onclick="closeModal('leaveReasonModal')">&times;</button>
+    </div>
+    <form id="leaveReasonForm" style="display:flex;flex-direction:column;flex:1;overflow:hidden;" onsubmit="submitLeaveReason(event)">
+      <div class="premium-modal-body">
+        <input type="hidden" id="leaveEmpId" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
+          <div class="premium-field-group">
+            <label class="premium-label">Employee Name</label>
+            <input type="text" id="leaveEmpName" class="premium-input bg-slate-50 dark:bg-slate-800" readonly />
+          </div>
+          <div class="premium-field-group">
+            <label class="premium-label">Attendance Date</label>
+            <input type="text" value="{{ selected_date }}" class="premium-input bg-slate-50 dark:bg-slate-800" readonly />
+          </div>
+        </div>
+        <div class="premium-field-group mt-4">
+          <label class="premium-label">Reason Category *</label>
+          <select id="leaveReasonCategory" class="premium-input" required>
+            <option value="">Select Reason</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Personal Work">Personal Work</option>
+            <option value="Family Emergency">Family Emergency</option>
+            <option value="Vacation">Vacation</option>
+            <option value="Unpaid Leave">Unpaid Leave</option>
+            <option value="Work From Home">Work From Home</option>
+            <option value="Late Approval">Late Approval</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="premium-field-group mt-4">
+          <label class="premium-label">Leave Note *</label>
+          <textarea id="leaveNoteText" class="premium-input" rows="3" minlength="5" maxlength="500" placeholder="e.g. Fever and advised bed rest." required></textarea>
+        </div>
+      </div>
+      <div class="premium-modal-footer">
+        <button type="button" class="btn-premium-cancel" onclick="closeModal('leaveReasonModal')">Cancel</button>
+        <button type="submit" class="btn-premium-save">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
 {% block scripts %}
 <script>
-function markAttendance(empId, status) {
+function openModal(id) {
+  var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.paddingRight = scrollbarWidth + 'px';
+  document.body.style.overflow = 'hidden';
+  var m = document.getElementById(id);
+  if (m) {
+    m.style.display = 'flex';
+    m.style.opacity = '0';
+    setTimeout(function() { m.style.opacity = '1'; }, 10);
+  }
+}
+function closeModal(id) {
+  document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
+  var m = document.getElementById(id);
+  if (m) {
+    m.style.opacity = '0';
+    setTimeout(function() { m.style.display = 'none'; }, 200);
+  }
+}
+function handleBackdropClick(event, id) {
+  if (event.target === event.currentTarget) {
+    closeModal(id);
+  }
+}
+
+function openLeaveReasonModal(empId, empName) {
+  document.getElementById('leaveEmpId').value = empId;
+  document.getElementById('leaveEmpName').value = empName;
+  document.getElementById('leaveReasonCategory').value = '';
+  document.getElementById('leaveNoteText').value = '';
+  openModal('leaveReasonModal');
+}
+
+function submitLeaveReason(e) {
+  e.preventDefault();
+  const empId = document.getElementById('leaveEmpId').value;
+  const reason = document.getElementById('leaveReasonCategory').value;
+  const note = document.getElementById('leaveNoteText').value;
+  closeModal('leaveReasonModal');
+  markAttendance(empId, 'Absent', reason, note);
+}
+
+function markAttendance(empId, status, leave_reason = null, leave_note = null) {
   const date = "{{ selected_date }}";
   
   // Desktop elements
@@ -219,10 +310,14 @@ function markAttendance(empId, status) {
     if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-danger';
   }
 
+  const payload = { emp_id: empId, date: date, status: status };
+  if (leave_reason) payload.leave_reason = leave_reason;
+  if (leave_note) payload.leave_note = leave_note;
+
   fetch('{{ url_for("mark_attendance") }}', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ emp_id: empId, date: date, status: status })
+    body: JSON.stringify(payload)
   })
   .then(response => response.json())
   .then(data => {
