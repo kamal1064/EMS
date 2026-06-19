@@ -52,25 +52,27 @@
 .dark {
   --bg:           #0d1117;
   --bg2:          #111827;
-  --card:         rgba(255,255,255,0.035);
-  --card-border:  rgba(255,255,255,0.07);
-  --card-hover:   rgba(255,255,255,0.055);
+  /* Raised from 0.035 → solid to prevent blending */
+  --card:         #161b27;
+  --card-border:  rgba(255,255,255,0.10);
+  --card-hover:   #1e2536;
   --sidebar-bg:   #090e1a;
-  --topbar-bg:    rgba(13,17,23,0.85);
-  --input-bg:     rgba(255,255,255,0.04);
-  --modal-bg:     #111827;
+  --topbar-bg:    rgba(13,17,23,0.92);
+  --input-bg:     rgba(255,255,255,0.06);
+  --modal-bg:     #131929;
 
-  --text:         #e2e8f0;
-  --text2:        #94a3b8;
-  --text3:        #64748b;
+  /* Boosted contrast: text3 raised from #64748b → #8899b4 */
+  --text:         #f0f4f8;
+  --text2:        #a8b8cc;
+  --text3:        #8899b4;
 
-  --primary-lo:   rgba(59,130,246,0.15);
-  --purple-lo:    rgba(139,92,246,0.15);
-  --success-lo:   rgba(16,185,129,0.15);
-  --danger-lo:    rgba(239,68,68,0.15);
-  --warning-lo:   rgba(245,158,11,0.15);
-  --shadow:       0 4px 24px rgba(0,0,0,0.3);
-  --shadow-lg:    0 8px 40px rgba(0,0,0,0.45);
+  --primary-lo:   rgba(59,130,246,0.18);
+  --purple-lo:    rgba(139,92,246,0.18);
+  --success-lo:   rgba(16,185,129,0.18);
+  --danger-lo:    rgba(239,68,68,0.18);
+  --warning-lo:   rgba(245,158,11,0.18);
+  --shadow:       0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg:    0 8px 40px rgba(0,0,0,0.55);
 }
 
 /* ── Base ────────────────────────────────────────── */
@@ -594,7 +596,7 @@ body {
 .btn-saas-primary  { background:var(--primary); color:#fff; box-shadow:0 1px 4px rgba(59,130,246,0.3); }
 .btn-saas-primary:hover  { background:var(--primary-h); box-shadow:var(--shadow-blue); transform:translateY(-1px); }
 .btn-saas-secondary { background:rgba(0,0,0,0.05); color:var(--text); border:1px solid var(--card-border); }
-.dark .btn-saas-secondary { background:rgba(255,255,255,0.07); color:#e2e8f0; border-color:rgba(255,255,255,0.1); }
+.dark .btn-saas-secondary { background:rgba(255,255,255,0.06); color:var(--text2); border-color:rgba(255,255,255,0.1); }
 .btn-saas-secondary:hover { background:rgba(0,0,0,0.09); transform:translateY(-1px); }
 .dark .btn-saas-secondary:hover { background:rgba(255,255,255,0.11); }
 .btn-saas-danger  { background:var(--danger); color:#fff; }
@@ -625,21 +627,22 @@ body {
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 thead tr {
-  background: rgba(0,0,0,0.025);
+  background: rgba(0,0,0,0.04);
   border-bottom: 1px solid var(--card-border);
 }
-.dark thead tr { background: rgba(255,255,255,0.025); }
+.dark thead tr { background: rgba(255,255,255,0.05); }
 th {
   padding: 12px 20px; text-align: left;
   font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--text3); white-space: nowrap;
+  /* Raised from text3 → text2 for better header contrast */
+  color: var(--text2); white-space: nowrap;
 }
 td { padding: 14px 20px; color: var(--text); }
 tbody tr { border-bottom: 1px solid var(--card-border); transition: background var(--transition); }
 tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: rgba(0,0,0,0.02); }
-.dark tbody tr:hover { background: rgba(255,255,255,0.025); }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+.dark tbody tr:hover { background: rgba(255,255,255,0.045); }
 
 /* ── Avatars ─────────────────────────────────────── */
 .avatar {
@@ -1343,7 +1346,7 @@ body.modal-open { overflow:hidden !important; }
   width: 100%;
   height: 100%;
   z-index: 999999;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.78);
   /* backdrop-filter moved to ::before to prevent child fading */
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
