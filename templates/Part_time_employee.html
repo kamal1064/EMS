@@ -874,5 +874,24 @@
       });
       container.innerHTML = html;
   }
+
+  // Auto-calculate Gross Price
+  document.addEventListener('DOMContentLoaded', function() {
+    const qtyInput = document.getElementById('slab_qty');
+    const priceInput = document.getElementById('slab_price');
+    const totalInput = document.getElementById('total_price');
+    
+    function calcTotal() {
+      if (!qtyInput || !priceInput || !totalInput) return;
+      const q = parseFloat(qtyInput.value) || 0;
+      const p = parseFloat(priceInput.value) || 0;
+      totalInput.value = (q * p).toFixed(2);
+    }
+    
+    if (qtyInput && priceInput) {
+      qtyInput.addEventListener('input', calcTotal);
+      priceInput.addEventListener('input', calcTotal);
+    }
+  });
 </script>
 {% endblock %}
