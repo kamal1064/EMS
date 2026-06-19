@@ -195,10 +195,128 @@ mongo_uri = os.environ.get('MONGO_URI')
 if not mongo_uri:
     raise RuntimeError("MONGO_URI environment variable is not set. Refusing to start.")
 
+import time
+from pymongo import monitoring
+from flask import g, template_rendered, before_render_template, has_app_context, has_request_context
+
+ENABLE_PROFILING = os.environ.get('ENABLE_PROFILING') == 'true' or os.environ.get('FLASK_ENV') == 'development'
+
+class MongoProfiler(monitoring.CommandListener):
+    def started(self, event):
+        if ENABLE_PROFILING and has_app_context() and has_request_context():
+            if not hasattr(g, 'mongo_queries'):
+                g.mongo_queries = []
+            
+            coll_name = "unknown"
+            if event.command_name in event.command:
+                coll_name = event.command.get(event.command_name, "unknown")
+            elif event.command_name == 'insert':
+                coll_name = event.command.get('insert', "unknown")
+            elif event.command_name == 'update':
+                coll_name = event.command.get('update', "unknown")
+            elif event.command_name == 'delete':
+                coll_name = event.command.get('delete', "unknown")
+            elif event.command_name == 'aggregate':
+                coll_name = event.command.get('aggregate', "unknown")
+
+            doc_count = 0
+            if 'documents' in event.command:
+                doc_count = len(event.command['documents'])
+            elif 'updates' in event.command:
+                doc_count = len(event.command['updates'])
+
+            g.mongo_queries.append({
+                'request_id': event.request_id,
+                'name': event.command_name,
+                'collection': str(coll_name),
+                'doc_count': doc_count,
+                'start_time': time.time(),
+                'duration': 0
+            })
+
+    def succeeded(self, event):
+        if ENABLE_PROFILING and has_app_context() and has_request_context():
+            duration_ms = event.duration_micros / 1000.0
+            if hasattr(g, 'mongo_time'):
+                g.mongo_time += duration_ms
+            if hasattr(g, 'mongo_queries'):
+                for q in reversed(g.mongo_queries):
+                    if q.get('request_id') == event.request_id:
+                        q['duration'] = duration_ms
+                        if event.reply and 'cursor' in event.reply and 'firstBatch' in event.reply['cursor']:
+                            q['doc_count'] = len(event.reply['cursor']['firstBatch'])
+                        elif event.reply and 'n' in event.reply:
+                            q['doc_count'] = event.reply['n']
+                        break
+
+    def failed(self, event):
+        if ENABLE_PROFILING and has_app_context() and has_request_context():
+            duration_ms = event.duration_micros / 1000.0
+            if hasattr(g, 'mongo_time'):
+                g.mongo_time += duration_ms
+
+if ENABLE_PROFILING:
+    monitoring.register(MongoProfiler())
+
+def before_render(sender, template, context, **extra):
+    if ENABLE_PROFILING:
+        g.render_start_time = time.time()
+
+def after_render(sender, template, context, **extra):
+    if ENABLE_PROFILING and hasattr(g, 'render_start_time'):
+        duration = (time.time() - g.render_start_time) * 1000.0
+        g.render_time = getattr(g, 'render_time', 0.0) + duration
+
+if ENABLE_PROFILING:
+    before_render_template.connect(before_render, app)
+    template_rendered.connect(after_render, app)
+
+@app.before_request
+def start_timer():
+    if ENABLE_PROFILING:
+        g.start_time = time.time()
+        g.mongo_time = 0.0
+        g.render_time = 0.0
+        g.mongo_queries = []
+
+@app.after_request
+def log_request_timing(response):
+    if ENABLE_PROFILING and hasattr(g, 'start_time'):
+        total_time = (time.time() - g.start_time) * 1000.0
+        route_name = request.endpoint or "Unknown"
+        queries = getattr(g, 'mongo_queries', [])
+        
+        log_record = {
+            "route": route_name,
+            "path": request.path,
+            "method": request.method,
+            "total_time_ms": round(total_time, 2),
+            "mongo_time_ms": round(getattr(g, 'mongo_time', 0.0), 2),
+            "render_time_ms": round(getattr(g, 'render_time', 0.0), 2),
+            "query_count": len(queries),
+            "queries": [
+                {
+                    "name": q.get('name'),
+                    "collection": q.get('collection'),
+                    "duration_ms": round(q.get('duration', 0.0), 2),
+                    "doc_count": q.get('doc_count', 0)
+                } for q in queries
+            ]
+        }
+        
+        app.logger.info(f"PROFILING: {route_name} | Total: {log_record['total_time_ms']}ms | Mongo: {log_record['mongo_time_ms']}ms | Render: {log_record['render_time_ms']}ms | Queries: {log_record['query_count']}")
+        
+        os.makedirs("scratch", exist_ok=True)
+        try:
+            with open("scratch/profiling.jsonl", "a") as f:
+                f.write(json.dumps(log_record) + "\n")
+        except Exception:
+            pass
+            
+    return response
+
 try:
     mongo_client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
-    # Ping database to check connection
-    mongo_client.admin.command('ping')
     db = mongo_client.get_default_database()
 except Exception as e:
     try:
@@ -212,6 +330,7 @@ def init_db():
     try:
         db.users.create_index("email", unique=True)
         db.users.create_index("username", unique=True)
+        db.employees.create_index([("user_id", 1), ("name", 1)])
         app.logger.info("MongoDB indexes verified successfully.")
     except Exception as e:
         app.logger.error(f"Error initializing MongoDB: {e}", exc_info=True)
@@ -2814,6 +2933,14 @@ app.register_blueprint(api_v1)
 # ─────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────
+
+@app.route('/api/debug/system')
+def debug_system():
+    import os
+    return {
+        "VERCEL_REGION": os.environ.get("VERCEL_REGION", "Unknown"),
+        "AWS_REGION": os.environ.get("AWS_REGION", "Unknown")
+    }
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
