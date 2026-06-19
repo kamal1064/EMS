@@ -2933,15 +2933,6 @@ app.register_blueprint(api_v1)
 # ─────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────
-
-@app.route('/api/debug/system')
-def debug_system():
-    import os
-    return {
-        "VERCEL_REGION": os.environ.get("VERCEL_REGION", "Unknown"),
-        "AWS_REGION": os.environ.get("AWS_REGION", "Unknown")
-    }
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV', 'production') == 'development'
