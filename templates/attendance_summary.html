@@ -377,11 +377,11 @@ function openAbsentModal(empId, empName, present, absent, month) {
                     let reasonHtml = row.leave_reason && row.leave_reason !== '-' ? `<span class="badge badge-secondary text-[10px] px-1.5 py-0.5">${row.leave_reason}</span>` : '-';
 
                     tbody.innerHTML += `
-                        <tr style="border-bottom:1px solid rgba(255,255,255,0.07); color:#e2e8f0;">
-                            <td style="padding:12px 0;font-family:monospace;font-size:13px;">${row.date}</td>
-                            <td style="padding:12px 0;font-size:13px;">${row.day}</td>
-                            <td style="padding:12px 0;">${reasonHtml}</td>
-                            <td style="padding:12px 0;">${noteHtml}</td>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.07);">
+                            <td style="padding:12px 0;font-family:monospace;font-size:13px;color:#e2e8f0 !important;">${row.date}</td>
+                            <td style="padding:12px 0;font-size:13px;color:#e2e8f0 !important;">${row.day}</td>
+                            <td style="padding:12px 0;color:#e2e8f0 !important;">${reasonHtml}</td>
+                            <td style="padding:12px 0;color:#e2e8f0 !important;">${noteHtml}</td>
                             <td style="padding:12px 0;text-align:right;">
                                 <span style="padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">${row.status}</span>
                             </td>
