@@ -1,3 +1,4 @@
+{% from 'macros/avatar.html' import render_avatar %}
 <!DOCTYPE html>
 <html lang="en" class="">
 <head>
@@ -120,11 +121,7 @@
       {% set username = session.get('username') %}
       <div class="sidebar-user">
         <div class="user-avatar">
-          {% if session.get('avatar') %}
-            <img src="{{ session.get('avatar') }}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" referrerpolicy="no-referrer"/>
-          {% else %}
-            {{ (username[0].upper() if username else '?') }}
-          {% endif %}
+          {{ render_avatar(username, session.get('profile_image_url') or session.get('avatar'), '100%') }}
         </div>
         <div style="flex:1;min-width:0;">
           <div class="user-name truncate">{{ username if username else 'Admin' }}</div>
@@ -233,10 +230,15 @@
 
   <!-- Header: Avatar + name + email -->
   <div class="pp-header">
-    <div class="pp-avatar" id="pp-avatar">?</div>
-    <div class="pp-info">
-      <div class="pp-name"  id="pp-name">Loading…</div>
+    <div class="pp-avatar-wrapper" onclick="document.getElementById('pp-avatar-upload').click()">
+      <div class="pp-avatar" id="pp-avatar" style="width:100%; height:100%; border-radius:50%; overflow:hidden;">?</div>
+      <div class="pp-avatar-overlay"><i class="bi bi-camera-fill"></i></div>
+      <input type="file" id="pp-avatar-upload" class="pp-avatar-input" accept="image/png, image/jpeg, image/webp" onchange="uploadAvatar('user', '{{ session.get('user_id') }}', this.files[0])">
+    </div>
+    <div class="pp-info" style="text-align: center; width: 100%;">
+      <div class="pp-name" id="pp-name">Loading…</div>
       <div class="pp-email" id="pp-email"></div>
+      <button class="pp-remove-avatar" id="pp-remove-avatar-btn" style="display:none;" onclick="removeAvatar('user', '{{ session.get('user_id') }}')">Remove Picture</button>
     </div>
     <button class="pp-close-btn" onclick="closeProfilePopup()" title="Close">
       <i class="bi bi-x-lg"></i>
@@ -974,10 +976,15 @@ function loadProfileInfo() {
       if (nameEl)  nameEl.textContent  = dispName;
       if (emailEl) emailEl.textContent = d.email || '';
       if (avEl) {
-        if (d.avatar) {
-          avEl.innerHTML = '<img src="' + d.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" referrerpolicy="no-referrer"/>';
+        var finalAvatar = d.profile_image_url || d.avatar;
+        if (finalAvatar) {
+          avEl.innerHTML = '<img src="' + finalAvatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" referrerpolicy="no-referrer"/>';
+          var rmBtn = document.getElementById('pp-remove-avatar-btn');
+          if (rmBtn) rmBtn.style.display = 'inline-block';
         } else {
-          avEl.textContent = dispName.charAt(0).toUpperCase();
+          avEl.innerHTML = dispName.charAt(0).toUpperCase();
+          var rmBtn = document.getElementById('pp-remove-avatar-btn');
+          if (rmBtn) rmBtn.style.display = 'none';
         }
       }
       if (llEl)    llEl.textContent    = d.last_login || 'This session';
@@ -1089,6 +1096,62 @@ function updatePPToggle() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeProfilePopup();
 });
+
+/* Avatar Upload Logic */
+function uploadAvatar(target_type, target_id, file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('File exceeds 5MB limit', 'error');
+    return;
+  }
+  
+  var formData = new FormData();
+  formData.append('file', file);
+  formData.append('target_type', target_type);
+  formData.append('target_id', target_id);
+
+  showToast('Uploading profile picture...', 'info');
+  fetch('/api/upload-avatar', {
+    method: 'POST',
+    body: formData
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      showToast('Profile picture updated!', 'success');
+      if (target_type === 'user') loadProfileInfo();
+      else setTimeout(function() { location.reload(); }, 1000);
+    } else {
+      showToast(data.error || 'Upload failed', 'error');
+    }
+  })
+  .catch(function(e) {
+    showToast('Upload failed', 'error');
+  });
+}
+
+function removeAvatar(target_type, target_id) {
+  if (!confirm('Are you sure you want to remove this profile picture?')) return;
+  
+  fetch('/api/remove-avatar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target_type: target_type, target_id: target_id})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      showToast('Profile picture removed!', 'success');
+      if (target_type === 'user') loadProfileInfo();
+      else setTimeout(function() { location.reload(); }, 1000);
+    } else {
+      showToast(data.error || 'Removal failed', 'error');
+    }
+  })
+  .catch(function(e) {
+    showToast('Removal failed', 'error');
+  });
+}
 
 /* Apply saved display name on page load */
 document.addEventListener('DOMContentLoaded', function() {

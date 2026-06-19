@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/avatar.html' import render_avatar %}
 {% block title %}Salary{% endblock %}
 {% block page_title %}Salary{% endblock %}
 {% block page_subtitle %}Attendance-linked payroll with advance deductions{% endblock %}
@@ -81,7 +82,7 @@
           <!-- Employee Name -->
           <td>
             <div style="display:flex;align-items:center;gap:10px;">
-              <div class="avatar">{{ s.name[0].upper() }}</div>
+              {{ render_avatar(s.name, s.get('profile_image_url'), '32px') }}
               <span style="font-weight:600;">{{ s.name }}</span>
             </div>
           </td>
@@ -190,9 +191,7 @@
   <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div class="avatar" style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg, var(--primary), var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;">
-          {{ s.name[0].upper() }}
-        </div>
+        {{ render_avatar(s.name, s.get('profile_image_url'), '36px') }}
         <div>
           <span style="font-weight:700;font-size:14px;display:block;color:var(--text);">{{ s.name }}</span>
           <span class="text-xs text-muted" style="color:var(--text3);">Rate: ₹{{ "{:,.0f}".format(s.monthly_salary) }}/mo</span>

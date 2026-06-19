@@ -17,7 +17,7 @@
     <h3 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Modify Employee Fields</h3>
   </div>
 
-  <form method="POST" class="p-6 space-y-6">
+  <form method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div class="space-y-1.5">
         <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Full Name *</label>
@@ -28,6 +28,10 @@
         <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Phone Number</label>
         <input type="text" name="phone" value="{{ emp['phone'] or '' }}" placeholder="Enter phone"
                class="form-input"/>
+      </div>
+      <div class="space-y-1.5 md:col-span-2">
+        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Profile Picture (Leave empty to keep current)</label>
+        <input type="file" name="profile_image" class="form-input" accept="image/png, image/jpeg, image/webp"/>
       </div>
     </div>
 

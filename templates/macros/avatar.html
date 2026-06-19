@@ -1,0 +1,10 @@
+{% macro render_avatar(name, image_url, size='40px', extra_classes='') %}
+{% set initial = name[0]|upper if name else '?' %}
+{% if image_url %}
+  <img src="{{ image_url }}" alt="{{ name }}" class="avatar-image {{ extra_classes }}" style="width: {{ size }}; height: {{ size }}; object-fit: cover; border-radius: 50%; display: inline-block; vertical-align: middle;" loading="lazy">
+{% else %}
+  <div class="avatar-fallback {{ extra_classes }}" style="width: {{ size }}; height: {{ size }}; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-teal)); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: calc({{ size }} * 0.4); vertical-align: middle;">
+    {{ initial }}
+  </div>
+{% endif %}
+{% endmacro %}

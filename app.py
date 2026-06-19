@@ -43,6 +43,13 @@ import base64
 from io import BytesIO
 from utils.mailer import send_verification_email, send_reset_email
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+# Cloudinary config (will automatically use CLOUDINARY_URL env var if set)
+cloudinary.config(secure=True)
+
 # ─────────────────────────────────────────
 # SECURITY & MONITORING INIT
 # ─────────────────────────────────────────
@@ -835,6 +842,7 @@ def api_profile_info():
         'email':      user['email']    if user else '',
         'last_login': session.get('last_login', 'Unknown'),
         'avatar':     user.get('avatar') if user else session.get('avatar', ''),
+        'profile_image_url': user.get('profile_image_url') if user else '',
         'is_google':  bool(user.get('google_id')) if user else False
     })
 
@@ -1058,6 +1066,11 @@ def add_employee():
         hours = 40.0
     hours = max(hours, 0.0)
 
+    profile_image_url = ""
+    if 'profile_image' in request.files:
+        p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
+        if p_url: profile_image_url = p_url
+
     db.employees.insert_one({
         "name": name,
         "phone": phone,
@@ -1066,6 +1079,7 @@ def add_employee():
         "salary": salary,
         "leaves": leaves,
         "working_hours": hours,
+        "profile_image_url": profile_image_url,
         "user_id": ObjectId(uid),
         "created_at": datetime.utcnow().isoformat()
     })
@@ -1112,17 +1126,23 @@ def edit_employee(emp_id):
             hours = 40.0
         hours = max(hours, 0.0)
 
+        update_data = {
+            "name": request.form.get('name'),
+            "phone": request.form.get('phone'),
+            "age": age,
+            "gender": request.form.get('gender'),
+            "salary": salary,
+            "leaves": leaves,
+            "working_hours": hours
+        }
+
+        if 'profile_image' in request.files:
+            p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
+            if p_url: update_data['profile_image_url'] = p_url
+
         db.employees.update_one(
             {"_id": emp_id_obj, "user_id": ObjectId(uid)},
-            {"$set": {
-                "name": request.form.get('name'),
-                "phone": request.form.get('phone'),
-                "age": age,
-                "gender": request.form.get('gender'),
-                "salary": salary,
-                "leaves": leaves,
-                "working_hours": hours
-            }}
+            {"$set": update_data}
         )
         return redirect(url_for('employees'))
 
@@ -1293,6 +1313,7 @@ def attendance_summary():
         summary.append({
             'id': e['id'],
             'name': e['name'],
+            'profile_image_url': e.get('profile_image_url', ''),
             'present': present_days,
             'absent': absent_days,
             'total': total_days
@@ -1491,6 +1512,7 @@ def salary():
             'id': e['id'],
             'record_id': record_id_str,
             'name': e['name'],
+            'profile_image_url': e.get('profile_image_url', ''),
             'monthly_salary': e['salary'],
             'present_days': present_days,
             'salary_per_day': round(salary_per_day, 2),
@@ -1529,8 +1551,8 @@ def part_time():
     setup_error = None
     
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
-    worker_names = {str(w['_id']): w['name'] for w in pt_workers}
-    worker_ids = [ObjectId(wid) for wid in worker_names.keys()]
+    worker_info = {str(w['_id']): {"name": w['name'], "profile_image_url": w.get('profile_image_url', '')} for w in pt_workers}
+    worker_ids = [ObjectId(wid) for wid in worker_info.keys()]
     
     match_query = {"worker_id": {"$in": worker_ids}}
     if selected_client:
@@ -1559,7 +1581,9 @@ def part_time():
     records = []
     for log in logs:
         record = serialize_doc(log)
-        record['worker_name'] = worker_names.get(str(log['worker_id']), 'Unknown Worker')
+        info = worker_info.get(str(log['worker_id']), {"name": "Unknown Worker", "profile_image_url": ""})
+        record['worker_name'] = info['name']
+        record['profile_image_url'] = info['profile_image_url']
         record['client_name'] = (record.get('client_name') or 'Unassigned').strip()
         record['total_price'] = float(record.get('total_price') or 0)
         record['slab_quantity'] = int(record.get('slab_quantity') or 0)
@@ -1733,8 +1757,14 @@ def add_part_time_worker():
     if not name:
         return redirect(url_for('part_time'))
     
+    profile_image_url = ""
+    if 'profile_image' in request.files:
+        p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
+        if p_url: profile_image_url = p_url
+
     db.part_time_workers.insert_one({
         "name": name,
+        "profile_image_url": profile_image_url,
         "user_id": ObjectId(uid),
         "created_at": datetime.now().isoformat()
     })
@@ -2354,6 +2384,113 @@ def get_export_options():
         "employees": [{"id": str(e['_id']), "name": e.get('name')} for e in employees],
         "part_time_workers": [{"id": str(w['_id']), "name": w.get('name')} for w in pt_workers]
     })
+
+# ─────────────────────────────────────────
+# AVATAR UPLOAD (Cloudinary)
+# ─────────────────────────────────────────
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def upload_avatar_to_cloudinary(file):
+    if not file or file.filename == '' or not allowed_file(file.filename):
+        return None
+    file.seek(0, os.SEEK_END)
+    if file.tell() > 5 * 1024 * 1024:
+        return None
+    file.seek(0)
+    try:
+        res = cloudinary.uploader.upload(
+            file,
+            folder="ems_avatars",
+            transformation=[
+                {'width': 200, 'height': 200, 'crop': 'fill', 'gravity': 'face'},
+                {'fetch_format': 'auto', 'quality': 'auto'}
+            ]
+        )
+        return res.get('secure_url')
+    except Exception as e:
+        app.logger.error(f"Cloudinary upload error: {e}")
+        return None
+
+@app.route('/api/upload-avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    if 'file' not in request.files:
+        return jsonify({"success": False, "error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected file"}), 400
+    
+    # 5MB size limit check
+    file.seek(0, os.SEEK_END)
+    file_length = file.tell()
+    if file_length > 5 * 1024 * 1024:
+        return jsonify({"success": False, "error": "File exceeds 5MB limit"}), 400
+    file.seek(0) # reset pointer
+
+    if not allowed_file(file.filename):
+        return jsonify({"success": False, "error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
+
+    target_type = request.form.get('target_type') # 'user', 'employee', 'part_time_worker'
+    target_id = request.form.get('target_id')
+    uid = get_current_user_id()
+
+    if target_type not in ['user', 'employee', 'part_time_worker']:
+        return jsonify({"success": False, "error": "Invalid target type"}), 400
+
+    try:
+        # Upload to Cloudinary with transformations
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder="ems_avatars",
+            transformation=[
+                {'width': 200, 'height': 200, 'crop': 'fill', 'gravity': 'face'},
+                {'fetch_format': 'auto', 'quality': 'auto'}
+            ]
+        )
+        image_url = upload_result.get('secure_url')
+
+        # Update MongoDB
+        if target_type == 'user':
+            db.users.update_one({"_id": ObjectId(uid)}, {"$set": {"profile_image_url": image_url}})
+        elif target_type == 'employee':
+            db.employees.update_one({"_id": ObjectId(target_id), "user_id": ObjectId(uid)}, {"$set": {"profile_image_url": image_url}})
+        elif target_type == 'part_time_worker':
+            db.part_time_workers.update_one({"_id": ObjectId(target_id), "user_id": ObjectId(uid)}, {"$set": {"profile_image_url": image_url}})
+
+        return jsonify({"success": True, "profile_image_url": image_url})
+    except Exception as e:
+        app.logger.error(f"Cloudinary upload error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/remove-avatar', methods=['POST'])
+@login_required
+def remove_avatar():
+    data = request.json or {}
+    target_type = data.get('target_type')
+    target_id = data.get('target_id')
+    uid = get_current_user_id()
+
+    if target_type not in ['user', 'employee', 'part_time_worker']:
+        return jsonify({"success": False, "error": "Invalid target type"}), 400
+
+    try:
+        # We don't necessarily need to delete from Cloudinary immediately (could orphan), but to be clean:
+        # Since we just have the URL, we can extract public_id to destroy, or just nullify in DB to be safe.
+        # Let's just nullify in DB for safety/speed.
+        
+        if target_type == 'user':
+            db.users.update_one({"_id": ObjectId(uid)}, {"$unset": {"profile_image_url": ""}})
+        elif target_type == 'employee':
+            db.employees.update_one({"_id": ObjectId(target_id), "user_id": ObjectId(uid)}, {"$unset": {"profile_image_url": ""}})
+        elif target_type == 'part_time_worker':
+            db.part_time_workers.update_one({"_id": ObjectId(target_id), "user_id": ObjectId(uid)}, {"$unset": {"profile_image_url": ""}})
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/export')
 @limiter.limit("10 per minute")         # Excel export is expensive — cap it

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/avatar.html' import render_avatar %}
 {% block title %}Part Time Work{% endblock %}
 {% block page_title %}Part Time Work{% endblock %}
 {% block page_subtitle %}Track slab deliveries, per-unit pricing, and advance payments{% endblock %}
@@ -74,10 +75,14 @@
         <i class="bi bi-person-plus-fill text-purpleaccent text-lg"></i>
         <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Onboard Slab Worker</h3>
       </div>
-      <form method="POST" action="{{ url_for('add_part_time_worker') }}" class="space-y-5">
+      <form method="POST" action="{{ url_for('add_part_time_worker') }}" enctype="multipart/form-data" class="space-y-5">
         <div class="space-y-2">
           <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Worker Full Name *</label>
           <input type="text" name="name" placeholder="e.g. Vikram Malhotra" required class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
+        </div>
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase">Profile Picture (Optional)</label>
+          <input type="file" name="profile_image" accept="image/png, image/jpeg, image/webp" class="w-full bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-textmuted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
         </div>
         <div class="p-4 rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.01] text-xs text-slate-500 dark:text-textsecondary leading-relaxed">
           <p><strong class="text-slate-900 dark:text-white block mb-1">Freelance Segregation Policy</strong>
@@ -132,7 +137,10 @@
         {% for r in records %}
         <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all" id="row-{{ r['id'] }}">
           <td class="py-4 px-6">
-            <div class="font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-primary transition-colors" onclick="openWorkerSummary('{{ r['worker_id'] }}')">{{ r['worker_name'] }} <i class="bi bi-info-circle text-[10px]"></i></div>
+            <div class="flex items-center gap-2">
+              {{ render_avatar(r['worker_name'], r.get('profile_image_url'), '28px') }}
+              <div class="font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-primary transition-colors" onclick="openWorkerSummary('{{ r['worker_id'] }}')">{{ r['worker_name'] }} <i class="bi bi-info-circle text-[10px]"></i></div>
+            </div>
             <div class="text-[10px] text-slate-500 dark:text-textsecondary flex items-center gap-1 mt-0.5">
               <i class="bi bi-briefcase-fill text-[9px]"></i>
               <span>Client: {{ r['client_name'] }}</span>
@@ -197,7 +205,10 @@
   <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);" id="row-mob-{{ r['id'] }}">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <span class="font-bold text-[14px] text-text cursor-pointer hover:text-primary" onclick="openWorkerSummary('{{ r['worker_id'] }}')">{{ r['worker_name'] }} <i class="bi bi-info-circle text-[10px]"></i></span>
+        <div class="flex items-center gap-2">
+          {{ render_avatar(r['worker_name'], r.get('profile_image_url'), '36px') }}
+          <span class="font-bold text-[14px] text-text cursor-pointer hover:text-primary" onclick="openWorkerSummary('{{ r['worker_id'] }}')">{{ r['worker_name'] }} <i class="bi bi-info-circle text-[10px]"></i></span>
+        </div>
         <span class="text-xs text-muted font-mono block"><i class="bi bi-briefcase text-[10px] mr-1"></i>{{ r['client_name'] }}</span>
       </div>
       <span class="badge {% if r['payment_status'] == 'Paid' %}badge-success{% elif r['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}" id="status-mob-{{ r['id'] }}">

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/avatar.html' import render_avatar %}
 {% block title %}Att. Summary{% endblock %}
 {% block page_title %}Att. Summary{% endblock %}
 {% block page_subtitle %}Monthly attendance reports for your employees{% endblock %}
@@ -64,8 +65,8 @@
           <td class="py-4 px-6 font-mono text-xs text-textmuted">{{ loop.index }}</td>
           <td class="py-4 px-6">
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary/15 to-purpleaccent/15 border border-primary/20 flex items-center justify-center text-xs font-black text-primary shadow-glow-primary">
-                {{ s.name[0].upper() }}
+              <div class="flex-shrink-0">
+                {{ render_avatar(s.name, s.get('profile_image_url'), '36px') }}
               </div>
               <span class="font-semibold text-slate-900 dark:text-white">{{ s.name }}</span>
             </div>
@@ -142,8 +143,8 @@
   <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary/15 to-purpleaccent/15 border border-primary/20 flex items-center justify-center text-xs font-black text-primary shadow-glow-primary">
-          {{ s.name[0].upper() }}
+        <div class="flex-shrink-0">
+          {{ render_avatar(s.name, s.get('profile_image_url'), '36px') }}
         </div>
         <span style="font-weight:700;font-size:14px;color:var(--text);">{{ s.name }}</span>
       </div>
