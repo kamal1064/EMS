@@ -223,27 +223,27 @@
         </div>
         <div>
           <div class="premium-modal-title" id="modalEmpName">Employee Name</div>
-          <p class="text-xs text-slate-500 dark:text-textsecondary mt-0.5">Absent Days Detail</p>
+          <p class="text-xs mt-0.5" style="color:#8899b4;">Absent Days Detail</p>
         </div>
       </div>
       <button type="button" class="premium-modal-close-btn" onclick="closeAbsentModal()">&times;</button>
     </div>
 
     <!-- Stats Summary -->
-    <div class="grid grid-cols-2 gap-4 p-6 bg-slate-50/50 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5 shrink-0">
-      <div class="bg-white dark:bg-card p-3 rounded-xl border border-slate-200 dark:border-white/5 text-center">
-        <span class="block text-[10px] uppercase font-bold text-slate-500 dark:text-textsecondary mb-1">Present</span>
-        <span class="text-lg font-bold text-success font-mono" id="modalPresentCount">0</span>
+    <div class="grid grid-cols-2 gap-4 p-6 shrink-0" style="background:#0d1422; border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div class="p-4 rounded-xl text-center" style="background:#1a2235; border:1px solid rgba(255,255,255,0.10);">
+        <span class="block text-[10px] uppercase font-bold mb-1" style="color:#8899b4; letter-spacing:0.1em;">Present</span>
+        <span class="text-2xl font-bold font-mono" style="color:#10b981;" id="modalPresentCount">0</span>
       </div>
-      <div class="bg-white dark:bg-card p-3 rounded-xl border border-slate-200 dark:border-white/5 text-center shadow-[0_0_15px_rgba(239,68,68,0.1)]">
-        <span class="block text-[10px] uppercase font-bold text-slate-500 dark:text-textsecondary mb-1">Absent</span>
-        <span class="text-lg font-bold text-danger font-mono" id="modalAbsentCount">0</span>
+      <div class="p-4 rounded-xl text-center" style="background:#1a2235; border:1px solid rgba(239,68,68,0.25); box-shadow:0 0 20px rgba(239,68,68,0.08);">
+        <span class="block text-[10px] uppercase font-bold mb-1" style="color:#8899b4; letter-spacing:0.1em;">Absent</span>
+        <span class="text-2xl font-bold font-mono" style="color:#ef4444;" id="modalAbsentCount">0</span>
       </div>
     </div>
 
     <!-- Table Container (Scrollable) -->
-    <div class="p-6 overflow-y-auto flex-1">
-      <div id="absentLoading" class="hidden py-8 text-center text-slate-500">
+    <div class="p-6 overflow-y-auto flex-1" style="background:#111827;">
+      <div id="absentLoading" class="hidden py-8 text-center" style="color:#8899b4;">
         <i class="bi bi-arrow-repeat animate-spin text-2xl"></i>
         <p class="text-sm mt-2">Loading records...</p>
       </div>
@@ -251,22 +251,20 @@
       <div id="absentTableContainer" class="hidden">
         <table class="w-full text-left text-sm">
           <thead>
-            <tr class="text-xs uppercase text-slate-500 dark:text-textsecondary border-b border-slate-100 dark:border-white/5">
-              <th class="pb-3 font-semibold">Date</th>
-              <th class="pb-3 font-semibold">Day</th>
-              <th class="pb-3 font-semibold">Reason</th>
-              <th class="pb-3 font-semibold">Note</th>
-              <th class="pb-3 font-semibold text-right">Status</th>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.10);">
+              <th class="pb-3 font-bold text-[10px] uppercase tracking-widest" style="color:#a8b8cc;">Date</th>
+              <th class="pb-3 font-bold text-[10px] uppercase tracking-widest" style="color:#a8b8cc;">Day</th>
+              <th class="pb-3 font-bold text-[10px] uppercase tracking-widest" style="color:#a8b8cc;">Reason</th>
+              <th class="pb-3 font-bold text-[10px] uppercase tracking-widest" style="color:#a8b8cc;">Note</th>
+              <th class="pb-3 font-bold text-[10px] uppercase tracking-widest text-right" style="color:#a8b8cc;">Status</th>
             </tr>
           </thead>
-          <tbody id="absentTableBody" class="divide-y divide-slate-100 dark:divide-white/5">
-            <!-- Rows injected by JS -->
-          </tbody>
+          <tbody id="absentTableBody" style="color:#e2e8f0;"></tbody>
         </table>
       </div>
       
-      <div id="absentEmpty" class="hidden py-8 text-center text-slate-400">
-        <i class="bi bi-check-circle text-3xl mb-2 block text-success/50"></i>
+      <div id="absentEmpty" class="hidden py-8 text-center" style="color:#8899b4;">
+        <i class="bi bi-check-circle text-3xl mb-2 block" style="color:rgba(16,185,129,0.5);"></i>
         <p>No absent days recorded.</p>
       </div>
     </div>
@@ -367,25 +365,25 @@ function openAbsentModal(empId, empName, present, absent, month) {
                             const escapedReason = row.leave_reason ? row.leave_reason.replace(/"/g, '&quot;').replace(/'/g, "\\'") : '';
                             noteHtml = `
                                 <div class="flex items-center gap-2">
-                                    <span class="truncate max-w-[80px] inline-block text-xs text-slate-500" title="${escapedNote}">${row.leave_note.substring(0, 25)}...</span>
-                                    <button type="button" onclick="openNoteDetailModal('${escapedReason}', '${escapedNote}')" class="text-[10px] font-bold text-primary hover:underline whitespace-nowrap px-2 py-0.5 rounded bg-primary/10">View Note</button>
+                                    <span style="font-size:12px;color:#a8b8cc;" title="${escapedNote}">${row.leave_note.substring(0, 25)}...</span>
+                                    <button type="button" onclick="openNoteDetailModal('${escapedReason}', '${escapedNote}')" style="font-size:10px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,0.12);border:none;border-radius:4px;padding:2px 8px;cursor:pointer;">View Note</button>
                                 </div>
                             `;
                         } else {
-                            noteHtml = `<span class="text-xs text-slate-500">${row.leave_note}</span>`;
+                            noteHtml = `<span style="font-size:12px;color:#a8b8cc;">${row.leave_note}</span>`;
                         }
                     }
                     
                     let reasonHtml = row.leave_reason && row.leave_reason !== '-' ? `<span class="badge badge-secondary text-[10px] px-1.5 py-0.5">${row.leave_reason}</span>` : '-';
 
                     tbody.innerHTML += `
-                        <tr class="text-slate-700 dark:text-white/90">
-                            <td class="py-3 font-mono text-sm">${row.date}</td>
-                            <td class="py-3 text-sm">${row.day}</td>
-                            <td class="py-3">${reasonHtml}</td>
-                            <td class="py-3">${noteHtml}</td>
-                            <td class="py-3 text-right">
-                                <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">${row.status}</span>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.07); color:#e2e8f0;">
+                            <td style="padding:12px 0;font-family:monospace;font-size:13px;">${row.date}</td>
+                            <td style="padding:12px 0;font-size:13px;">${row.day}</td>
+                            <td style="padding:12px 0;">${reasonHtml}</td>
+                            <td style="padding:12px 0;">${noteHtml}</td>
+                            <td style="padding:12px 0;text-align:right;">
+                                <span style="padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">${row.status}</span>
                             </td>
                         </tr>
                     `;
