@@ -75,7 +75,8 @@
       </button>
       
       <button id="btn-absent-{{ e.id }}"
-              onclick="openLeaveReasonModal('{{ e.id }}', '{{ e.name | replace(\"'\", \"\\\\'\") }}')"
+              data-name="{{ e.name }}"
+              onclick="openLeaveReasonModal('{{ e.id }}', this.dataset.name)"
               class="btn-saas btn-saas-sm {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}">
         <i class="bi bi-x-lg"></i>
         <span>Absent</span>
@@ -135,7 +136,8 @@
         <i class="bi bi-check-lg"></i> P
       </button>
       <button id="btn-absent-mob-{{ e.id }}"
-              onclick="openLeaveReasonModal('{{ e.id }}', '{{ e.name | replace(\"'\", \"\\\\'\") }}')"
+              data-name="{{ e.name }}"
+              onclick="openLeaveReasonModal('{{ e.id }}', this.dataset.name)"
               class="btn-saas {% if status == 'Absent' %}btn-saas-danger{% else %}btn-saas-secondary{% endif %}"
               style="padding:6px 12px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:4px;">
         <i class="bi bi-x-lg"></i> A
