@@ -1897,6 +1897,32 @@ def add_part_time_worker():
 # SALARY ACTIONS
 # ─────────────────────────────────────────
 
+
+@app.route('/delete_part_time_worker/<worker_id>', methods=['GET'])
+@login_required
+def delete_part_time_worker(worker_id):
+    uid = get_current_user_id()
+    invalidate_dashboard_cache(uid)
+    worker_id_obj = safe_object_id(worker_id)
+    if not worker_id_obj:
+        return redirect(url_for('part_time_employee'))
+        
+    worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
+    if not worker:
+        return redirect(url_for('part_time_employee'))
+        
+    # Get all work logs to delete their advances
+    work_logs = list(db.part_time_work_logs.find({"worker_id": worker_id_obj}))
+    log_ids = [log["_id"] for log in work_logs]
+    
+    if log_ids:
+        db.advance_payments.delete_many({"work_log_id": {"$in": log_ids}})
+        
+    db.part_time_work_logs.delete_many({"worker_id": worker_id_obj})
+    db.part_time_workers.delete_one({"_id": worker_id_obj})
+    
+    return redirect(url_for('part_time_employee'))
+
 @app.route('/salary/mark_paid', methods=['POST'])
 @limiter.limit("30 per minute")         # prevent accidental bulk payment triggers
 @login_required
