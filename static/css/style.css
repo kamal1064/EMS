@@ -1965,6 +1965,20 @@ body.modal-open { overflow:hidden !important; }
   background-color: rgba(255,255,255,0.06) !important;
 }
 
+select option {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+}
+
+.dark select option,
+.premium-modal-body select option,
+.premium-select option {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: rgba(200, 214, 230, 0.5) !important;
