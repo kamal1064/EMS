@@ -4,10 +4,17 @@
 {% block page_title %}Part Time Work{% endblock %}
 {% block page_subtitle %}Track slab deliveries, per-unit pricing, and advance payments{% endblock %}
 {% block top_actions %}
-<a href="#" onclick="openExportModal(event, 'all_part_time')" class="btn-saas btn-saas-md btn-saas-secondary">
-  <i class="bi bi-download"></i>
-  <span>Export Data</span>
-</a>
+<div class="relative inline-block text-left group">
+  <button type="button" class="btn-saas btn-saas-md btn-saas-secondary flex items-center gap-2">
+    <i class="bi bi-download"></i>
+    <span>Export All</span>
+    <i class="bi bi-chevron-down text-[10px] ml-1"></i>
+  </button>
+  <div class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
+    <a href="/export?export_type=all_part_time_workers&format=excel" class="block px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i class="bi bi-file-earmark-excel text-emerald-500 mr-2"></i> Export as Excel</a>
+    <a href="/export?export_type=all_part_time_workers&format=pdf" class="block px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i class="bi bi-file-earmark-pdf text-red-500 mr-2"></i> Export as PDF</a>
+  </div>
+</div>
 {% endblock %}
 {% block content %}
 <!-- SECTION 1 & 2: Registration, Log Work & Search -->
@@ -128,8 +135,16 @@
     <div id="ledger-{{ w['worker_id'] }}" class="hidden overflow-hidden bg-white dark:bg-[#1f2937] border-t border-slate-200 dark:border-white/10">
       <div class="p-4 bg-slate-50 dark:bg-white/[0.02] flex items-center justify-between border-b border-slate-100 dark:border-white/5">
         <span class="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider"><i class="bi bi-journal-text mr-1 text-primary"></i> Work Ledger</span>
-        <div class="flex gap-2">
-           <a href="#" onclick="openExportModal(event, 'all_part_time')" class="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors"><i class="bi bi-download"></i> Export</a>
+        <div class="flex gap-2 overflow-visible">
+          <div class="relative inline-block text-left group">
+            <button type="button" class="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1">
+              <i class="bi bi-download"></i> Export <i class="bi bi-chevron-down ml-0.5"></i>
+            </button>
+            <div class="absolute right-0 mt-1 w-32 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
+              <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['_id'] }}&format=excel" class="block px-3 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
+              <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['_id'] }}&format=pdf" class="block px-3 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
+            </div>
+          </div>
         </div>
       </div>
       <div class="p-0 overflow-x-auto max-h-[350px] overflow-y-auto custom-scrollbar relative">

@@ -5,6 +5,18 @@
 {% block page_subtitle %}Manage your full-time employees{% endblock %}
 
 {% block top_actions %}
+<div class="relative inline-block text-left group" style="margin-right: 8px;">
+  <button type="button" class="btn-saas btn-saas-md btn-saas-secondary" style="display:flex;align-items:center;gap:6px;">
+    <i class="bi bi-download"></i>
+    <span>Export All</span>
+    <i class="bi bi-chevron-down" style="font-size:10px;"></i>
+  </button>
+  <div class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden" style="top:100%;">
+    <a href="/export?export_type=all_employees&format=excel" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i class="bi bi-file-earmark-excel text-emerald-500 mr-2"></i> Export as Excel</a>
+    <a href="/export?export_type=all_employees&format=pdf" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i class="bi bi-file-earmark-pdf text-red-500 mr-2"></i> Export as PDF</a>
+  </div>
+</div>
+
 <button class="btn-saas btn-saas-md btn-saas-primary" onclick="openModal('addEmpModal')">
   <i class="bi bi-person-plus-fill"></i>
   <span>Add Employee</span>
@@ -76,7 +88,16 @@
           </td>
           <td class="mono" style="font-weight:600;">₹{{ "{:,.2f}".format(e['salary']) }}</td>
           <td class="text-right">
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;overflow:visible;">
+              <div class="relative inline-block text-left group">
+                <button type="button" class="btn-saas btn-saas-icon" title="Export">
+                  <i class="bi bi-download"></i>
+                </button>
+                <div class="absolute right-0 mt-1 w-32 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
+                  <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=excel" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
+                  <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=pdf" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
+                </div>
+              </div>
               <a href="{{ url_for('edit_employee', emp_id=e['id']) }}" class="btn-saas btn-saas-icon" title="Edit">
                 <i class="bi bi-pencil"></i>
               </a>
@@ -131,7 +152,16 @@
           <span class="text-xs text-muted font-mono" style="color:var(--text3); display:block; margin-top:2px;"><i class="bi bi-telephone text-[10px] mr-1"></i>{{ e['phone'] or '—' }}</span>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div style="display:flex;align-items:center;gap:6px;overflow:visible;">
+        <div class="relative inline-block text-left group">
+          <button type="button" class="btn-saas btn-saas-icon" style="padding:6px;font-size:13px;" title="Export">
+            <i class="bi bi-download"></i>
+          </button>
+          <div class="absolute right-0 mt-1 w-32 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
+            <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=excel" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
+            <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=pdf" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
+          </div>
+        </div>
         <a href="{{ url_for('edit_employee', emp_id=e['id']) }}" class="btn-saas btn-saas-icon" style="padding:6px;font-size:13px;" title="Edit">
           <i class="bi bi-pencil"></i>
         </a>

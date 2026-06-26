@@ -2823,6 +2823,7 @@ def export_data():
 
     uid = get_current_user_id()
     export_type = request.args.get('export_type', 'all_employees')
+    export_format = request.args.get('format', 'excel')
     employee_id = request.args.get('employee_id')
     worker_id = request.args.get('worker_id')
     start_date = request.args.get('start_date')
@@ -2868,7 +2869,18 @@ def export_data():
     total_font = Font(name="Plus Jakarta Sans", size=11, bold=True)
     title_font = Font(name="Plus Jakarta Sans", size=16, bold=True, color="1E293B")
 
+    pdf_sections = []
+    
     def style_ws(ws, title=None, headers=None, rows=None, summary_row=None):
+        if export_format == 'pdf':
+            pdf_sections.append({
+                'title': title,
+                'headers': headers,
+                'rows': rows,
+                'summary_row': summary_row
+            })
+            return
+            
         ws.views.sheetView[0].showGridLines = True
         current_row = 1
         if title:
@@ -3328,6 +3340,14 @@ def export_data():
     fd, temp_path = tempfile.mkstemp(suffix=".xlsx")
     os.close(fd)
     
+    if export_format == 'pdf':
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        from pdf_generator import generate_pdf_response
+        return generate_pdf_response(pdf_sections, export_type)
+
     wb.save(temp_path)
     filename = f"export_{export_type}_{date.today().isoformat()}.xlsx"
 
