@@ -338,9 +338,47 @@ def init_db():
         db.users.create_index("email", unique=True)
         db.users.create_index("username", unique=True)
         db.employees.create_index([("user_id", 1), ("name", 1)])
-        app.logger.info("MongoDB indexes verified successfully.")
+        
+        # Performance: Compound Indexes for high-volume queries
+        db.part_time_workers.create_index([("user_id", 1), ("name", 1)])
+        db.part_time_work_logs.create_index([("user_id", 1), ("worker_id", 1), ("working_date", -1)])
+        db.advance_payments.create_index([("work_log_id", 1)])
+        db.advance_payments.create_index([("user_id", 1), ("payment_date", -1)])
+        db.attendance.create_index([("user_id", 1), ("date", -1)])
+        db.salary.create_index([("user_id", 1), ("month", -1)])
+        
+        # Ensure counters exist, but do not override if they already exist
+        db.counters.update_one(
+            {"_id": "employee_id_seq"},
+            {"$setOnInsert": {"seq": 0}},
+            upsert=True
+        )
+        db.counters.update_one(
+            {"_id": "worker_id_seq"},
+            {"$setOnInsert": {"seq": 0}},
+            upsert=True
+        )
+        app.logger.info("MongoDB indexes and counters verified successfully.")
     except Exception as e:
         app.logger.error(f"Error initializing MongoDB: {e}", exc_info=True)
+
+def get_next_sequence(sequence_name):
+    """Atomically increment and return the next sequence number."""
+    result = db.counters.find_one_and_update(
+        {"_id": sequence_name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    return result["seq"]
+
+def generate_employee_id():
+    seq = get_next_sequence("employee_id_seq")
+    return f"EMP{seq:03d}"
+
+def generate_worker_id():
+    seq = get_next_sequence("worker_id_seq")
+    return f"WRK{seq:03d}"
 
 
 try:
@@ -1009,7 +1047,10 @@ def employees():
 
     query = {"user_id": ObjectId(uid)}
     if search:
-        query["name"] = {"$regex": search, "$options": "i"}
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"employee_id": {"$regex": search, "$options": "i"}}
+        ]
 
     total_records = db.employees.count_documents(query)
     total_pages = (total_records + limit - 1) // limit if limit > 0 else 1
@@ -1074,7 +1115,11 @@ def add_employee():
         except Exception as e:
             flash(str(e), "error")
 
+    # Generate unique employee ID
+    emp_id_str = generate_employee_id()
+
     db.employees.insert_one({
+        "employee_id": emp_id_str,
         "name": name,
         "phone": phone,
         "age": age,
@@ -1557,14 +1602,18 @@ def part_time():
     setup_error = None
     
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
-    worker_info = {str(w['_id']): {"name": w['name'], "profile_image_url": w.get('profile_image_url', '')} for w in pt_workers}
+    worker_info = {str(w['_id']): {"name": w['name'], "profile_image_url": w.get('profile_image_url', ''), "worker_id_str": w.get('worker_id', '')} for w in pt_workers}
     worker_ids = [ObjectId(wid) for wid in worker_info.keys()]
     
     match_query = {"worker_id": {"$in": worker_ids}}
     if selected_client:
         match_query["client_name"] = {"$regex": f"^{selected_client}$", "$options": "i"}
     if search:
-        matching_workers = [w['_id'] for w in pt_workers if search.lower() in w['name'].lower()]
+        search_lower = search.lower()
+        matching_workers = [
+            w['_id'] for w in pt_workers 
+            if search_lower in w['name'].lower() or search_lower in w.get('worker_id', '').lower()
+        ]
         match_query["$or"] = [
             {"client_name": {"$regex": search, "$options": "i"}},
             {"delivery_location": {"$regex": search, "$options": "i"}},
@@ -1587,8 +1636,9 @@ def part_time():
     records = []
     for log in logs:
         record = serialize_doc(log)
-        info = worker_info.get(str(log['worker_id']), {"name": "Unknown Worker", "profile_image_url": ""})
+        info = worker_info.get(str(log['worker_id']), {"name": "Unknown Worker", "profile_image_url": "", "worker_id_str": ""})
         record['worker_name'] = info['name']
+        record['worker_id_str'] = info['worker_id_str']
         record['profile_image_url'] = info['profile_image_url']
         record['client_name'] = (record.get('client_name') or 'Unassigned').strip()
         record['total_price'] = float(record.get('total_price') or 0)
@@ -1610,6 +1660,30 @@ def part_time():
     # Lightweight analytics loop
     client_map = {}
     worker_map = {}
+    
+    # Pre-populate worker_map so workers with 0 jobs still appear
+    for wid_obj in worker_ids:
+        if search and ('$in' in match_query.get('worker_id', {})):
+            if wid_obj not in match_query['worker_id']['$in'] and not (
+                match_query.get('$or') and any(wid_obj in cond.get('worker_id', {}).get('$in', []) for cond in match_query['$or'] if 'worker_id' in cond)
+            ):
+                pass # Just let the loop add them if they match a client or location
+        wid_str = str(wid_obj)
+        info = worker_info.get(wid_str, {})
+        worker_map[wid_str] = {
+            'worker_id': wid_str,
+            'worker_id_str': info.get('worker_id_str', ''),
+            'name': info.get('name', 'Unknown Worker'),
+            'profile_image_url': info.get('profile_image_url', ''),
+            'clients': set(),
+            'earnings': 0.0,
+            'advances': 0.0,
+            'balance': 0.0,
+            'jobs': 0,
+            'slabs': 0,
+            'recent_assignments': []
+        }
+        
     monthly_map = {}
     recent_clients = []
     total_payout = 0
@@ -1645,11 +1719,26 @@ def part_time():
         client_stats['slabs'] += sq
         client_stats['workers'].add(worker)
 
-        worker_stats = worker_map.setdefault(worker, {
-            'name': worker, 'clients': set(), 'earnings': 0, 'recent_assignments': []
+        wid_str = str(log['worker_id'])
+        worker_stats = worker_map.setdefault(wid_str, {
+            'worker_id': wid_str, 
+            'worker_id_str': worker_info.get(wid_str, {}).get('worker_id_str', ''),
+            'name': worker, 
+            'profile_image_url': worker_info.get(wid_str, {}).get('profile_image_url', ''),
+            'clients': set(), 
+            'earnings': 0.0, 
+            'advances': 0.0,
+            'balance': 0.0,
+            'jobs': 0,
+            'slabs': 0,
+            'recent_assignments': []
         })
         worker_stats['clients'].add(client)
         worker_stats['earnings'] += t_price
+        worker_stats['advances'] += adv_paid
+        worker_stats['balance'] += r_bal
+        worker_stats['jobs'] += 1
+        worker_stats['slabs'] += sq
         if len(worker_stats['recent_assignments']) < 3:
             worker_stats['recent_assignments'].append({
                 'client': client, 'date': log.get('working_date'), 'total': t_price
@@ -1680,11 +1769,32 @@ def part_time():
     }
 
     worker_history = []
+    # If there is a search, filter out workers with 0 jobs UNLESS they explicitly match the search term
     for worker in sorted(worker_map.values(), key=lambda w: w['earnings'], reverse=True):
+        if search and worker['jobs'] == 0:
+            search_lower = search.lower()
+            if search_lower not in worker['name'].lower() and search_lower not in worker['worker_id_str'].lower():
+                continue
+                
+        payment_status = 'Pending'
+        if worker['jobs'] > 0:
+            if worker['advances'] > worker['earnings']:
+                payment_status = 'Overpaid'
+            elif worker['balance'] <= 0:
+                payment_status = 'Paid'
+                
         worker_history.append({
+            'worker_id': worker['worker_id'],
+            'worker_id_str': worker['worker_id_str'],
             'name': worker['name'],
+            'profile_image_url': worker['profile_image_url'],
             'clients': sorted(worker['clients']),
             'earnings': worker['earnings'],
+            'advances': worker['advances'],
+            'balance': worker['balance'],
+            'jobs': worker['jobs'],
+            'slabs': worker['slabs'],
+            'payment_status': payment_status,
             'recent_assignments': worker['recent_assignments']
         })
 
@@ -1771,7 +1881,11 @@ def add_part_time_worker():
         except Exception as e:
             flash(str(e), "error")
 
+    # Generate unique worker ID
+    wrk_id_str = generate_worker_id()
+
     db.part_time_workers.insert_one({
+        "worker_id": wrk_id_str,
         "name": name,
         "profile_image_url": profile_image_url,
         "user_id": ObjectId(uid),
@@ -2365,11 +2479,56 @@ def api_worker_summary(worker_id):
     return jsonify({
         'success': True,
         'name': worker.get('name', 'Unknown'),
+        'worker_id_str': worker.get('worker_id', '—'),
         'total_jobs': total_jobs,
         'total_slabs': total_slabs,
         'total_earnings': total_earnings,
         'total_advance': total_advance,
         'outstanding_balance': outstanding_balance
+    })
+
+@app.route('/api/part-time/worker/<worker_id>/ledger', methods=['GET'])
+@login_required
+def api_worker_ledger(worker_id):
+    uid = get_current_user_id()
+    w_id_obj = safe_object_id(worker_id)
+    
+    worker = db.part_time_workers.find_one({"_id": w_id_obj, "user_id": ObjectId(uid)})
+    if not worker: return jsonify({'success': False, 'message': 'Not found'}), 404
+    
+    logs = list(db.part_time_work_logs.find({"worker_id": w_id_obj}).sort("_id", -1))
+    log_ids = [l['_id'] for l in logs]
+    
+    advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
+    advances_map = {}
+    for adv in advances_cursor:
+        wid = str(adv['work_log_id'])
+        advances_map[wid] = advances_map.get(wid, 0) + adv['amount']
+        
+    records = []
+    for log in logs:
+        record = serialize_doc(log)
+        record['worker_name'] = worker.get('name', 'Unknown')
+        record['client_name'] = (record.get('client_name') or 'Unassigned').strip()
+        record['total_price'] = float(record.get('total_price') or 0)
+        record['slab_quantity'] = int(record.get('slab_quantity') or 0)
+        
+        total_advance = float(advances_map.get(str(log['_id']), 0))
+        record['advance_paid'] = total_advance
+        record['remaining_balance'] = float(record['total_price'] - total_advance)
+        
+        if total_advance > record['total_price']:
+            record['payment_status'] = 'Overpaid'
+        elif record['remaining_balance'] <= 0:
+            record['payment_status'] = 'Paid'
+        else:
+            record['payment_status'] = 'Pending'
+            
+        records.append(record)
+        
+    return jsonify({
+        'success': True,
+        'records': records
     })
 
 # ─────────────────────────────────────────
@@ -2756,7 +2915,7 @@ def export_data():
             joining_date = e.get('joining_date') or (e.get('created_at')[:10] if e.get('created_at') else 'N/A')
             
             summary_rows.append([
-                eid_str,
+                e.get('employee_id', eid_str),
                 e.get('name', 'Unknown'),
                 e.get('department', 'N/A'),
                 e.get('phone', 'N/A'),
@@ -2790,7 +2949,7 @@ def export_data():
             for dt in date_list:
                 att_data = att_by_emp.get(eid_str, {}).get(dt, {'status': 'Present', 'leave_reason': '', 'leave_note': ''})
                 att_rows.append([
-                    eid_str,
+                    e.get('employee_id', eid_str),
                     e.get('name', 'Unknown'),
                     dt,
                     att_data.get('status', 'Present'),
@@ -2826,7 +2985,7 @@ def export_data():
                 st = rec.get('payment_status', 'Pending')
                 
                 sal_rows.append([
-                    eid_str,
+                    e.get('employee_id', eid_str),
                     e.get('name', 'Unknown'),
                     m,
                     base_sal,
@@ -2846,7 +3005,7 @@ def export_data():
         for adv in advances_list:
             emp = emp_map.get(adv['emp_id'], {})
             adv_rows.append([
-                str(adv['emp_id']),
+                emp.get('employee_id', str(adv['emp_id'])),
                 emp.get('name', 'Unknown'),
                 adv['amount'],
                 adv.get('payment_date', 'N/A'),
@@ -2949,7 +3108,7 @@ def export_data():
             tot_bal += bal
             
             worker_rows.append([
-                str(w['_id']),
+                w.get('worker_id', str(w['_id'])),
                 w.get('name', 'Unknown'),
                 work_amt,
                 adv_amt,
@@ -2979,7 +3138,7 @@ def export_data():
             bal = round(gross - l_adv, 2)
             
             log_rows.append([
-                str(log['worker_id']),
+                w.get('worker_id', str(log['worker_id'])),
                 w.get('name', 'Unknown'),
                 str(lid),
                 log.get('working_date', 'N/A'),
@@ -3005,7 +3164,7 @@ def export_data():
             log = all_log_map.get(adv['work_log_id'], {})
             w = worker_map.get(log.get('worker_id'), {})
             adv_rows.append([
-                str(log.get('worker_id', '')),
+                w.get('worker_id', str(log.get('worker_id', ''))),
                 w.get('name', 'Unknown'),
                 str(adv['work_log_id']),
                 adv['amount'],
