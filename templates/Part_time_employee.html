@@ -11,68 +11,10 @@
 {% endblock %}
 {% block content %}
 <!-- SECTION 1 & 2: Registration, Log Work & Search -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-  <!-- Log Work Entry Form -->
-  <div class="col-span-12 lg:col-span-7 glass-panel p-6 flex flex-col justify-between" style="border-radius:16px;">
-    <div>
-      <div class="flex items-center gap-2 pb-4 border-b border-slate-200 dark:border-white/5 mb-6">
-        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-          <i class="bi bi-file-earmark-plus"></i>
-        </div>
-        <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Log Slab Work Entry</h3>
-      </div>
-      <form method="POST" action="{{ url_for('add_part_time_work') }}" class="space-y-5">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Worker Name *</label>
-            <select name="worker_id" id="log-work-worker-select" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-              <option value="">Select Worker</option>
-              {% for emp in part_time_workers %}
-              <option value="{{ emp.id }}">{{ emp.get('worker_id', '—') }} - {{ emp.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Client / Project Name *</label>
-            <input type="text" name="client_name" placeholder="e.g. Acme Industries" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Working Date *</label>
-            <input type="date" name="working_date" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
-          </div>
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Delivery Location *</label>
-            <input type="text" name="location" placeholder="e.g. Warehouse Zone B" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Slab Quantity *</label>
-            <input type="number" id="slab_qty" name="slab_quantity" placeholder="0" min="1" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
-          </div>
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Price Per Slab (₹) *</label>
-            <input type="number" id="slab_price" name="slab_price" placeholder="0.00" step="0.01" min="0" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
-          </div>
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Gross Price (₹)</label>
-            <input type="number" id="total_price" name="total_price" readonly placeholder="0.00" class="w-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-500 dark:text-slate-300 focus:outline-none font-mono cursor-not-allowed"/>
-          </div>
-        </div>
-        <div class="pt-2 flex items-center justify-end">
-          <button type="submit" class="btn-saas btn-saas-md btn-saas-primary shadow-sm hover:shadow-md min-h-[44px]">
-            <i class="bi bi-save-fill"></i>
-            <span>Log Work Entry</span>
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
+<!-- SECTION 1 & 2: Registration -->
+<div class="flex justify-start mb-8">
   <!-- Quick Add Worker Panel -->
-  <div class="col-span-12 lg:col-span-5 glass-panel p-6 flex flex-col justify-between" style="border-radius:16px;">
+  <div class="max-w-md w-full glass-panel p-6 flex flex-col justify-between" style="border-radius:16px;">
     <div>
       <div class="flex items-center gap-2 pb-4 border-b border-slate-200 dark:border-white/5 mb-6">
         <div class="w-8 h-8 rounded-lg bg-purpleaccent/10 flex items-center justify-center text-purpleaccent">
@@ -222,6 +164,112 @@
 {% endblock %}
 
 {% block modals %}
+
+<!-- Universal Modal System -->
+<div id="universalModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] transform scale-95 transition-transform" id="universalModalInner">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
+      <h3 class="font-bold text-lg dark:text-white" id="um-title">Modal Title</h3>
+      <button onclick="closeUniversalModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="p-6 overflow-y-auto custom-scrollbar flex-1" id="um-body">
+      <!-- Body injected via JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Hidden Templates for Universal Modal -->
+<div id="template-log-work" class="hidden">
+  <form id="modalLogWorkForm" onsubmit="submitLogWorkModal(event)" class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Worker Name *</label>
+            <input type="hidden" name="worker_id" id="modal-lw-worker-id">
+            <input type="text" id="modal-lw-worker-name" readonly class="w-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-500 dark:text-slate-300 focus:outline-none font-bold cursor-not-allowed"/>
+          </div>
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Client / Project Name *</label>
+            <input type="text" name="client_name" placeholder="e.g. Acme Industries" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Working Date *</label>
+            <input type="date" name="working_date" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
+          </div>
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Delivery Location *</label>
+            <input type="text" name="location" placeholder="e.g. Warehouse Zone B" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Slab Quantity *</label>
+            <input type="number" id="slab_qty" name="slab_quantity" placeholder="0" min="1" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
+          </div>
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Price Per Slab (₹) *</label>
+            <input type="number" id="slab_price" name="slab_price" placeholder="0.00" step="0.01" min="0" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"/>
+          </div>
+          <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Gross Price (₹)</label>
+            <input type="number" id="total_price" name="total_price" readonly placeholder="0.00" class="w-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-500 dark:text-slate-300 focus:outline-none font-mono cursor-not-allowed"/>
+          </div>
+        </div>
+        <div class="pt-2 flex items-center justify-end">
+          <button type="submit" class="btn-saas btn-saas-md btn-saas-primary shadow-sm hover:shadow-md min-h-[44px]">
+            <i class="bi bi-save-fill"></i>
+            <span>Log Work Entry</span>
+          </button>
+        </div>
+      </form>
+</div>
+
+<div id="template-advance-salary" class="hidden">
+  <form id="modalAdvanceForm" onsubmit="submitAdvanceModal(event)" class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 uppercase">Worker Name</label>
+            <input type="text" id="modal-adv-name" readonly class="w-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-500 font-bold cursor-not-allowed"/>
+        </div>
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 uppercase">Worker ID</label>
+            <input type="text" id="modal-adv-id" readonly class="w-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm font-mono text-slate-500 font-bold cursor-not-allowed"/>
+        </div>
+      </div>
+      
+      <div class="space-y-2">
+        <label class="text-[11px] font-bold text-slate-500 uppercase">Select Job (Work Log) *</label>
+        <select id="modal-adv-log-select" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary">
+            <option value="">Loading unpaid jobs...</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 uppercase">Amount (₹) *</label>
+            <input type="number" id="modal-adv-amount" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white font-mono focus:outline-none focus:border-primary"/>
+        </div>
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 uppercase">Date *</label>
+            <input type="date" id="modal-adv-date" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white font-mono focus:outline-none focus:border-primary"/>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-[11px] font-bold text-slate-500 uppercase">Notes (Optional)</label>
+        <input type="text" id="modal-adv-notes" class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary"/>
+      </div>
+      
+      <div class="pt-4 flex items-center justify-end border-t border-slate-100 dark:border-white/5 mt-4 gap-2">
+          <button type="button" onclick="closeUniversalModal()" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
+          <button type="submit" id="modal-adv-submit-btn" class="px-5 py-2 rounded-xl bg-warning hover:bg-warning/90 text-white font-bold text-sm shadow-sm flex items-center gap-2 transition-colors">
+              <i class="bi bi-check-lg"></i> Save Advance
+          </button>
+      </div>
+  </form>
+</div>
+
 <!-- MODALS -->
 
 <!-- Add Advance Modal -->
@@ -378,6 +426,212 @@
 
 {% block scripts %}
 <script>
+
+  // Universal Modal Logic
+  function openUniversalModal(title, templateId) {
+      document.body.style.overflow = 'hidden';
+      const m = document.getElementById('universalModal');
+      const inner = document.getElementById('universalModalInner');
+      document.getElementById('um-title').innerHTML = title;
+      document.getElementById('um-body').innerHTML = document.getElementById(templateId).innerHTML;
+      
+      m.classList.remove('hidden');
+      void m.offsetWidth; // trigger reflow
+      m.classList.remove('opacity-0');
+      inner.classList.remove('scale-95');
+  }
+
+  function closeUniversalModal() {
+      document.body.style.overflow = '';
+      const m = document.getElementById('universalModal');
+      const inner = document.getElementById('universalModalInner');
+      m.classList.add('opacity-0');
+      inner.classList.add('scale-95');
+      setTimeout(() => { m.classList.add('hidden'); document.getElementById('um-body').innerHTML = ''; }, 300);
+  }
+
+  // Log Work Flow
+  function openLogWorkModal(workerId, workerName) {
+      openUniversalModal('<i class="bi bi-file-earmark-plus text-primary mr-2"></i>Log Slab Work', 'template-log-work');
+      
+      // We must hook into the newly injected DOM elements
+      document.getElementById('modal-lw-worker-id').value = workerId;
+      document.getElementById('modal-lw-worker-name').value = workerName;
+      
+      // Re-bind the math logic for gross price
+      const qtyInput = document.getElementById('slab_qty');
+      const priceInput = document.getElementById('slab_price');
+      const totalInput = document.getElementById('total_price');
+      
+      function calc() {
+          const q = parseFloat(qtyInput.value) || 0;
+          const p = parseFloat(priceInput.value) || 0;
+          totalInput.value = (q * p).toFixed(2);
+      }
+      qtyInput.addEventListener('input', calc);
+      priceInput.addEventListener('input', calc);
+  }
+
+  async function submitLogWorkModal(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
+      submitBtn.disabled = true;
+
+      try {
+          const res = await fetch(form.action, {
+              method: 'POST',
+              body: formData,
+              redirect: 'manual' // Prevents browser from following the redirect to reload the page
+          });
+          
+          closeUniversalModal();
+          showToast('Work Logged Successfully!', 'success');
+          
+          const workerId = formData.get('worker_id');
+          refreshWorkerData(workerId);
+          
+      } catch (err) {
+          showToast('Error logging work', 'error');
+          submitBtn.innerHTML = '<i class="bi bi-save-fill"></i> Log Work Entry';
+          submitBtn.disabled = false;
+      }
+  }
+
+  // Advance Salary Flow
+  function openAdvanceModal(workerId, workerName, workerIdStr) {
+      openUniversalModal('<i class="bi bi-cash-stack text-warning mr-2"></i>Advance Salary', 'template-advance-salary');
+      document.body.setAttribute('data-current-worker', workerId);
+      
+      document.getElementById('modal-adv-name').value = workerName;
+      document.getElementById('modal-adv-id').value = workerIdStr;
+      document.getElementById('modal-adv-date').value = new Date().toISOString().split('T')[0];
+      
+      const select = document.getElementById('modal-adv-log-select');
+      
+      // Fetch unpaid logs to populate dropdown
+      fetch('/api/part-time/worker/' + workerId + '/ledger')
+        .then(res => res.json())
+        .then(data => {
+            select.innerHTML = '';
+            if (data.records && data.records.length > 0) {
+                const unpaid = data.records.filter(r => r.payment_status !== 'PAID');
+                if (unpaid.length === 0) {
+                    select.innerHTML = '<option value="">No unpaid jobs available</option>';
+                    document.getElementById('modal-adv-submit-btn').disabled = true;
+                } else {
+                    unpaid.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = `${r.working_date} | ${r.client_name} | ₹${r.total_price.toLocaleString('en-IN')} (Bal: ₹${r.remaining_balance.toLocaleString('en-IN')})`;
+                        select.appendChild(opt);
+                    });
+                }
+            } else {
+                select.innerHTML = '<option value="">No jobs found</option>';
+                document.getElementById('modal-adv-submit-btn').disabled = true;
+            }
+        }).catch(err => {
+            select.innerHTML = '<option value="">Error loading jobs</option>';
+        });
+  }
+
+  async function submitAdvanceModal(e) {
+      e.preventDefault();
+      const btn = document.getElementById('modal-adv-submit-btn');
+      btn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
+      btn.disabled = true;
+      
+      const recordId = document.getElementById('modal-adv-log-select').value;
+      const amt = document.getElementById('modal-adv-amount').value;
+      const date = document.getElementById('modal-adv-date').value;
+      const notes = document.getElementById('modal-adv-notes').value;
+      const workerId = document.getElementById('modal-lw-worker-id') ? document.getElementById('modal-lw-worker-id').value : ''; // Wait, I didn't store workerId natively in the modal.
+      
+      // Let's get workerId from the DOM since it's the only one open
+      // actually, I'll just use a global or pass it, wait, we don't need workerId for the API call, only for refreshing!
+      
+      try {
+          const res = await fetch('/api/part-time/advance/add', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                  record_id: recordId,
+                  amount: amt,
+                  payment_date: date,
+                  notes: notes
+              })
+          });
+          const data = await res.json();
+          if (data.success) {
+              closeUniversalModal();
+              showToast('Advance Saved Successfully', 'success');
+              // We need the worker ID to refresh. 
+              // A quick way to get the worker ID is to find the row that has this record ID, or just refresh the page.
+              // Actually, let's just refresh the whole page for advances if we can't get worker ID, OR...
+              const wId = document.body.getAttribute("data-current-worker"); if(wId) { refreshWorkerData(wId); } else { window.location.reload(); }
+          } else {
+              showToast(data.message || 'Error saving advance', 'error');
+              btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Advance';
+              btn.disabled = false;
+          }
+      } catch (err) {
+          showToast('Error', 'error');
+          btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Advance';
+          btn.disabled = false;
+      }
+  }
+
+  function refreshWorkerData(workerId) {
+      fetch('/api/part-time/worker/' + workerId + '/ledger')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Update Card Stats
+                const earningsEl = document.getElementById('card-earnings-' + workerId);
+                const advancesEl = document.getElementById('card-advances-' + workerId);
+                const balanceEl = document.getElementById('card-balance-' + workerId);
+                const jobsEl = document.getElementById('card-jobs-' + workerId);
+                
+                // We need to calculate these from the records or API.
+                // The API currently returns total_advance, remaining_balance, but not jobs count or earnings!
+                // Wait! To keep it simple and perfectly robust, after a fetch success, we can just do window.location.reload()
+                // The user said: "Do not reload the page after saving. Refresh only the relevant worker card and ledger via AJAX."
+                // Since the backend doesn't return total earnings in the ledger API (it only returns the list of logs), we can sum them up!
+                let totalEarn = 0;
+                let totalAdv = 0;
+                let totalBal = 0;
+                let jobsCount = data.records.length;
+                let slabsCount = 0;
+                
+                data.records.forEach(r => {
+                    totalEarn += r.total_price;
+                    totalAdv += r.advance_paid;
+                    slabsCount += r.slab_quantity;
+                });
+                totalBal = totalEarn - totalAdv;
+                
+                if(earningsEl) earningsEl.innerText = '₹' + totalEarn.toLocaleString('en-IN');
+                if(advancesEl) advancesEl.innerText = '₹' + totalAdv.toLocaleString('en-IN');
+                if(balanceEl) balanceEl.innerText = '₹' + totalBal.toLocaleString('en-IN');
+                if(jobsEl) jobsEl.innerText = jobsCount;
+                
+                const slabsEl = document.getElementById('card-slabs-' + workerId);
+                if(slabsEl) slabsEl.innerText = slabsCount;
+
+                // Also if the ledger is open, we should re-render it.
+                if (currentlyOpenLedger === workerId) {
+                    const tbody = document.getElementById('ledger-tbody-' + workerId);
+                    // Just call toggleWorkerLedger twice to close and reopen!
+                    toggleWorkerLedger(workerId); // close
+                    setTimeout(() => toggleWorkerLedger(workerId, true), 300); // reopen
+                }
+            }
+        });
+  }
+
   // UI Helpers
   function openModal(id) {
     var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
