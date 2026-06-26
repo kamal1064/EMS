@@ -1884,13 +1884,18 @@ def add_part_time_worker():
     # Generate unique worker ID
     wrk_id_str = generate_worker_id()
 
-    db.part_time_workers.insert_one({
+    worker_doc = {
         "worker_id": wrk_id_str,
         "name": name,
         "profile_image_url": profile_image_url,
         "user_id": ObjectId(uid),
         "created_at": datetime.now().isoformat()
-    })
+    }
+    result = db.part_time_workers.insert_one(worker_doc)
+    
+    if request.headers.get('Accept') and 'application/json' in request.headers.get('Accept'):
+        return jsonify({"success": True, "worker_id": str(result.inserted_id)})
+        
     return redirect(url_for('part_time'))
 
 # ─────────────────────────────────────────
@@ -1906,6 +1911,116 @@ def delete_part_time_worker(worker_id):
     worker_id_obj = safe_object_id(worker_id)
     if not worker_id_obj:
         return redirect(url_for('part_time'))
+
+@app.route('/api/part-time/worker/<worker_id>/card_html', methods=['GET'])
+@login_required
+def get_part_time_worker_card_html(worker_id):
+    from flask import render_template_string
+    uid = get_current_user_id()
+    try:
+        worker_id_obj = ObjectId(worker_id)
+    except:
+        return jsonify({"success": False, "error": "Invalid worker ID"}), 400
+    
+    w = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
+    if not w:
+        return jsonify({"success": False, "error": "Worker not found"}), 404
+        
+    w_data = {
+        "worker_id": str(w["_id"]),
+        "worker_id_str": w.get("worker_id", ""),
+        "name": w.get("name", ""),
+        "profile_image_url": w.get("profile_image_url", ""),
+        "clients": [],
+        "earnings": 0,
+        "advances": 0,
+        "balance": 0,
+        "jobs": 0,
+        "slabs": 0
+    }
+    
+    card_template = """
+    <div class="dashboard-worker-card bg-white dark:bg-[#1a222c] glass-panel flex flex-col rounded-2xl overflow-hidden transition-all hover:shadow-lg border border-slate-200 dark:border-white/10" data-name="{{ w['name']|lower }}" data-id="{{ w['worker_id_str']|lower }}" data-clients="{{ w['clients']|join(' ')|lower }}">
+      <div class="p-5 flex items-start justify-between border-b border-slate-100 dark:border-white/5 relative">
+        <div class="flex items-center gap-3 cursor-pointer group" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}')">
+          {% if w['profile_image_url'] %}
+            <img src="{{ w['profile_image_url'] }}" class="w-12 h-12 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/10">
+          {% else %}
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purpleaccent text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform border border-white dark:border-white/10">
+              {{ w['name'][:1]|upper }}
+            </div>
+          {% endif %}
+          <div class="flex flex-col">
+            <h3 class="font-bold text-slate-900 dark:text-white leading-tight group-hover:text-primary transition-colors text-base">{{ w['name'] }}</h3>
+            <span class="text-xs font-mono text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Part-Time</span>
+          </div>
+        </div>
+        <button class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/10 transition-all" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}')">
+          <i class="bi bi-three-dots-vertical"></i>
+        </button>
+      </div>
+
+      <div class="p-5 grid grid-cols-3 gap-4 border-b border-slate-100 dark:border-white/5">
+        <div class="flex flex-col">
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Earnings</span>
+          <span class="font-mono text-sm font-bold text-slate-900 dark:text-white" id="card-earnings-{{ w['worker_id'] }}">₹0</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Advances</span>
+          <span class="font-mono text-sm font-bold text-danger" id="card-advances-{{ w['worker_id'] }}">₹0</span>
+        </div>
+        <div class="flex flex-col text-right">
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Balance</span>
+          <span id="card-balance-{{ w['worker_id'] }}" class="font-mono text-[15px] font-black text-slate-900 dark:text-white">₹0</span>
+        </div>
+      </div>
+
+      <div class="p-4 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
+        <div class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+          <i class="bi bi-briefcase text-slate-400"></i>
+          <span><span id="card-jobs-{{ w['worker_id'] }}">0</span> Jobs (<span id="card-slabs-{{ w['worker_id'] }}">0</span> Slabs)</span>
+        </div>
+        <div>
+          <span id="card-status-{{ w['worker_id'] }}" class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400">No Work</span>
+        </div>
+      </div>
+
+      <div class="p-4 grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+        <button data-action="log-work" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold text-[11px] rounded-xl transition-colors">
+          <i class="bi bi-file-earmark-plus mr-1"></i> Log Work
+        </button>
+        <button data-action="advance" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" data-worker-id-str="{{ w['worker_id_str']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-200 font-semibold text-[11px] rounded-xl transition-colors">
+          <i class="bi bi-cash-stack mr-1"></i> Advance
+        </button>
+        <button data-action="ledger" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-200 font-semibold text-[11px] rounded-xl transition-colors">
+          <i class="bi bi-journal-text mr-1"></i> Ledger
+        </button>
+      </div>
+      
+      <div id="ledger-container-{{ w['worker_id'] }}" class="hidden border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#151b23]">
+        <div class="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5">
+          <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="bi bi-journal-text text-primary"></i> Ledger
+          </h4>
+          <button onclick="toggleWorkerLedger('{{ w['worker_id'] }}')" class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-500 transition-colors">
+            <i class="bi bi-x-lg text-[10px]"></i>
+          </button>
+        </div>
+        <div class="p-4 overflow-x-auto custom-scrollbar">
+          <div id="ledger-content-{{ w['worker_id'] }}" class="min-w-[800px]">
+            <div class="py-10 text-center text-slate-500">
+              <div class="spinner-border text-primary inline-block w-6 h-6 border-2 rounded-full animate-spin border-t-transparent"></div>
+              <p class="mt-2 text-sm font-medium">Loading ledger...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+    
+    html = render_template_string(card_template, w=w_data)
+    return jsonify({"success": True, "html": html})
+
         
     worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
     if not worker:
