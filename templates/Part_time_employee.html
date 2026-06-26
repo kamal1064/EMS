@@ -169,7 +169,7 @@
   
   {% if not show_all_workers and worker_history|length > 5 %}
   <div class="col-span-full flex justify-center mt-4">
-    <a href="{{ url_for('part_time', _external=True).replace('/part-time', '/part-time/workers') }}" class="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex items-center gap-2">
+    <a href="{{ url_for('part_time_workers_full') }}" class="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex items-center gap-2">
       View All {{ worker_history|length }} Workers <i class="bi bi-arrow-right"></i>
     </a>
   </div>

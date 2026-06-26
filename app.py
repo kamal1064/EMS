@@ -1585,7 +1585,7 @@ def salary():
 # ─────────────────────────────────────────
 
 @app.route('/part-time')
-@app.route('/part-time/workers')
+@app.route('/part-time/workers', endpoint='part_time_workers_full')
 @limiter.limit("60 per minute")
 @login_required
 def part_time():
