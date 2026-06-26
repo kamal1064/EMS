@@ -1602,7 +1602,7 @@ def part_time():
     setup_error = None
     
     pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
-    worker_info = {str(w['_id']): {"name": w['name'], "profile_image_url": w.get('profile_image_url', ''), "worker_id_str": w.get('worker_id', '')} for w in pt_workers}
+    worker_info = {str(w['_id']): {"name": w['name'], "profile_image_url": w.get('profile_image_url', ''), "worker_id_str": w.get('worker_id', ''), "created_at": w.get('created_at', '')} for w in pt_workers}
     worker_ids = [ObjectId(wid) for wid in worker_info.keys()]
     
     match_query = {"worker_id": {"$in": worker_ids}}
@@ -1681,7 +1681,8 @@ def part_time():
             'balance': 0.0,
             'jobs': 0,
             'slabs': 0,
-            'recent_assignments': []
+            'recent_assignments': [],
+            'last_active_date': info.get('created_at', '')
         }
         
     monthly_map = {}
@@ -1731,7 +1732,8 @@ def part_time():
             'balance': 0.0,
             'jobs': 0,
             'slabs': 0,
-            'recent_assignments': []
+            'recent_assignments': [],
+            'last_active_date': info.get('created_at', '')
         })
         worker_stats['clients'].add(client)
         worker_stats['earnings'] += t_price
@@ -1739,6 +1741,9 @@ def part_time():
         worker_stats['balance'] += r_bal
         worker_stats['jobs'] += 1
         worker_stats['slabs'] += sq
+        working_date = log.get('working_date') or ''
+        if working_date > worker_stats.get('last_active_date', ''):
+            worker_stats['last_active_date'] = working_date
         if len(worker_stats['recent_assignments']) < 3:
             worker_stats['recent_assignments'].append({
                 'client': client, 'date': log.get('working_date'), 'total': t_price
@@ -1770,7 +1775,7 @@ def part_time():
 
     worker_history = []
     # If there is a search, filter out workers with 0 jobs UNLESS they explicitly match the search term
-    for worker in sorted(worker_map.values(), key=lambda w: w['earnings'], reverse=True):
+    for worker in sorted(worker_map.values(), key=lambda w: w.get('last_active_date', ''), reverse=True):
         if search and worker['jobs'] == 0:
             search_lower = search.lower()
             if search_lower not in worker['name'].lower() and search_lower not in worker['worker_id_str'].lower():
