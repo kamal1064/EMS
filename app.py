@@ -3334,6 +3334,123 @@ def export_data():
             ])
         style_ws(ws_advances, f"Part-Time Advances Ledger{pt_title_suffix}", adv_headers, adv_rows)
 
+    elif export_type in ['all_attendance', 'specific_attendance']:
+        # Fetch Employees
+        emp_filter = {"user_id": ObjectId(uid)}
+        if export_type == 'specific_attendance' and employee_id:
+            emp_id_obj = safe_object_id(employee_id)
+            if emp_id_obj:
+                emp_filter["_id"] = emp_id_obj
+
+        emps = list(db.employees.find(emp_filter).sort("name", 1))
+        emp_ids = [e['_id'] for e in emps]
+
+        # Fetch attendance within date range
+        att_query = {"emp_id": {"$in": emp_ids}}
+        att_query["date"] = {"$gte": start_date_str, "$lte": end_date_str}
+        attendance_list = list(db.attendance.find(att_query).sort("date", 1))
+
+        ws_att = wb.active
+        ws_att.title = "Attendance"
+        att_headers = ["Employee ID", "Employee Name", "Date", "Status", "Leave Reason", "Leave Note"]
+        att_rows = []
+        emp_map_att = {e['_id']: e for e in emps}
+
+        for a in attendance_list:
+            emp = emp_map_att.get(a['emp_id'], {})
+            att_rows.append([
+                emp.get('employee_id', str(a['emp_id'])),
+                emp.get('name', 'Unknown'),
+                a.get('date', 'N/A'),
+                a.get('status', 'Present'),
+                a.get('leave_reason', ''),
+                a.get('leave_note', '')
+            ])
+
+        title_suffix = f" ({start_date_str} to {end_date_str})"
+        style_ws(ws_att, f"Attendance Records{title_suffix}", att_headers, att_rows)
+
+    elif export_type in ['all_salary', 'specific_salary']:
+        # Fetch Employees
+        emp_filter = {"user_id": ObjectId(uid)}
+        if export_type == 'specific_salary' and employee_id:
+            emp_id_obj = safe_object_id(employee_id)
+            if emp_id_obj:
+                emp_filter["_id"] = emp_id_obj
+
+        emps = list(db.employees.find(emp_filter).sort("name", 1))
+        emp_ids = [e['_id'] for e in emps]
+        emp_map_sal = {e['_id']: e for e in emps}
+        months = sorted(list(set(dt[:7] for dt in date_list)))
+
+        # Fetch salary records
+        sal_query = {"emp_id": {"$in": emp_ids}}
+        if start_date or end_date:
+            sal_query["month"] = {"$in": months}
+        salary_records_list = list(db.salary_records.find(sal_query).sort("month", 1))
+
+        # Fetch advances
+        adv_query = {"emp_id": {"$in": emp_ids}}
+        if start_date or end_date:
+            adv_query["payment_date"] = {}
+            if start_date:
+                adv_query["payment_date"]["$gte"] = start_date
+            if end_date:
+                adv_query["payment_date"]["$lte"] = end_date + " 23:59:59"
+        advances_list = list(db.salary_advance_payments.find(adv_query).sort("payment_date", -1))
+
+        # Salary summary sheet
+        ws_sal = wb.active
+        ws_sal.title = "Salary Summary"
+        sal_headers = [
+            "Employee ID", "Employee Name", "Month", "Base Salary",
+            "Present Days", "Gross Salary", "Total Advances", "Net Salary", "Payment Status"
+        ]
+        sal_rows = []
+        tot_gross = tot_adv = tot_net = 0.0
+
+        for rec in salary_records_list:
+            emp = emp_map_sal.get(rec.get('emp_id'), {})
+            base_sal = float(emp.get('salary', 0.0))
+            p_days = rec.get('present_days', 30)
+            gross = float(rec.get('total_salary', base_sal))
+            adv = float(rec.get('advance_amount_paid', 0.0))
+            net = round(gross - adv, 2)
+            st = rec.get('payment_status', 'Pending')
+            tot_gross += gross
+            tot_adv += adv
+            tot_net += net
+            sal_rows.append([
+                emp.get('employee_id', str(rec.get('emp_id', ''))),
+                emp.get('name', 'Unknown'),
+                rec.get('month', 'N/A'),
+                base_sal,
+                p_days,
+                gross,
+                adv,
+                net,
+                st
+            ])
+
+        sal_title_suffix = f" ({start_date} to {end_date})" if (start_date or end_date) else " (All Time)"
+        sal_totals = ["TOTAL", "", "", None, None, tot_gross, tot_adv, tot_net, ""]
+        style_ws(ws_sal, f"Salary Records{sal_title_suffix}", sal_headers, sal_rows, sal_totals)
+
+        # Advances sheet
+        ws_adv = wb.create_sheet(title="Advances")
+        adv_headers = ["Employee ID", "Employee Name", "Advance Amount", "Payment Date", "Notes"]
+        adv_rows = []
+        for adv in advances_list:
+            emp = emp_map_sal.get(adv.get('emp_id'), {})
+            adv_rows.append([
+                emp.get('employee_id', str(adv.get('emp_id', ''))),
+                emp.get('name', 'Unknown'),
+                float(adv.get('amount', 0.0)),
+                adv.get('payment_date', 'N/A'),
+                adv.get('notes', '')
+            ])
+        style_ws(ws_adv, f"Salary Advances{sal_title_suffix}", adv_headers, adv_rows)
+
     import tempfile, os
     from flask import Response
     

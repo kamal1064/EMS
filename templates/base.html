@@ -772,65 +772,156 @@
   </div>
 </div><!-- end legal-panel -->
 
-<!-- ── EXPORT DATA MODAL ─────────────────────────── -->
+<!-- ── ADVANCED EXPORT DATA MODAL ─────────────────────────── -->
 <div id="exportModal" class="premium-modal-backdrop" onclick="handleGlobalBackdropClick(event, 'exportModal')">
-  <div class="premium-modal-container" style="max-width: 600px;">
-    <div class="premium-modal-header">
+  <div class="premium-modal-container" style="max-width: 680px; max-height: 92vh; overflow-y: auto;">
+    <div class="premium-modal-header" style="position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--card-border);">
       <div>
-        <div class="premium-modal-title">Export Data</div>
-        <div class="premium-modal-subtitle">Configure format, filters, and target records</div>
+        <div class="premium-modal-title" style="display:flex;align-items:center;gap:10px;">
+          <span style="width:36px;height:36px;background:linear-gradient(135deg,#3B82F6,#8B5CF6);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;"><i class="bi bi-cloud-download"></i></span>
+          Export Center
+        </div>
+        <div class="premium-modal-subtitle">Select module, scope, and format to export your data</div>
       </div>
       <button class="premium-modal-close-btn" onclick="closeGlobalModal('exportModal')" aria-label="Close">&times;</button>
     </div>
-    
-    <div class="premium-modal-body">
+
+    <div class="premium-modal-body" style="gap:20px;">
+
+      <!-- STEP 1: MODULE -->
       <div class="premium-field-group">
-        <label for="exportTypeSelect" class="premium-label">Export Option *</label>
-        <select id="exportTypeSelect" class="premium-input" onchange="handleExportTypeChange()">
-          <option value="all_employees">Export All Employees (Standard)</option>
-          <option value="specific_employee">Export Specific Employee</option>
-          <option value="all_part_time">Export All Part-Time Workers</option>
-          <option value="specific_part_time">Export Specific Part-Time Worker</option>
-        </select>
-      </div>
-
-      <!-- Searchable Employee Field -->
-      <div class="premium-field-group" id="employeeSelectGroup" style="display:none; position:relative;">
-        <label for="employeeSearchInput" class="premium-label">Select Employee *</label>
-        <div class="premium-select-wrapper">
-          <input type="text" id="employeeSearchInput" class="premium-input" placeholder="Type to search employee..." onfocus="showSearchDropdown('employee')" oninput="filterSearchOptions('employee')" autocomplete="off"/>
-          <input type="hidden" id="selectedEmployeeId"/>
-          <div id="employeeDropdownList" class="premium-select-dropdown" style="display:none;"></div>
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;">1</span>
+          Select Module
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="exportModuleGrid">
+          <button type="button" onclick="selectExportModule('employees')" id="mod-employees"
+            class="export-module-btn active-module"
+            style="padding:14px 10px;border-radius:12px;border:2px solid #3B82F6;background:#EFF6FF;color:#1D4ED8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <i class="bi bi-people-fill" style="font-size:20px;"></i> Employees
+          </button>
+          <button type="button" onclick="selectExportModule('part_time')" id="mod-part_time"
+            class="export-module-btn"
+            style="padding:14px 10px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <i class="bi bi-person-badge-fill" style="font-size:20px;"></i> Part-Time Workers
+          </button>
+          <button type="button" onclick="selectExportModule('attendance')" id="mod-attendance"
+            class="export-module-btn"
+            style="padding:14px 10px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <i class="bi bi-calendar-check-fill" style="font-size:20px;"></i> Attendance
+          </button>
+          <button type="button" onclick="selectExportModule('salary')" id="mod-salary"
+            class="export-module-btn"
+            style="padding:14px 10px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <i class="bi bi-cash-coin" style="font-size:20px;"></i> Salary
+          </button>
         </div>
       </div>
 
-      <!-- Searchable Worker Field -->
-      <div class="premium-field-group" id="workerSelectGroup" style="display:none; position:relative;">
-        <label for="workerSearchInput" class="premium-label">Select Part-Time Worker *</label>
-        <div class="premium-select-wrapper">
-          <input type="text" id="workerSearchInput" class="premium-input" placeholder="Type to search worker..." onfocus="showSearchDropdown('worker')" oninput="filterSearchOptions('worker')" autocomplete="off"/>
-          <input type="hidden" id="selectedWorkerId"/>
-          <div id="workerDropdownList" class="premium-select-dropdown" style="display:none;"></div>
+      <!-- STEP 2: SCOPE -->
+      <div class="premium-field-group">
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;">2</span>
+          Export Scope
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button type="button" onclick="selectExportScope('all')" id="scope-all"
+            class="export-scope-btn active-scope"
+            style="padding:12px;border-radius:12px;border:2px solid #3B82F6;background:#EFF6FF;color:#1D4ED8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="bi bi-collection-fill"></i> All Records
+          </button>
+          <button type="button" onclick="selectExportScope('individual')" id="scope-individual"
+            class="export-scope-btn"
+            style="padding:12px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="bi bi-person-lines-fill"></i> Individual Record
+          </button>
         </div>
       </div>
 
-      <!-- Date Range Fields -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <!-- STEP 3: RECORD SEARCH (conditional) -->
+      <div id="exportRecordGroup" style="display:none;">
         <div class="premium-field-group">
-          <label for="export_start_date" class="premium-label">Start Date</label>
-          <input type="date" id="export_start_date" class="premium-input"/>
-        </div>
-        <div class="premium-field-group">
-          <label for="export_end_date" class="premium-label">End Date</label>
-          <input type="date" id="export_end_date" class="premium-input"/>
+          <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;">3</span>
+            Select Record
+          </label>
+          <!-- Reuses existing hidden select logic -->
+          <div class="premium-field-group" id="employeeSelectGroup" style="display:none; position:relative; margin-top:0;">
+            <div class="premium-select-wrapper">
+              <input type="text" id="employeeSearchInput" class="premium-input" placeholder="Type to search employee..."
+                onfocus="showSearchDropdown('employee')" oninput="filterSearchOptions('employee')" autocomplete="off"/>
+              <input type="hidden" id="selectedEmployeeId"/>
+              <div id="employeeDropdownList" class="premium-select-dropdown" style="display:none;"></div>
+            </div>
+          </div>
+          <div class="premium-field-group" id="workerSelectGroup" style="display:none; position:relative; margin-top:0;">
+            <div class="premium-select-wrapper">
+              <input type="text" id="workerSearchInput" class="premium-input" placeholder="Type to search worker..."
+                onfocus="showSearchDropdown('worker')" oninput="filterSearchOptions('worker')" autocomplete="off"/>
+              <input type="hidden" id="selectedWorkerId"/>
+              <div id="workerDropdownList" class="premium-select-dropdown" style="display:none;"></div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- STEP 4: FORMAT -->
+      <div class="premium-field-group">
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;" id="formatStepNum">4</span>
+          File Format
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button type="button" onclick="selectExportFormat('excel')" id="fmt-excel"
+            class="export-fmt-btn active-fmt"
+            style="padding:14px;border-radius:12px;border:2px solid #059669;background:#ECFDF5;color:#065F46;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="bi bi-file-earmark-excel-fill" style="font-size:18px;"></i>
+            <span><div style="font-size:13px;">Excel</div><div style="font-size:10px;font-weight:500;opacity:.7;">.xlsx</div></span>
+          </button>
+          <button type="button" onclick="selectExportFormat('pdf')" id="fmt-pdf"
+            class="export-fmt-btn"
+            style="padding:14px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="bi bi-file-earmark-pdf-fill" style="font-size:18px;color:#EF4444;"></i>
+            <span><div style="font-size:13px;">PDF</div><div style="font-size:10px;font-weight:500;opacity:.7;">.pdf</div></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- DATE RANGE -->
+      <div class="premium-field-group">
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+          <i class="bi bi-calendar-range mr-2" style="color:#3B82F6;"></i> Date Range <span style="font-weight:400;color:var(--text3);"> (optional)</span>
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="premium-field-group" style="margin-bottom:0;">
+            <label for="export_start_date" class="premium-label">From</label>
+            <input type="date" id="export_start_date" class="premium-input"/>
+          </div>
+          <div class="premium-field-group" style="margin-bottom:0;">
+            <label for="export_end_date" class="premium-label">To</label>
+            <input type="date" id="export_end_date" class="premium-input"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden legacy select (kept for backward compat with openExportModal(event, defaultType) calls) -->
+      <select id="exportTypeSelect" style="display:none;" onchange="handleExportTypeChange()">
+        <option value="all_employees">all_employees</option>
+        <option value="specific_employee">specific_employee</option>
+        <option value="all_part_time">all_part_time</option>
+        <option value="specific_part_time">specific_part_time</option>
+        <option value="all_attendance">all_attendance</option>
+        <option value="specific_attendance">specific_attendance</option>
+        <option value="all_salary">all_salary</option>
+        <option value="specific_salary">specific_salary</option>
+      </select>
     </div>
-    
-    <div class="premium-modal-footer">
+
+    <div class="premium-modal-footer" style="position:sticky;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--card-border);">
       <button class="btn-premium-cancel" onclick="closeGlobalModal('exportModal')">Cancel</button>
-      <button id="triggerExportBtn" class="btn-premium-save" onclick="triggerExport()">
-        <i class="bi bi-download"></i> Export Excel
+      <button id="triggerExportBtn" class="btn-premium-save" onclick="triggerExport()" style="display:flex;align-items:center;gap:8px;min-width:160px;justify-content:center;">
+        <i class="bi bi-file-earmark-excel-fill" id="exportBtnIcon"></i>
+        <span id="exportBtnLabel">Export as Excel</span>
       </button>
     </div>
   </div>
@@ -1263,41 +1354,154 @@ function handleGlobalBackdropClick(event, id) {
 /* ══ EXPORT MODAL JS ══════════════════════════════════ */
 var _exportEmployees = [];
 var _exportWorkers = [];
+var _exportModule = 'employees';   // current active module
+var _exportScope   = 'all';        // 'all' or 'individual'
+var _exportFormat  = 'excel';      // 'excel' or 'pdf'
+
+/* Active-state helpers */
+function _setActiveBtn(groupSelector, activeId) {
+  document.querySelectorAll(groupSelector).forEach(function(btn) {
+    var isActive = btn.id === activeId;
+    if (isActive) {
+      if (groupSelector === '.export-module-btn') {
+        btn.style.borderColor = '#3B82F6';
+        btn.style.background  = '#EFF6FF';
+        btn.style.color       = '#1D4ED8';
+      } else if (groupSelector === '.export-scope-btn') {
+        btn.style.borderColor = '#3B82F6';
+        btn.style.background  = '#EFF6FF';
+        btn.style.color       = '#1D4ED8';
+      } else {
+        /* format */
+        if (activeId === 'fmt-excel') {
+          btn.style.borderColor = '#059669';
+          btn.style.background  = '#ECFDF5';
+          btn.style.color       = '#065F46';
+        } else {
+          btn.style.borderColor = '#EF4444';
+          btn.style.background  = '#FEF2F2';
+          btn.style.color       = '#991B1B';
+        }
+      }
+    } else {
+      btn.style.borderColor = 'var(--card-border)';
+      btn.style.background  = 'var(--input-bg)';
+      btn.style.color       = 'var(--text2)';
+    }
+  });
+}
+
+function selectExportModule(mod) {
+  _exportModule = mod;
+  _setActiveBtn('.export-module-btn', 'mod-' + mod);
+  /* Reset scope and record when switching modules */
+  selectExportScope(_exportScope);
+  _updateExportBtn();
+}
+
+function selectExportScope(scope) {
+  _exportScope = scope;
+  _setActiveBtn('.export-scope-btn', 'scope-' + scope);
+  /* Show/hide step 3 */
+  var recGrp = document.getElementById('exportRecordGroup');
+  var empGrp = document.getElementById('employeeSelectGroup');
+  var wrkGrp = document.getElementById('workerSelectGroup');
+  var fmtStepNum = document.getElementById('formatStepNum');
+
+  /* Clear selections */
+  document.getElementById('selectedEmployeeId').value = '';
+  document.getElementById('employeeSearchInput').value = '';
+  document.getElementById('selectedWorkerId').value = '';
+  document.getElementById('workerSearchInput').value = '';
+
+  if (scope === 'individual') {
+    recGrp.style.display = 'block';
+    if (fmtStepNum) fmtStepNum.textContent = '4';
+    /* show the right picker */
+    empGrp.style.display = (_exportModule === 'employees' || _exportModule === 'attendance' || _exportModule === 'salary') ? 'block' : 'none';
+    wrkGrp.style.display = (_exportModule === 'part_time') ? 'block' : 'none';
+  } else {
+    recGrp.style.display = 'none';
+    empGrp.style.display = 'none';
+    wrkGrp.style.display = 'none';
+    if (fmtStepNum) fmtStepNum.textContent = '3';
+  }
+  _updateExportBtn();
+}
+
+function selectExportFormat(fmt) {
+  _exportFormat = fmt;
+  _setActiveBtn('.export-fmt-btn', 'fmt-' + fmt);
+  _updateExportBtn();
+}
+
+function _updateExportBtn() {
+  var icon  = document.getElementById('exportBtnIcon');
+  var label = document.getElementById('exportBtnLabel');
+  if (!icon || !label) return;
+  if (_exportFormat === 'pdf') {
+    icon.className = 'bi bi-file-earmark-pdf-fill';
+    label.textContent = 'Export as PDF';
+  } else {
+    icon.className = 'bi bi-file-earmark-excel-fill';
+    label.textContent = 'Export as Excel';
+  }
+}
+
+function _resolveExportType() {
+  var moduleMap = {
+    employees:  { all: 'all_employees',  individual: 'specific_employee' },
+    part_time:  { all: 'all_part_time',  individual: 'specific_part_time' },
+    attendance: { all: 'all_attendance', individual: 'specific_attendance' },
+    salary:     { all: 'all_salary',     individual: 'specific_salary' }
+  };
+  return (moduleMap[_exportModule] || moduleMap.employees)[_exportScope] || 'all_employees';
+}
 
 function openExportModal(event, defaultType) {
   if (event) event.preventDefault();
-  
-  // Reset fields
-  document.getElementById('exportTypeSelect').value = defaultType || 'all_employees';
-  handleExportTypeChange();
-  
+
+  /* Map legacy defaultType string → new wizard state */
+  var modMap = {
+    all_employees: ['employees','all'],    specific_employee: ['employees','individual'],
+    all_part_time: ['part_time','all'],    specific_part_time: ['part_time','individual'],
+    all_attendance: ['attendance','all'],  specific_attendance: ['attendance','individual'],
+    all_salary: ['salary','all'],          specific_salary: ['salary','individual']
+  };
+  var mapped = modMap[defaultType] || ['employees','all'];
+  _exportModule = mapped[0];
+  _exportScope  = mapped[1];
+  _exportFormat = 'excel';
+
+  /* Sync UI */
+  _setActiveBtn('.export-module-btn', 'mod-' + _exportModule);
+  selectExportScope(_exportScope);
+  selectExportFormat('excel');
+
   openGlobalModal('exportModal');
-  
-  // Fetch lists
+
+  /* Fetch employee/worker lists */
   fetch('/api/export/options')
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.success) {
         _exportEmployees = d.employees;
-        _exportWorkers = d.part_time_workers;
-        
+        _exportWorkers   = d.part_time_workers;
         renderDropdownOptions('employee', _exportEmployees);
-        renderDropdownOptions('worker', _exportWorkers);
+        renderDropdownOptions('worker',   _exportWorkers);
       }
     })
-    .catch(function(err) { console.error("Failed to load export options", err); });
+    .catch(function(err) { console.error('Failed to load export options', err); });
 }
 
 function renderDropdownOptions(type, items) {
   var list = document.getElementById(type + 'DropdownList');
   if (!list) return;
   list.innerHTML = '';
-  
   if (items.length === 0) {
     list.innerHTML = '<div class="premium-select-option no-results">No matches found</div>';
     return;
   }
-  
   items.forEach(function(item) {
     var opt = document.createElement('div');
     opt.className = 'premium-select-option';
@@ -1314,12 +1518,9 @@ function renderDropdownOptions(type, items) {
 function showSearchDropdown(type) {
   closeAllSearchDropdowns();
   var list = document.getElementById(type + 'DropdownList');
-  if (list) {
-    list.style.display = 'block';
-  }
+  if (list) list.style.display = 'block';
 }
 
-// Global outside click handler for dropdown closing
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.premium-select-wrapper')) {
     closeAllSearchDropdowns();
@@ -1329,66 +1530,53 @@ document.addEventListener('click', function(e) {
 function filterSearchOptions(type) {
   var input = document.getElementById(type + 'SearchInput');
   var query = input.value.toLowerCase().trim();
-  
   var items = (type === 'employee') ? _exportEmployees : _exportWorkers;
   var filtered = items.filter(function(item) {
     return item.name.toLowerCase().indexOf(query) !== -1;
   });
-  
   renderDropdownOptions(type, filtered);
+  showSearchDropdown(type);
 }
 
 function closeAllSearchDropdowns() {
   var elList = document.getElementById('employeeDropdownList');
-  var wList = document.getElementById('workerDropdownList');
+  var wList  = document.getElementById('workerDropdownList');
   if (elList) elList.style.display = 'none';
-  if (wList) wList.style.display = 'none';
+  if (wList)  wList.style.display  = 'none';
 }
 
+/* Legacy compat — still called by old openExportModal flow */
 function handleExportTypeChange() {
-  var type = document.getElementById('exportTypeSelect').value;
-  var empGroup = document.getElementById('employeeSelectGroup');
-  var workerGroup = document.getElementById('workerSelectGroup');
-  
-  if (empGroup) empGroup.style.display = 'none';
-  if (workerGroup) workerGroup.style.display = 'none';
-  
-  // Clear values
-  document.getElementById('selectedEmployeeId').value = '';
-  document.getElementById('employeeSearchInput').value = '';
-  document.getElementById('selectedWorkerId').value = '';
-  document.getElementById('workerSearchInput').value = '';
-  
-  if (type === 'specific_employee') {
-    if (empGroup) empGroup.style.display = 'block';
-  } else if (type === 'specific_part_time') {
-    if (workerGroup) workerGroup.style.display = 'block';
-  }
+  /* no-op in new wizard flow; state is managed by selectExportModule/Scope */
 }
 
 function triggerExport() {
-  var type = document.getElementById('exportTypeSelect').value;
-  var empId = document.getElementById('selectedEmployeeId').value;
+  var type     = _resolveExportType();
+  var empId    = document.getElementById('selectedEmployeeId').value;
   var workerId = document.getElementById('selectedWorkerId').value;
-  var start = document.getElementById('export_start_date').value;
-  var end = document.getElementById('export_end_date').value;
-  
-  if (type === 'specific_employee' && !empId) {
-    showToast('Please select an employee', 'danger');
-    return;
+  var start    = document.getElementById('export_start_date').value;
+  var end      = document.getElementById('export_end_date').value;
+
+  /* Validate individual record selection */
+  if (_exportScope === 'individual') {
+    if ((_exportModule === 'employees' || _exportModule === 'attendance' || _exportModule === 'salary') && !empId) {
+      showToast('Please select an employee first.', 'danger');
+      return;
+    }
+    if (_exportModule === 'part_time' && !workerId) {
+      showToast('Please select a worker first.', 'danger');
+      return;
+    }
   }
-  if (type === 'specific_part_time' && !workerId) {
-    showToast('Please select a worker', 'danger');
-    return;
-  }
-  
+
   var params = new URLSearchParams();
   params.append('export_type', type);
-  if (empId) params.append('employee_id', empId);
-  if (workerId) params.append('worker_id', workerId);
-  if (start) params.append('start_date', start);
-  if (end) params.append('end_date', end);
-  
+  params.append('format', _exportFormat);
+  if (empId)    params.append('employee_id', empId);
+  if (workerId) params.append('worker_id',   workerId);
+  if (start)    params.append('start_date',  start);
+  if (end)      params.append('end_date',    end);
+
   window.location.href = '/export?' + params.toString();
   closeGlobalModal('exportModal');
 }
