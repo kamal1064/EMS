@@ -278,9 +278,9 @@
       </div>
       
       <div class="space-y-2">
-        <label class="text-[11px] font-bold text-slate-500 uppercase">Select Job (Work Log) *</label>
-        <select id="modal-adv-log-select" required class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary">
-            <option value="">Loading unpaid jobs...</option>
+        <label class="text-[11px] font-bold text-slate-500 uppercase">Select Job (Work Log) (Optional)</label>
+        <select id="modal-adv-log-select" class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary">
+            <option value="">General Salary Advance (No Work Log)</option>
         </select>
       </div>
 
@@ -641,33 +641,30 @@
       document.getElementById('modal-adv-name').value = workerName;
       document.getElementById('modal-adv-id').value = workerIdStr;
       document.getElementById('modal-adv-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-adv-amount').value = '';
+      document.getElementById('modal-adv-notes').value = '';
       
       const select = document.getElementById('modal-adv-log-select');
+      select.innerHTML = '<option value="">General Salary Advance (No Work Log)</option>';
+      
+      const submitBtn = document.getElementById('modal-adv-submit-btn');
+      if (submitBtn) submitBtn.disabled = false;
       
       // Fetch unpaid logs to populate dropdown
       fetch('/api/part-time/worker/' + workerId + '/ledger')
         .then(res => res.json())
         .then(data => {
-            select.innerHTML = '';
             if (data.records && data.records.length > 0) {
-                const unpaid = data.records.filter(r => r.payment_status !== 'PAID');
-                if (unpaid.length === 0) {
-                    select.innerHTML = '<option value="">No unpaid jobs available</option>';
-                    document.getElementById('modal-adv-submit-btn').disabled = true;
-                } else {
-                    unpaid.forEach(r => {
-                        const opt = document.createElement('option');
-                        opt.value = r.id;
-                        opt.textContent = `${r.working_date} | ${r.client_name} | ₹${r.total_price.toLocaleString('en-IN')} (Bal: ₹${r.remaining_balance.toLocaleString('en-IN')})`;
-                        select.appendChild(opt);
-                    });
-                }
-            } else {
-                select.innerHTML = '<option value="">No jobs found</option>';
-                document.getElementById('modal-adv-submit-btn').disabled = true;
+                const unpaid = data.records.filter(r => !r.is_advance && r.payment_status !== 'PAID' && r.payment_status !== 'Paid');
+                unpaid.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.textContent = `${r.working_date} | ${r.client_name} | ₹${r.total_price.toLocaleString('en-IN')} (Bal: ₹${r.remaining_balance.toLocaleString('en-IN')})`;
+                    select.appendChild(opt);
+                });
             }
         }).catch(err => {
-            select.innerHTML = '<option value="">Error loading jobs</option>';
+            console.error('Error loading jobs:', err);
         });
   }
 
@@ -681,10 +678,7 @@
       const amt = document.getElementById('modal-adv-amount').value;
       const date = document.getElementById('modal-adv-date').value;
       const notes = document.getElementById('modal-adv-notes').value;
-      const workerId = document.getElementById('modal-lw-worker-id') ? document.getElementById('modal-lw-worker-id').value : ''; // Wait, I didn't store workerId natively in the modal.
-      
-      // Let's get workerId from the DOM since it's the only one open
-      // actually, I'll just use a global or pass it, wait, we don't need workerId for the API call, only for refreshing!
+      const workerId = document.body.getAttribute("data-current-worker") || "";
       
       try {
           const res = await fetch('/api/part-time/advance/add', {
@@ -692,6 +686,7 @@
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({
                   record_id: recordId,
+                  worker_id: workerId,
                   amount: amt,
                   payment_date: date,
                   notes: notes
@@ -701,10 +696,7 @@
           if (data.success) {
               closeUniversalModal();
               showToast('Advance Saved Successfully', 'success');
-              // We need the worker ID to refresh. 
-              // A quick way to get the worker ID is to find the row that has this record ID, or just refresh the page.
-              // Actually, let's just refresh the whole page for advances if we can't get worker ID, OR...
-              const wId = document.body.getAttribute("data-current-worker"); if(wId) { refreshWorkerData(wId); } else { window.location.reload(); }
+              if(workerId) { refreshWorkerData(workerId); } else { window.location.reload(); }
           } else {
               showToast(data.message || 'Error saving advance', 'error');
               btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Advance';
@@ -920,7 +912,9 @@
       .then(r=>r.json()).then(d => {
           btn.innerText = 'Update'; btn.disabled = false;
           if(d.success) {
-              updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (recId && recId !== 'null' && recId !== 'undefined' && recId !== '') {
+                  updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              }
               if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               closeModal('editAdvanceModal');
               showToast('Advance Updated', 'success');
@@ -939,7 +933,9 @@
       })
       .then(r=>r.json()).then(d => {
           if(d.success) {
-              updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (recId && recId !== 'null' && recId !== 'undefined' && recId !== '') {
+                  updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              }
               if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               closeModal('editAdvanceModal');
               showToast('Advance Deleted', 'success');
@@ -1387,41 +1383,68 @@
               const netValue = (r.total_price - r.advance_paid) < 0 ? '−₹' + Math.abs(r.total_price - r.advance_paid).toLocaleString('en-IN') : '₹' + (r.total_price - r.advance_paid).toLocaleString('en-IN');
               
               let statusBadge = '';
-              if (r.payment_status === 'Paid') statusBadge = '<span class="badge badge-success px-2 py-0.5 text-[9px]">Paid</span>';
-              else if (r.payment_status === 'Overpaid') statusBadge = '<span class="badge badge-danger px-2 py-0.5 text-[9px]">Overpaid</span>';
-              else statusBadge = '<span class="badge badge-warning px-2 py-0.5 text-[9px]">Pending</span>';
+              let actionBtns = '';
               
-              let actionBtns = `
-                <div class="flex flex-col gap-1">
-                    <div class="flex items-center gap-1">
-                        <button onclick="openAddAdvance('${r.id}')" class="ledger-adv-btn btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-plus"></i> Adv</button>
-                        <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-clock-history"></i></button>
+              if (r.is_advance) {
+                  statusBadge = '<span class="badge bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 px-2 py-0.5 text-[9px]">Advance</span>';
+                  actionBtns = `
+                    <div class="flex flex-col gap-1">
+                        <button onclick="editAdvance('${r.id}', '${r.advance_paid}', '${r.working_date}', '${(r.notes || '').replace(/'/g, "\\'")}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2.5 py-1 text-[9px] rounded transition-colors"><i class="bi bi-pencil mr-1"></i>Edit</button>
                     </div>
-              `;
-              if (r.payment_status === 'Pending') {
-                  actionBtns += `
-                    <button onclick="markPartTimePaid('${r.id}')" id="pay-btn-${r.id}" class="btn-saas btn-saas-xs btn-saas-success px-2 py-1 text-[9px] rounded transition-colors w-full">
-                        <i class="bi bi-check2"></i> Mark Paid
-                    </button>
                   `;
+              } else {
+                  if (r.payment_status === 'Paid') statusBadge = '<span class="badge badge-success px-2 py-0.5 text-[9px]">Paid</span>';
+                  else if (r.payment_status === 'Overpaid') statusBadge = '<span class="badge badge-danger px-2 py-0.5 text-[9px]">Overpaid</span>';
+                  else statusBadge = '<span class="badge badge-warning px-2 py-0.5 text-[9px]">Pending</span>';
+                  
+                  actionBtns = `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1">
+                            <button onclick="openAddAdvance('${r.id}')" class="ledger-adv-btn btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-plus"></i> Adv</button>
+                            <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-clock-history"></i></button>
+                        </div>
+                  `;
+                  if (r.payment_status === 'Pending') {
+                      actionBtns += `
+                        <button onclick="markPartTimePaid('${r.id}')" id="pay-btn-${r.id}" class="btn-saas btn-saas-xs btn-saas-success px-2 py-1 text-[9px] rounded transition-colors w-full">
+                            <i class="bi bi-check2"></i> Mark Paid
+                        </button>
+                      `;
+                  }
+                  actionBtns += `</div>`;
               }
-              actionBtns += `</div>`;
               
               const tr = document.createElement('tr');
               tr.className = 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group';
               tr.id = `row-${r.id}`;
-              tr.innerHTML = `
-                  <td class="px-4 py-3 font-mono text-xs text-slate-500">${r.working_date}</td>
-                  <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">${r.client_name}</td>
-                  <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-[11px]">${r.delivery_location || '—'}</td>
-                  <td class="px-4 py-3 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">${r.slab_quantity}</td>
-                  <td class="px-4 py-3 font-mono text-[11px] text-slate-500">₹${parseFloat(r.slab_price).toLocaleString('en-IN')}</td>
-                  <td class="px-4 py-3 font-mono text-sm font-bold text-slate-900 dark:text-white" id="gross-${r.id}">₹${parseFloat(r.total_price).toLocaleString('en-IN')}</td>
-                  <td class="px-4 py-3 font-mono text-sm font-bold text-danger" id="total-adv-${r.id}">₹${parseFloat(r.advance_paid).toLocaleString('en-IN')}</td>
-                  <td class="px-4 py-3 font-mono text-sm font-black ${netClass}" id="net-${r.id}">${netValue}</td>
-                  <td class="px-4 py-3" id="status-${r.id}">${statusBadge}</td>
-                  <td class="px-4 py-3">${actionBtns}</td>
-              `;
+              
+              if (r.is_advance) {
+                  tr.innerHTML = `
+                      <td class="px-4 py-3 font-mono text-xs text-slate-500">${r.working_date}</td>
+                      <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-200"><span class="text-slate-400 dark:text-slate-500 font-normal">Reference:</span> ${r.client_name}</td>
+                      <td class="px-4 py-3 text-slate-400 dark:text-slate-500 text-[11px] italic">${r.delivery_location || '—'}</td>
+                      <td class="px-4 py-3 font-mono text-[11px] text-slate-400 dark:text-slate-500">—</td>
+                      <td class="px-4 py-3 font-mono text-[11px] text-slate-400 dark:text-slate-500">—</td>
+                      <td class="px-4 py-3 font-mono text-sm text-slate-400 dark:text-slate-500">₹0.00</td>
+                      <td class="px-4 py-3 font-mono text-sm font-bold text-danger" id="total-adv-${r.id}">₹${parseFloat(r.advance_paid).toLocaleString('en-IN')}</td>
+                      <td class="px-4 py-3 font-mono text-sm font-black ${netClass}" id="net-${r.id}">${netValue}</td>
+                      <td class="px-4 py-3" id="status-${r.id}">${statusBadge}</td>
+                      <td class="px-4 py-3">${actionBtns}</td>
+                  `;
+              } else {
+                  tr.innerHTML = `
+                      <td class="px-4 py-3 font-mono text-xs text-slate-500">${r.working_date}</td>
+                      <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">${r.client_name}</td>
+                      <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-[11px]">${r.delivery_location || '—'}</td>
+                      <td class="px-4 py-3 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">${r.slab_quantity}</td>
+                      <td class="px-4 py-3 font-mono text-[11px] text-slate-500">₹${parseFloat(r.slab_price).toLocaleString('en-IN')}</td>
+                      <td class="px-4 py-3 font-mono text-sm font-bold text-slate-900 dark:text-white" id="gross-${r.id}">₹${parseFloat(r.total_price).toLocaleString('en-IN')}</td>
+                      <td class="px-4 py-3 font-mono text-sm font-bold text-danger" id="total-adv-${r.id}">₹${parseFloat(r.advance_paid).toLocaleString('en-IN')}</td>
+                      <td class="px-4 py-3 font-mono text-sm font-black ${netClass}" id="net-${r.id}">${netValue}</td>
+                      <td class="px-4 py-3" id="status-${r.id}">${statusBadge}</td>
+                      <td class="px-4 py-3">${actionBtns}</td>
+                  `;
+              }
               tbody.appendChild(tr);
           });
           

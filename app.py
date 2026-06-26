@@ -1687,6 +1687,29 @@ def part_time():
             'last_active_date': info.get('created_at', '')
         }
         
+    # Fetch all part-time advances for the user
+    all_advances = list(db.advance_payments.find({"user_id": ObjectId(uid)}))
+    
+    # Build log to worker mapping globally
+    all_user_logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}))
+    log_to_worker = {str(log['_id']): str(log['worker_id']) for log in all_user_logs}
+    
+    # Map each advance to its worker
+    log_ids_set = {str(log['_id']) for log in all_user_logs}
+    unlinked_by_worker = {}
+    total_unlinked_sum = 0.0
+    for adv in all_advances:
+        wlid = adv.get('work_log_id')
+        if not wlid or str(wlid) not in log_ids_set:
+            wid_str = None
+            if adv.get('worker_id'):
+                wid_str = str(adv['worker_id'])
+            elif wlid:
+                wid_str = log_to_worker.get(str(wlid))
+            if wid_str:
+                unlinked_by_worker.setdefault(wid_str, []).append(adv)
+                total_unlinked_sum += adv['amount']
+
     monthly_map = {}
     recent_clients = []
     total_payout = 0
@@ -1757,6 +1780,16 @@ def part_time():
         if client not in recent_clients:
             recent_clients.append(client)
 
+    # Add unlinked advances to worker stats in worker_map
+    for wid_str, stats in worker_map.items():
+        unlinked_sum = sum(a['amount'] for a in unlinked_by_worker.get(wid_str, []))
+        stats['advances'] += unlinked_sum
+        stats['balance'] = stats['earnings'] - stats['advances']
+
+    if not selected_client:
+        total_advance_all += total_unlinked_sum
+        total_remaining = total_payout - total_advance_all
+
     client_summaries = sorted(client_map.values(), key=lambda c: c['total_payout'], reverse=True)
     for summary in client_summaries:
         summary['worker_count'] = len(summary['workers'])
@@ -1783,12 +1816,11 @@ def part_time():
             if search_lower not in worker['name'].lower() and search_lower not in worker['worker_id_str'].lower():
                 continue
                 
-        payment_status = 'Pending'
-        if worker['jobs'] > 0:
-            if worker['advances'] > worker['earnings']:
-                payment_status = 'Overpaid'
-            elif worker['balance'] <= 0:
-                payment_status = 'Paid'
+        payment_status = 'Paid'
+        if worker['advances'] > worker['earnings']:
+            payment_status = 'Overpaid'
+        elif worker['earnings'] > worker['advances']:
+            payment_status = 'Pending'
                 
         worker_history.append({
             'worker_id': worker['worker_id'],
@@ -2362,6 +2394,7 @@ def api_part_time_search():
 def api_add_advance():
     data = request.get_json() or {}
     record_id = data.get('record_id')
+    worker_id = data.get('worker_id')
     amount = data.get('amount')
     payment_date = data.get('payment_date')
     notes = data.get('notes', '')
@@ -2374,20 +2407,39 @@ def api_add_advance():
         return jsonify({'success': False, 'message': 'Invalid amount'}), 400
         
     uid = get_current_user_id()
-    record_id_obj = safe_object_id(record_id)
-    if not record_id_obj:
-        return jsonify({'success': False, 'message': 'Invalid ID'}), 400
-        
-    log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
-    if not log_record:
-        return jsonify({'success': False, 'message': 'Not found'}), 404
-        
-    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
-    if not worker:
-        return jsonify({'success': False, 'message': 'Not found'}), 404
+    
+    # 1. If record_id is provided, it's a linked advance
+    if record_id:
+        record_id_obj = safe_object_id(record_id)
+        if not record_id_obj:
+            return jsonify({'success': False, 'message': 'Invalid ID'}), 400
+            
+        log_record = db.part_time_work_logs.find_one({"_id": record_id_obj})
+        if not log_record:
+            return jsonify({'success': False, 'message': 'Not found'}), 404
+            
+        worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+        if not worker:
+            return jsonify({'success': False, 'message': 'Not found'}), 404
+            
+        worker_id_obj = log_record['worker_id']
+    else:
+        # 2. Unlinked advance (General Advance)
+        if not worker_id:
+            return jsonify({'success': False, 'message': 'Worker ID is required for general advance'}), 400
+        worker_id_obj = safe_object_id(worker_id)
+        if not worker_id_obj:
+            return jsonify({'success': False, 'message': 'Invalid Worker ID'}), 400
+            
+        worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
+        if not worker:
+            return jsonify({'success': False, 'message': 'Worker not found'}), 404
+            
+        record_id_obj = None
         
     db.advance_payments.insert_one({
         "work_log_id": record_id_obj,
+        "worker_id": worker_id_obj,
         "user_id": ObjectId(uid),
         "amount": amount,
         "payment_date": payment_date,
@@ -2400,28 +2452,36 @@ def api_add_advance():
         "user_id": ObjectId(uid),
         "module": "Part-Time Advance",
         "action": "ADD",
-        "details": f"Added advance of ₹{amount} for work log {str(record_id_obj)}",
+        "details": f"Added advance of ₹{amount} for worker {str(worker_id_obj)}" + (f" (work log {str(record_id_obj)})" if record_id_obj else " (General Advance)"),
         "timestamp": datetime.now().isoformat()
     })
     
-    advances = list(db.advance_payments.find({"work_log_id": record_id_obj}))
-    total_adv = sum(a['amount'] for a in advances)
-    total_price = float(log_record['total_price'] or 0)
-    rem_bal = total_price - total_adv
-    
-    status = 'Pending'
-    if total_adv > total_price: status = 'Overpaid'
-    elif rem_bal <= 0: status = 'Paid'
-    
-    # Update DB for backward compat/analytics caching
-    db.part_time_work_logs.update_one({"_id": record_id_obj}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
-    
-    return jsonify({
-        'success': True,
-        'total_advance': total_adv,
-        'remaining_balance': rem_bal,
-        'payment_status': status
-    })
+    if record_id_obj:
+        advances = list(db.advance_payments.find({"work_log_id": record_id_obj}))
+        total_adv = sum(a['amount'] for a in advances)
+        total_price = float(log_record['total_price'] or 0)
+        rem_bal = total_price - total_adv
+        
+        status = 'Pending'
+        if total_adv > total_price: status = 'Overpaid'
+        elif rem_bal <= 0: status = 'Paid'
+        
+        # Update DB for backward compat/analytics caching
+        db.part_time_work_logs.update_one({"_id": record_id_obj}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+        
+        return jsonify({
+            'success': True,
+            'total_advance': total_adv,
+            'remaining_balance': rem_bal,
+            'payment_status': status
+        })
+    else:
+        return jsonify({
+            'success': True,
+            'total_advance': amount,
+            'remaining_balance': 0.0,
+            'payment_status': 'Paid'
+        })
 
 
 @app.route('/api/part-time/advance/edit', methods=['POST'])
@@ -2444,8 +2504,18 @@ def api_edit_advance():
     if not adv_record: return jsonify({'success': False, 'message': 'Advance not found'}), 404
     
     uid = get_current_user_id()
-    log_record = db.part_time_work_logs.find_one({"_id": adv_record['work_log_id']})
-    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    
+    # Authorize using worker_id directly (fallback to work_log_id for older records)
+    worker_id = adv_record.get('worker_id')
+    if not worker_id and adv_record.get('work_log_id'):
+        log_record = db.part_time_work_logs.find_one({"_id": adv_record['work_log_id']})
+        if log_record:
+            worker_id = log_record.get('worker_id')
+            
+    if not worker_id:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+        
+    worker = db.part_time_workers.find_one({"_id": ObjectId(worker_id), "user_id": ObjectId(uid)})
     if not worker: return jsonify({'success': False, 'message': 'Not authorized'}), 403
     
     db.advance_payments.update_one({"_id": adv_id_obj}, {"$set": {
@@ -2460,23 +2530,34 @@ def api_edit_advance():
         "timestamp": datetime.now().isoformat()
     })
     
-    # recalculate
-    advances = list(db.advance_payments.find({"work_log_id": adv_record['work_log_id']}))
-    total_adv = sum(a['amount'] for a in advances)
-    total_price = float(log_record['total_price'] or 0)
-    rem_bal = total_price - total_adv
-    
-    status = 'Pending'
-    if total_adv > total_price: status = 'Overpaid'
-    elif rem_bal <= 0: status = 'Paid'
-    
-    db.part_time_work_logs.update_one({"_id": adv_record['work_log_id']}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
-    
+    # recalculate if linked
+    work_log_id = adv_record.get('work_log_id')
+    if work_log_id:
+        log_record = db.part_time_work_logs.find_one({"_id": work_log_id})
+        if log_record:
+            advances = list(db.advance_payments.find({"work_log_id": work_log_id}))
+            total_adv = sum(a['amount'] for a in advances)
+            total_price = float(log_record['total_price'] or 0)
+            rem_bal = total_price - total_adv
+            
+            status = 'Pending'
+            if total_adv > total_price: status = 'Overpaid'
+            elif rem_bal <= 0: status = 'Paid'
+            
+            db.part_time_work_logs.update_one({"_id": work_log_id}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+            
+            return jsonify({
+                'success': True,
+                'total_advance': total_adv,
+                'remaining_balance': rem_bal,
+                'payment_status': status
+            })
+            
     return jsonify({
         'success': True,
-        'total_advance': total_adv,
-        'remaining_balance': rem_bal,
-        'payment_status': status
+        'total_advance': amount,
+        'remaining_balance': 0.0,
+        'payment_status': 'Paid'
     })
 
 
@@ -2491,8 +2572,18 @@ def api_delete_advance():
     if not adv_record: return jsonify({'success': False, 'message': 'Advance not found'}), 404
     
     uid = get_current_user_id()
-    log_record = db.part_time_work_logs.find_one({"_id": adv_record['work_log_id']})
-    worker = db.part_time_workers.find_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)})
+    
+    # Authorize using worker_id directly (fallback to work_log_id for older records)
+    worker_id = adv_record.get('worker_id')
+    if not worker_id and adv_record.get('work_log_id'):
+        log_record = db.part_time_work_logs.find_one({"_id": adv_record['work_log_id']})
+        if log_record:
+            worker_id = log_record.get('worker_id')
+            
+    if not worker_id:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+        
+    worker = db.part_time_workers.find_one({"_id": ObjectId(worker_id), "user_id": ObjectId(uid)})
     if not worker: return jsonify({'success': False, 'message': 'Not authorized'}), 403
     
     db.advance_payments.delete_one({"_id": adv_id_obj})
@@ -2505,23 +2596,34 @@ def api_delete_advance():
         "timestamp": datetime.now().isoformat()
     })
     
-    # recalculate
-    advances = list(db.advance_payments.find({"work_log_id": adv_record['work_log_id']}))
-    total_adv = sum(a['amount'] for a in advances)
-    total_price = float(log_record['total_price'] or 0)
-    rem_bal = total_price - total_adv
-    
-    status = 'Pending'
-    if total_adv > total_price: status = 'Overpaid'
-    elif rem_bal <= 0: status = 'Paid'
-    
-    db.part_time_work_logs.update_one({"_id": adv_record['work_log_id']}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
-    
+    # recalculate if linked
+    work_log_id = adv_record.get('work_log_id')
+    if work_log_id:
+        log_record = db.part_time_work_logs.find_one({"_id": work_log_id})
+        if log_record:
+            advances = list(db.advance_payments.find({"work_log_id": work_log_id}))
+            total_adv = sum(a['amount'] for a in advances)
+            total_price = float(log_record['total_price'] or 0)
+            rem_bal = total_price - total_adv
+            
+            status = 'Pending'
+            if total_adv > total_price: status = 'Overpaid'
+            elif rem_bal <= 0: status = 'Paid'
+            
+            db.part_time_work_logs.update_one({"_id": work_log_id}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+            
+            return jsonify({
+                'success': True,
+                'total_advance': total_adv,
+                'remaining_balance': rem_bal,
+                'payment_status': status
+            })
+            
     return jsonify({
         'success': True,
-        'total_advance': total_adv,
-        'remaining_balance': rem_bal,
-        'payment_status': status
+        'total_advance': 0.0,
+        'remaining_balance': 0.0,
+        'payment_status': 'Paid'
     })
 
 
@@ -2617,12 +2719,20 @@ def api_worker_summary(worker_id):
     
     logs = list(db.part_time_work_logs.find({"worker_id": w_id_obj}))
     log_ids = [l['_id'] for l in logs]
-    advances = list(db.advance_payments.find({"work_log_id": {"$in": log_ids}}))
+    
+    advances_cursor = db.advance_payments.find({
+        "$or": [
+            {"work_log_id": {"$in": log_ids}},
+            {"worker_id": w_id_obj}
+        ]
+    })
+    # Deduplicate by _id
+    adv_dict = {str(a['_id']): a for a in advances_cursor}
+    total_advance = sum(a['amount'] for a in adv_dict.values())
     
     total_jobs = len(logs)
     total_slabs = sum(l.get('slab_quantity', 0) for l in logs)
     total_earnings = sum(l.get('total_price', 0) for l in logs)
-    total_advance = sum(a['amount'] for a in advances)
     outstanding_balance = total_earnings - total_advance
     
     return jsonify({
@@ -2648,11 +2758,26 @@ def api_worker_ledger(worker_id):
     logs = list(db.part_time_work_logs.find({"worker_id": w_id_obj}).sort("_id", -1))
     log_ids = [l['_id'] for l in logs]
     
-    advances_cursor = db.advance_payments.find({"work_log_id": {"$in": log_ids}})
+    # Query all advances for this worker
+    all_advances = list(db.advance_payments.find({
+        "$or": [
+            {"work_log_id": {"$in": log_ids}},
+            {"worker_id": w_id_obj}
+        ]
+    }))
+    
+    # Map work log ID to its linked advances
+    log_ids_strs = {str(lid) for lid in log_ids}
     advances_map = {}
-    for adv in advances_cursor:
-        wid = str(adv['work_log_id'])
-        advances_map[wid] = advances_map.get(wid, 0) + adv['amount']
+    unlinked_advances = []
+    
+    for adv in all_advances:
+        wlid = adv.get('work_log_id')
+        if wlid and str(wlid) in log_ids_strs:
+            wid = str(wlid)
+            advances_map[wid] = advances_map.get(wid, 0) + adv['amount']
+        else:
+            unlinked_advances.append(adv)
         
     records = []
     for log in logs:
@@ -2675,6 +2800,27 @@ def api_worker_ledger(worker_id):
             
         records.append(record)
         
+    for adv in unlinked_advances:
+        record = {
+            'id': str(adv['_id']),
+            'is_advance': True,
+            'working_date': adv.get('payment_date') or adv.get('created_at', '')[:10],
+            'client_name': 'General Salary Advance',
+            'delivery_location': adv.get('notes', '').strip() or '—',
+            'slab_quantity': 0,
+            'slab_price': 0.0,
+            'total_price': 0.0,
+            'advance_paid': float(adv.get('amount') or 0),
+            'remaining_balance': -float(adv.get('amount') or 0),
+            'payment_status': 'Paid',
+            'worker_name': worker.get('name', 'Unknown'),
+            'notes': adv.get('notes', '')
+        }
+        records.append(record)
+        
+    # Sort combined records by date descending
+    records.sort(key=lambda r: r.get('working_date', ''), reverse=True)
+    
     return jsonify({
         'success': True,
         'records': records
@@ -3207,14 +3353,25 @@ def export_data():
         log_worker_map = {l['_id']: l['worker_id'] for l in all_logs}
         
         # Fetch all-time advances for mapping remaining balances of logs accurately
-        all_advances = list(db.advance_payments.find({"work_log_id": {"$in": all_log_ids}}))
+        all_advances = list(db.advance_payments.find({
+            "$or": [
+                {"work_log_id": {"$in": all_log_ids}},
+                {"worker_id": {"$in": worker_ids}}
+            ]
+        }))
         all_advances_by_log = {}
         for adv in all_advances:
-            lid = adv['work_log_id']
-            all_advances_by_log[lid] = all_advances_by_log.get(lid, 0.0) + adv['amount']
+            lid = adv.get('work_log_id')
+            if lid:
+                all_advances_by_log[lid] = all_advances_by_log.get(lid, 0.0) + adv['amount']
         
         # Fetch advances filtered by date range (for Advance History sheet & date range worker summary)
-        adv_query = {"work_log_id": {"$in": all_log_ids}}
+        adv_query = {
+            "$or": [
+                {"work_log_id": {"$in": all_log_ids}},
+                {"worker_id": {"$in": worker_ids}}
+            ]
+        }
         if start_date or end_date:
             adv_query["payment_date"] = {}
             if start_date:
@@ -3239,10 +3396,12 @@ def export_data():
                 totals_by_worker[wid]["pending_count"] += 1
                 
         for adv in advances:
-            lid = adv['work_log_id']
-            wid = log_worker_map.get(lid)
-            if wid in totals_by_worker:
-                totals_by_worker[wid]["total_adv"] += adv['amount']
+            lid = adv.get('work_log_id')
+            wid = adv.get('worker_id') or log_worker_map.get(lid)
+            if wid:
+                wid_obj = ObjectId(wid)
+                if wid_obj in totals_by_worker:
+                    totals_by_worker[wid_obj]["total_adv"] += adv['amount']
 
         # --- SHEET 1: WORKER SUMMARY ---
         ws_summary = wb.active
@@ -3322,12 +3481,14 @@ def export_data():
         ]
         adv_rows = []
         for adv in advances:
-            log = all_log_map.get(adv['work_log_id'], {})
-            w = worker_map.get(log.get('worker_id'), {})
+            lid = adv.get('work_log_id')
+            log = all_log_map.get(lid, {}) if lid else {}
+            wid = adv.get('worker_id') or log.get('worker_id')
+            w = worker_map.get(ObjectId(wid), {}) if wid else {}
             adv_rows.append([
-                w.get('worker_id', str(log.get('worker_id', ''))),
+                w.get('worker_id', str(wid or '')),
                 w.get('name', 'Unknown'),
-                str(adv['work_log_id']),
+                str(lid or 'General/Unlinked'),
                 adv['amount'],
                 adv.get('payment_date', 'N/A'),
                 adv.get('notes', '')
