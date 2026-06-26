@@ -83,15 +83,15 @@
     <div class="p-5 grid grid-cols-3 gap-4 border-b border-slate-100 dark:border-white/5">
       <div class="flex flex-col">
         <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Earnings</span>
-        <span class="font-mono text-sm font-bold text-slate-900 dark:text-white">₹{{ "{:,.0f}".format(w['earnings']) }}</span>
+        <span class="font-mono text-sm font-bold text-slate-900 dark:text-white" id="card-earnings-{{ w['worker_id'] }}">₹{{ "{:,.0f}".format(w['earnings']) }}</span>
       </div>
       <div class="flex flex-col">
         <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Advances</span>
-        <span class="font-mono text-sm font-bold text-danger">₹{{ "{:,.0f}".format(w['advances']) }}</span>
+        <span class="font-mono text-sm font-bold text-danger" id="card-advances-{{ w['worker_id'] }}">₹{{ "{:,.0f}".format(w['advances']) }}</span>
       </div>
       <div class="flex flex-col text-right">
         <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Balance</span>
-        <span class="font-mono text-[15px] font-black {% if w['balance'] > 0 %}text-success{% elif w['balance'] < 0 %}text-warning{% else %}text-slate-900 dark:text-white{% endif %}">₹{{ "{:,.0f}".format(w['balance']) }}</span>
+        <span id="card-balance-{{ w['worker_id'] }}" class="font-mono text-[15px] font-black {% if w['balance'] > 0 %}text-success{% elif w['balance'] < 0 %}text-warning{% else %}text-slate-900 dark:text-white{% endif %}">₹{{ "{:,.0f}".format(w['balance']) }}</span>
       </div>
     </div>
 
@@ -99,7 +99,7 @@
     <div class="p-4 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
       <div class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
         <i class="bi bi-briefcase text-slate-400"></i>
-        <span>{{ w['jobs'] }} Jobs ({{ w['slabs'] }} Slabs)</span>
+        <span><span id="card-jobs-{{ w['worker_id'] }}">{{ w['jobs'] }}</span> Jobs (<span id="card-slabs-{{ w['worker_id'] }}">{{ w['slabs'] }}</span> Slabs)</span>
       </div>
       <div>
         <span id="card-status-{{ w['worker_id'] }}" class="badge {% if w['payment_status'] == 'Paid' %}badge-success{% elif w['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}">
@@ -649,7 +649,10 @@
                 
                 if(earningsEl) earningsEl.innerText = '₹' + totalEarn.toLocaleString('en-IN');
                 if(advancesEl) advancesEl.innerText = '₹' + totalAdv.toLocaleString('en-IN');
-                if(balanceEl) balanceEl.innerText = '₹' + totalBal.toLocaleString('en-IN');
+                if(balanceEl) {
+                    balanceEl.innerText = '₹' + totalBal.toLocaleString('en-IN');
+                    balanceEl.className = 'font-mono text-[15px] font-black ' + (totalBal > 0 ? 'text-success' : (totalBal < 0 ? 'text-warning' : 'text-slate-900 dark:text-white'));
+                }
                 if(jobsEl) jobsEl.innerText = jobsCount;
                 
                 const slabsEl = document.getElementById('card-slabs-' + workerId);
@@ -819,6 +822,7 @@
           btn.innerText = 'Update'; btn.disabled = false;
           if(d.success) {
               updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               closeModal('editAdvanceModal');
               showToast('Advance Updated', 'success');
           } else showToast(d.message, 'danger');
@@ -837,6 +841,7 @@
       .then(r=>r.json()).then(d => {
           if(d.success) {
               updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               closeModal('editAdvanceModal');
               showToast('Advance Deleted', 'success');
           } else showToast(d.message, 'danger');
@@ -1116,11 +1121,27 @@
           avatarContainer.innerHTML = `<div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-purpleaccent text-white flex items-center justify-center text-3xl font-bold border-4 border-white dark:border-[#1f2937] shadow-lg">${initial}</div>`;
       }
       
-      document.getElementById('wp-earnings').textContent = '₹' + parseFloat(earnings).toLocaleString('en-IN');
-      document.getElementById('wp-advances').textContent = '₹' + parseFloat(advances).toLocaleString('en-IN');
-      document.getElementById('wp-balance').textContent = '₹' + parseFloat(balance).toLocaleString('en-IN');
-      document.getElementById('wp-jobs').textContent = jobs;
-      document.getElementById('wp-slabs').textContent = slabs;
+      // Fetch latest values directly from the dashboard card (so it stays perfectly in sync without reload)
+      const eEl = document.getElementById('card-earnings-' + id);
+      const aEl = document.getElementById('card-advances-' + id);
+      const bEl = document.getElementById('card-balance-' + id);
+      const jEl = document.getElementById('card-jobs-' + id);
+      const sEl = document.getElementById('card-slabs-' + id);
+      
+      document.getElementById('wp-earnings').textContent = eEl ? eEl.innerText : '₹' + parseFloat(earnings).toLocaleString('en-IN');
+      document.getElementById('wp-advances').textContent = aEl ? aEl.innerText : '₹' + parseFloat(advances).toLocaleString('en-IN');
+      document.getElementById('wp-balance').textContent = bEl ? bEl.innerText : '₹' + parseFloat(balance).toLocaleString('en-IN');
+      
+      // Update color class for drawer balance
+      const wpBal = document.getElementById('wp-balance');
+      if(bEl) {
+         if (bEl.classList.contains('text-success')) wpBal.className = 'font-mono font-black text-2xl text-success';
+         else if (bEl.classList.contains('text-warning')) wpBal.className = 'font-mono font-black text-2xl text-warning';
+         else wpBal.className = 'font-mono font-black text-2xl text-slate-900 dark:text-white';
+      }
+      
+      document.getElementById('wp-jobs').textContent = jEl ? jEl.innerText : jobs;
+      document.getElementById('wp-slabs').textContent = sEl ? sEl.innerText : slabs;
       
       const logBtn = document.getElementById('wp-log-btn');
       logBtn.onclick = () => { closeWorkerProfile(); quickLogWork(id); };
