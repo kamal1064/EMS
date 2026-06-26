@@ -148,7 +148,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 function togglePw(inputId, btn) {
   var inp = document.getElementById(inputId);
   var icon = btn.querySelector('i');

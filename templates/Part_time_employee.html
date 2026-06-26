@@ -403,7 +403,7 @@
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <a id="wp-delete-btn" href="#" onclick="return confirm('Are you sure you want to delete this worker and all their records? This action cannot be undone.')" class="w-8 h-8 flex items-center justify-center rounded-full bg-danger/10 hover:bg-danger/20 text-danger transition-colors" title="Delete Worker">
+      <a id="wp-delete-btn" href="#" class="w-8 h-8 flex items-center justify-center rounded-full bg-danger/10 hover:bg-danger/20 text-danger transition-colors" title="Delete Worker">
         <i class="bi bi-trash3"></i>
       </a>
       <button onclick="closeWorkerProfile()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-600 dark:text-white transition-colors">
@@ -469,7 +469,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 
   
   
@@ -536,7 +536,7 @@
       }
   });
 
-  // Event Delegation for Worker Cards
+  // Event Delegation for Worker Cards & Ledger Actions
   document.addEventListener('DOMContentLoaded', () => {
       const grid = document.getElementById('worker-dashboard-grid');
       if (grid) {
@@ -545,16 +545,38 @@
               if (!btn) return;
               
               const action = btn.getAttribute('data-action');
-              const wId = btn.getAttribute('data-worker-id');
-              const wName = btn.getAttribute('data-worker-name');
-              const wIdStr = btn.getAttribute('data-worker-id-str');
               
+              // Worker Card Actions
               if (action === 'log-work') {
+                  const wId = btn.getAttribute('data-worker-id');
+                  const wName = btn.getAttribute('data-worker-name');
                   openLogWorkModal(wId, wName);
               } else if (action === 'advance') {
+                  const wId = btn.getAttribute('data-worker-id');
+                  const wName = btn.getAttribute('data-worker-name');
+                  const wIdStr = btn.getAttribute('data-worker-id-str');
                   openAdvanceModal(wId, wName, wIdStr);
               } else if (action === 'toggle-ledger') {
+                  const wId = btn.getAttribute('data-worker-id');
                   toggleWorkerLedger(wId);
+              }
+              
+              // Collapsible Ledger Row Actions (Delegated)
+              else if (action === 'edit-advance') {
+                  const id = btn.getAttribute('data-id');
+                  const amount = btn.getAttribute('data-amount');
+                  const date = btn.getAttribute('data-date');
+                  const notes = btn.getAttribute('data-notes') || '';
+                  editAdvance(id, amount, date, notes);
+              } else if (action === 'add-advance') {
+                  const recordId = btn.getAttribute('data-record-id');
+                  openAddAdvance(recordId);
+              } else if (action === 'view-history') {
+                  const recordId = btn.getAttribute('data-record-id');
+                  openAdvanceHistory(recordId);
+              } else if (action === 'mark-paid') {
+                  const recordId = btn.getAttribute('data-record-id');
+                  markPartTimePaid(recordId);
               }
           });
       }
@@ -1252,7 +1274,7 @@
       
       const avatarContainer = document.getElementById('wp-avatar-container');
       if (imgUrl && imgUrl.trim() !== '') {
-          avatarContainer.innerHTML = `<img src="${imgUrl}" class="w-20 h-20 rounded-2xl object-cover border-4 border-white dark:border-[#1f2937] shadow-lg">`;
+          avatarContainer.innerHTML = `<img src="${imgUrl}" loading="lazy" class="w-20 h-20 rounded-2xl object-cover border-4 border-white dark:border-[#1f2937] shadow-lg">`;
       } else {
           const initial = name.charAt(0).toUpperCase();
           avatarContainer.innerHTML = `<div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-purpleaccent text-white flex items-center justify-center text-3xl font-bold border-4 border-white dark:border-[#1f2937] shadow-lg">${initial}</div>`;
@@ -1284,7 +1306,28 @@
       logBtn.onclick = () => { closeWorkerProfile(); quickLogWork(id); };
       
       const delBtn = document.getElementById('wp-delete-btn');
-      if (delBtn) delBtn.href = '/delete_part_time_worker/' + id;
+      if (delBtn) {
+          delBtn.onclick = (e) => {
+              e.preventDefault();
+              if (confirm('Are you sure you want to delete this worker and all their records? This action cannot be undone.')) {
+                  const form = document.createElement('form');
+                  form.method = 'POST';
+                  form.action = '/delete_part_time_worker/' + id;
+                  
+                  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                  if (csrfMeta) {
+                      const csrfInput = document.createElement('input');
+                      csrfInput.type = 'hidden';
+                      csrfInput.name = 'csrf_token';
+                      csrfInput.value = csrfMeta.getAttribute('content');
+                      form.appendChild(csrfInput);
+                  }
+                  
+                  document.body.appendChild(form);
+                  form.submit();
+              }
+          };
+      }
       
       const backdrop = document.getElementById('drawerBackdrop');
       const drawer = document.getElementById('workerProfileDrawer');
@@ -1389,7 +1432,7 @@
                   statusBadge = '<span class="badge bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 px-2 py-0.5 text-[9px]">Advance</span>';
                   actionBtns = `
                     <div class="flex flex-col gap-1">
-                        <button onclick="editAdvance('${r.id}', '${r.advance_paid}', '${r.working_date}', '${(r.notes || '').replace(/'/g, "\\'")}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2.5 py-1 text-[9px] rounded transition-colors"><i class="bi bi-pencil mr-1"></i>Edit</button>
+                        <button data-action="edit-advance" data-id="${r.id}" data-amount="${r.advance_paid}" data-date="${r.working_date}" data-notes="${(r.notes || '').replace(/"/g, '&quot;')}" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2.5 py-1 text-[9px] rounded transition-colors"><i class="bi bi-pencil mr-1"></i>Edit</button>
                     </div>
                   `;
               } else {
@@ -1400,13 +1443,13 @@
                   actionBtns = `
                     <div class="flex flex-col gap-1">
                         <div class="flex items-center gap-1">
-                            <button onclick="openAddAdvance('${r.id}')" class="ledger-adv-btn btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-plus"></i> Adv</button>
-                            <button onclick="openAdvanceHistory('${r.id}')" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-clock-history"></i></button>
+                            <button data-action="add-advance" data-record-id="${r.id}" class="ledger-adv-btn btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-plus"></i> Adv</button>
+                            <button data-action="view-history" data-record-id="${r.id}" class="btn-saas btn-saas-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-2 py-1 text-[9px] rounded transition-colors"><i class="bi bi-clock-history"></i></button>
                         </div>
                   `;
                   if (r.payment_status === 'Pending') {
                       actionBtns += `
-                        <button onclick="markPartTimePaid('${r.id}')" id="pay-btn-${r.id}" class="btn-saas btn-saas-xs btn-saas-success px-2 py-1 text-[9px] rounded transition-colors w-full">
+                        <button data-action="mark-paid" data-record-id="${r.id}" id="pay-btn-${r.id}" class="btn-saas btn-saas-xs btn-saas-success px-2 py-1 text-[9px] rounded transition-colors w-full">
                             <i class="bi bi-check2"></i> Mark Paid
                         </button>
                       `;

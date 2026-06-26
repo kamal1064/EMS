@@ -155,7 +155,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
   var isDark = document.documentElement.classList.contains('dark');
   var gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
   var textColor = isDark ? '#94a3b8' : '#64748b';

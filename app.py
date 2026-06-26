@@ -11,11 +11,12 @@ try:
 except ImportError:
     pass  # dotenv optional; env vars may be set by the OS/host
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, Blueprint
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, Blueprint, make_response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from pymongo import MongoClient
 import pymongo.errors
 from bson.objectid import ObjectId
@@ -102,17 +103,21 @@ CORS(app,
      supports_credentials=True,
      methods=['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'])
 
+# CSRF Protection Setup
+csrf = CSRFProtect(app)
+
 # Flask-Talisman Security Headers
 is_prod = os.environ.get('FLASK_ENV', 'production') == 'production'
 Talisman(app,
     force_https=is_prod,
     content_security_policy={
         'default-src': "'self'",
-        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net", "cdn.tailwindcss.com"],
+        'script-src': ["'self'", "cdn.jsdelivr.net", "cdn.tailwindcss.com"],
         'style-src':  ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "cdn.jsdelivr.net"],
         'font-src':   ["'self'", "fonts.gstatic.com", "cdn.jsdelivr.net"],
         'img-src':    ["'self'", "data:", "*"],
     },
+    content_security_policy_nonce_in=['script-src'],
     frame_options='DENY',
     referrer_policy='strict-origin-when-cross-origin',
 )
@@ -127,16 +132,44 @@ app.config.update(
 # Request size limits (1MB max payload)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
 
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    app.logger.warning(f"CSRF validation failed: {e.description}")
+    if request.path.startswith('/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({"success": False, "error": "CSRF token missing or invalid."}), 403
+    return render_template("error.html", code=403, title="Forbidden", message="CSRF token missing or invalid. Please reload the page and try again."), 403
+
+@app.errorhandler(403)
+def forbidden_error(e):
+    if request.path.startswith('/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+    return render_template("error.html", code=403, title="Forbidden", message=str(e.description or "You do not have permission to access this resource.")), 403
+
+@app.errorhandler(404)
+def not_found_error(e):
+    if request.path.startswith('/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({"success": False, "error": "Not Found"}), 404
+    return render_template("error.html", code=404, title="Not Found", message="The requested page could not be found."), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    app.logger.error(f"Internal Server Error: {e}", exc_info=True)
+    if request.path.startswith('/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({"success": False, "error": "An internal server error occurred."}), 500
+    return render_template("error.html", code=500, title="Internal Server Error", message="An unexpected error occurred on the server. Please try again later."), 500
+
 @app.errorhandler(413)
 def request_too_large(e):
     app.logger.warning("Payload size limit exceeded (413 error)")
-    return jsonify({
-        "success": False,
-        "error": {
-            "code": "PAYLOAD_TOO_LARGE",
-            "message": "Request payload exceeds 1MB limit."
-        }
-    }), 413
+    if request.path.startswith('/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "PAYLOAD_TOO_LARGE",
+                "message": "Request payload exceeds 1MB limit."
+            }
+        }), 413
+    return render_template("error.html", code=413, title="Payload Too Large", message="Request payload exceeds 1MB limit."), 413
 
 
 # ─────────────────────────────────────────
@@ -152,11 +185,12 @@ DB_PATH = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__)
 # RATE LIMITER SETUP
 # ─────────────────────────────────────────
 
+limiter_storage = os.environ.get('REDIS_URL') or os.environ.get('REDIS_URI') or "memory://"
 limiter = Limiter(
     key_func=get_remote_address,      # limit by IP address
     app=app,
     default_limits=["300 per day", "60 per hour"],  # global fallback
-    storage_uri="memory://",          # in-memory (switch to redis:// in prod)
+    storage_uri=limiter_storage,
 )
 
 @app.errorhandler(429)
@@ -342,10 +376,15 @@ def init_db():
         # Performance: Compound Indexes for high-volume queries
         db.part_time_workers.create_index([("user_id", 1), ("name", 1)])
         db.part_time_work_logs.create_index([("user_id", 1), ("worker_id", 1), ("working_date", -1)])
+        db.part_time_work_logs.create_index([("worker_id", 1), ("working_date", -1)])
         db.advance_payments.create_index([("work_log_id", 1)])
         db.advance_payments.create_index([("user_id", 1), ("payment_date", -1)])
+        db.advance_payments.create_index([("worker_id", 1)])
         db.attendance.create_index([("user_id", 1), ("date", -1)])
-        db.salary.create_index([("user_id", 1), ("month", -1)])
+        db.attendance.create_index([("emp_id", 1), ("date", 1)])
+        db.salary_records.create_index([("user_id", 1), ("month", -1)])
+        db.salary_records.create_index([("emp_id", 1), ("month", 1)])
+        db.salary_advance_payments.create_index([("salary_record_id", 1)])
         
         # Ensure counters exist, but do not override if they already exist
         db.counters.update_one(
@@ -790,6 +829,8 @@ def login():
                 error='Please verify your email before logging in.',
                 unverified_email=email)
 
+        # Prevent Session Fixation
+        session.clear()
         session['user_id']  = str(user['_id'])
         session['username'] = user['username']
         session['email'] = user['email']
@@ -916,10 +957,11 @@ def api_change_password():
 
 
 @app.route('/logout')
-
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    response = make_response(redirect(url_for('login')))
+    response.set_cookie(app.config.get('SESSION_COOKIE_NAME', 'session'), '', expires=0)
+    return response
 
 
 
@@ -1215,8 +1257,14 @@ def delete_employee(emp_id):
     if not emp_id_obj:
         return redirect(url_for('employees'))
 
+    # Verify employee belongs to current user before deleting anything
+    emp = db.employees.find_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    if not emp:
+        return redirect(url_for('employees'))
+
     db.attendance.delete_many({"emp_id": emp_id_obj})
     db.salary_records.delete_many({"emp_id": emp_id_obj})
+    db.salary_advance_payments.delete_many({"emp_id": emp_id_obj})
     db.employees.delete_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
     return redirect(url_for('employees'))
 
@@ -1282,7 +1330,7 @@ def attendance():
 @login_required
 def mark_attendance():
     invalidate_dashboard_cache(get_current_user_id())
-    data = request.get_json()
+    data = request.get_json() or {}
     emp_id = data.get('emp_id')
     att_date = data.get('date')
     status = data.get('status')
@@ -1290,27 +1338,37 @@ def mark_attendance():
     leave_note = data.get('leave_note')
 
     if not all([emp_id, att_date, status]):
-        return jsonify({'success': False})
+        return jsonify({'success': False, 'message': 'Missing parameters'}), 400
+
+    emp_id_obj = safe_object_id(emp_id)
+    if not emp_id_obj:
+        return jsonify({'success': False, 'message': 'Invalid Employee ID'}), 400
+
+    uid = get_current_user_id()
+    # Verify employee belongs to current user
+    emp = db.employees.find_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Unauthorized or Employee not found'}), 403
 
     try:
         if status == 'Present':
-            db.attendance.delete_one({"emp_id": ObjectId(emp_id), "date": att_date})
+            db.attendance.delete_one({"emp_id": emp_id_obj, "date": att_date})
         else:
-            update_data = {"status": status}
+            update_data = {"status": status, "user_id": ObjectId(uid)}
             if leave_reason:
                 update_data["leave_reason"] = leave_reason
             if leave_note:
                 update_data["leave_note"] = leave_note
                 
             db.attendance.update_one(
-                {"emp_id": ObjectId(emp_id), "date": att_date},
+                {"emp_id": emp_id_obj, "date": att_date},
                 {"$set": update_data},
                 upsert=True
             )
         return jsonify({'success': True, 'status': status})
     except Exception as e:
         app.logger.error("Failed to mark attendance", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/attendance/summary')
@@ -1943,7 +2001,7 @@ def add_part_time_worker():
 # ─────────────────────────────────────────
 
 
-@app.route('/delete_part_time_worker/<worker_id>', methods=['GET'])
+@app.route('/delete_part_time_worker/<worker_id>', methods=['POST'])
 @login_required
 def delete_part_time_worker(worker_id):
     uid = get_current_user_id()
@@ -1951,6 +2009,25 @@ def delete_part_time_worker(worker_id):
     worker_id_obj = safe_object_id(worker_id)
     if not worker_id_obj:
         return redirect(url_for('part_time'))
+        
+    worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
+    if not worker:
+        return redirect(url_for('part_time'))
+        
+    # Get all work logs to delete their advances
+    work_logs = list(db.part_time_work_logs.find({"worker_id": worker_id_obj}))
+    log_ids = [log["_id"] for log in work_logs]
+    
+    # Delete general advances directly linked to worker_id
+    db.advance_payments.delete_many({"worker_id": worker_id_obj})
+    
+    if log_ids:
+        db.advance_payments.delete_many({"work_log_id": {"$in": log_ids}})
+        
+    db.part_time_work_logs.delete_many({"worker_id": worker_id_obj})
+    db.part_time_workers.delete_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
+    
+    return redirect(url_for('part_time'))
 
 @app.route('/api/part-time/worker/<worker_id>/card_html', methods=['GET'])
 @login_required
@@ -2061,23 +2138,6 @@ def get_part_time_worker_card_html(worker_id):
     html = render_template_string(card_template, w=w_data)
     return jsonify({"success": True, "html": html})
 
-        
-    worker = db.part_time_workers.find_one({"_id": worker_id_obj, "user_id": ObjectId(uid)})
-    if not worker:
-        return redirect(url_for('part_time'))
-        
-    # Get all work logs to delete their advances
-    work_logs = list(db.part_time_work_logs.find({"worker_id": worker_id_obj}))
-    log_ids = [log["_id"] for log in work_logs]
-    
-    if log_ids:
-        db.advance_payments.delete_many({"work_log_id": {"$in": log_ids}})
-        
-    db.part_time_work_logs.delete_many({"worker_id": worker_id_obj})
-    db.part_time_workers.delete_one({"_id": worker_id_obj})
-    
-    return redirect(url_for('part_time'))
-
 @app.route('/salary/mark_paid', methods=['POST'])
 @limiter.limit("30 per minute")         # prevent accidental bulk payment triggers
 @login_required
@@ -2090,6 +2150,12 @@ def mark_paid():
     emp_id_obj = safe_object_id(emp_id)
     if not emp_id_obj:
         return jsonify({'success': False, 'message': 'Invalid Employee ID'}), 400
+
+    uid = get_current_user_id()
+    # Verify employee belongs to current user
+    emp = db.employees.find_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Unauthorized or Employee not found'}), 403
 
     db.salary_records.update_one(
         {"emp_id": emp_id_obj, "month": month},
@@ -2110,6 +2176,12 @@ def salary_set_advance():
     emp_id_obj = safe_object_id(emp_id)
     if not emp_id_obj:
         return jsonify({'success': False, 'message': 'Invalid Employee ID'}), 400
+
+    uid = get_current_user_id()
+    # Verify employee belongs to current user
+    emp = db.employees.find_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    if not emp:
+        return jsonify({'success': False, 'message': 'Unauthorized or Employee not found'}), 403
 
     try:
         advance_amount_paid = float(advance_amount_paid)
@@ -2896,12 +2968,33 @@ def upload_avatar():
     if not allowed_file(file.filename):
         return jsonify({"success": False, "error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
 
+    # MIME type check
+    allowed_mimes = {'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/pjpeg', 'image/x-png'}
+    if not file.content_type or file.content_type.lower() not in allowed_mimes:
+        return jsonify({"success": False, "error": "Invalid MIME type. Only JPG, PNG, WEBP allowed."}), 400
+
     target_type = request.form.get('target_type') # 'user', 'employee', 'part_time_worker'
     target_id = request.form.get('target_id')
     uid = get_current_user_id()
 
     if target_type not in ['user', 'employee', 'part_time_worker']:
         return jsonify({"success": False, "error": "Invalid target type"}), 400
+
+    # Ownership checks
+    if target_type == 'employee':
+        emp_obj = safe_object_id(target_id)
+        if not emp_obj:
+            return jsonify({"success": False, "error": "Invalid Employee ID"}), 400
+        emp = db.employees.find_one({"_id": emp_obj, "user_id": ObjectId(uid)})
+        if not emp:
+            return jsonify({"success": False, "error": "Unauthorized or Employee not found"}), 403
+    elif target_type == 'part_time_worker':
+        w_obj = safe_object_id(target_id)
+        if not w_obj:
+            return jsonify({"success": False, "error": "Invalid Worker ID"}), 400
+        worker = db.part_time_workers.find_one({"_id": w_obj, "user_id": ObjectId(uid)})
+        if not worker:
+            return jsonify({"success": False, "error": "Unauthorized or Worker not found"}), 403
 
     try:
         # Upload to Cloudinary with transformations
@@ -2941,11 +3034,23 @@ def remove_avatar():
     if target_type not in ['user', 'employee', 'part_time_worker']:
         return jsonify({"success": False, "error": "Invalid target type"}), 400
 
+    # Ownership checks
+    if target_type == 'employee':
+        emp_obj = safe_object_id(target_id)
+        if not emp_obj:
+            return jsonify({"success": False, "error": "Invalid Employee ID"}), 400
+        emp = db.employees.find_one({"_id": emp_obj, "user_id": ObjectId(uid)})
+        if not emp:
+            return jsonify({"success": False, "error": "Unauthorized or Employee not found"}), 403
+    elif target_type == 'part_time_worker':
+        w_obj = safe_object_id(target_id)
+        if not w_obj:
+            return jsonify({"success": False, "error": "Invalid Worker ID"}), 400
+        worker = db.part_time_workers.find_one({"_id": w_obj, "user_id": ObjectId(uid)})
+        if not worker:
+            return jsonify({"success": False, "error": "Unauthorized or Worker not found"}), 403
+
     try:
-        # We don't necessarily need to delete from Cloudinary immediately (could orphan), but to be clean:
-        # Since we just have the URL, we can extract public_id to destroy, or just nullify in DB to be safe.
-        # Let's just nullify in DB for safety/speed.
-        
         if target_type == 'user':
             db.users.update_one({"_id": ObjectId(uid)}, {"$unset": {"profile_image_url": ""}})
             session.pop('profile_image_url', None)
@@ -3222,7 +3327,7 @@ def export_data():
             joining_date = e.get('joining_date') or (e.get('created_at')[:10] if e.get('created_at') else 'N/A')
             
             summary_rows.append([
-                e.get('employee_id', eid_str),
+                e.get('employee_id') or 'N/A',
                 e.get('name', 'Unknown'),
                 e.get('department', 'N/A'),
                 e.get('phone', 'N/A'),
@@ -3256,7 +3361,7 @@ def export_data():
             for dt in date_list:
                 att_data = att_by_emp.get(eid_str, {}).get(dt, {'status': 'Present', 'leave_reason': '', 'leave_note': ''})
                 att_rows.append([
-                    e.get('employee_id', eid_str),
+                    e.get('employee_id') or 'N/A',
                     e.get('name', 'Unknown'),
                     dt,
                     att_data.get('status', 'Present'),
@@ -3292,7 +3397,7 @@ def export_data():
                 st = rec.get('payment_status', 'Pending')
                 
                 sal_rows.append([
-                    e.get('employee_id', eid_str),
+                    e.get('employee_id') or 'N/A',
                     e.get('name', 'Unknown'),
                     m,
                     base_sal,
@@ -3312,7 +3417,7 @@ def export_data():
         for adv in advances_list:
             emp = emp_map.get(adv['emp_id'], {})
             adv_rows.append([
-                emp.get('employee_id', str(adv['emp_id'])),
+                emp.get('employee_id') or 'N/A',
                 emp.get('name', 'Unknown'),
                 adv['amount'],
                 adv.get('payment_date', 'N/A'),
@@ -3428,7 +3533,7 @@ def export_data():
             tot_bal += bal
             
             worker_rows.append([
-                w.get('worker_id', str(w['_id'])),
+                w.get('worker_id') or 'N/A',
                 w.get('name', 'Unknown'),
                 work_amt,
                 adv_amt,
@@ -3445,7 +3550,7 @@ def export_data():
         # --- SHEET 2: WORK LOGS ---
         ws_logs = wb.create_sheet(title="Work Logs")
         log_headers = [
-            "Worker ID", "Worker Name", "Work Log ID", "Working Date", 
+            "Worker ID", "Worker Name", "Working Date", 
             "Client Name", "Delivery Location", "Slab Quantity", 
             "Price Per Slab", "Gross Amount", "Total Advances", "Remaining Balance", "Payment Status"
         ]
@@ -3458,9 +3563,8 @@ def export_data():
             bal = round(gross - l_adv, 2)
             
             log_rows.append([
-                w.get('worker_id', str(log['worker_id'])),
+                w.get('worker_id') or 'N/A',
                 w.get('name', 'Unknown'),
-                str(lid),
                 log.get('working_date', 'N/A'),
                 log.get('client_name', 'N/A'),
                 log.get('delivery_location', 'N/A'),
@@ -3476,7 +3580,7 @@ def export_data():
         # --- SHEET 3: ADVANCE HISTORY ---
         ws_advances = wb.create_sheet(title="Advance History")
         adv_headers = [
-            "Worker ID", "Worker Name", "Work Log ID", 
+            "Worker ID", "Worker Name", "Reference", 
             "Advance Amount", "Advance Date", "Advance Notes"
         ]
         adv_rows = []
@@ -3485,10 +3589,16 @@ def export_data():
             log = all_log_map.get(lid, {}) if lid else {}
             wid = adv.get('worker_id') or log.get('worker_id')
             w = worker_map.get(ObjectId(wid), {}) if wid else {}
+            
+            if lid and log:
+                ref_str = f"Job (Client: {log.get('client_name', 'N/A')}, Date: {log.get('working_date', 'N/A')})"
+            else:
+                ref_str = "General Salary Advance"
+                
             adv_rows.append([
-                w.get('worker_id', str(wid or '')),
+                w.get('worker_id') or 'N/A',
                 w.get('name', 'Unknown'),
-                str(lid or 'General/Unlinked'),
+                ref_str,
                 adv['amount'],
                 adv.get('payment_date', 'N/A'),
                 adv.get('notes', '')
@@ -3520,7 +3630,7 @@ def export_data():
         for a in attendance_list:
             emp = emp_map_att.get(a['emp_id'], {})
             att_rows.append([
-                emp.get('employee_id', str(a['emp_id'])),
+                emp.get('employee_id') or 'N/A',
                 emp.get('name', 'Unknown'),
                 a.get('date', 'N/A'),
                 a.get('status', 'Present'),
@@ -3582,7 +3692,7 @@ def export_data():
             tot_adv += adv
             tot_net += net
             sal_rows.append([
-                emp.get('employee_id', str(rec.get('emp_id', ''))),
+                emp.get('employee_id') or 'N/A',
                 emp.get('name', 'Unknown'),
                 rec.get('month', 'N/A'),
                 base_sal,
@@ -3604,7 +3714,7 @@ def export_data():
         for adv in advances_list:
             emp = emp_map_sal.get(adv.get('emp_id'), {})
             adv_rows.append([
-                emp.get('employee_id', str(adv.get('emp_id', ''))),
+                emp.get('employee_id') or 'N/A',
                 emp.get('name', 'Unknown'),
                 float(adv.get('amount', 0.0)),
                 adv.get('payment_date', 'N/A'),
