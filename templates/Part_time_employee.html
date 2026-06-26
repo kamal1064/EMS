@@ -109,15 +109,15 @@
     </div>
 
     <!-- Actions -->
-    <div class="p-4 flex items-center gap-2 border-t border-slate-100 dark:border-white/5">
-      <button onclick="quickLogWork('{{ w['worker_id'] }}')" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white border border-transparent dark:border-white/5 font-semibold text-[11px] rounded-xl transition-colors">
-        <i class="bi bi-plus-circle"></i> Log
+    <div class="p-4 grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+      <button data-action="log-work" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold text-[11px] rounded-xl transition-colors">
+        <i class="bi bi-file-earmark-plus mr-1"></i> Log Work
       </button>
-      <button onclick="quickAdvance('{{ w['worker_id'] }}')" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white border border-transparent dark:border-white/5 font-semibold text-[11px] rounded-xl transition-colors">
-        <i class="bi bi-cash"></i> Adv
+      <button data-action="advance" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" data-worker-id-str="{{ w['worker_id_str']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white border border-transparent dark:border-white/5 font-semibold text-[11px] rounded-xl transition-colors">
+        <i class="bi bi-cash-coin mr-1 opacity-70 text-warning"></i> Advance
       </button>
-      <button id="toggle-ledger-btn-{{ w['worker_id'] }}" onclick="toggleWorkerLedger('{{ w['worker_id'] }}')" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary/10 hover:bg-primary/20 text-primary border border-primary/10 font-bold text-[11px] rounded-xl transition-all">
-        Ledger <i class="bi bi-chevron-down transition-transform duration-300" id="chevron-{{ w['worker_id'] }}"></i>
+      <button data-action="toggle-ledger" data-worker-id="{{ w['worker_id'] }}" id="toggle-ledger-btn-{{ w['worker_id'] }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary/10 hover:bg-primary/20 text-primary border border-primary/10 font-bold text-[11px] rounded-xl transition-all">
+        <span class="flex items-center justify-center gap-1 pointer-events-none">Ledger <i class="bi bi-chevron-down text-[9px] ml-0.5 transition-transform" id="chevron-{{ w['worker_id'] }}"></i></span>
       </button>
     </div>
 
@@ -426,6 +426,31 @@
 
 {% block scripts %}
 <script>
+
+  
+  // Event Delegation for Worker Cards
+  document.addEventListener('DOMContentLoaded', () => {
+      const grid = document.getElementById('worker-dashboard-grid');
+      if (grid) {
+          grid.addEventListener('click', (e) => {
+              const btn = e.target.closest('button[data-action]');
+              if (!btn) return;
+              
+              const action = btn.getAttribute('data-action');
+              const wId = btn.getAttribute('data-worker-id');
+              const wName = btn.getAttribute('data-worker-name');
+              const wIdStr = btn.getAttribute('data-worker-id-str');
+              
+              if (action === 'log-work') {
+                  openLogWorkModal(wId, wName);
+              } else if (action === 'advance') {
+                  openAdvanceModal(wId, wName, wIdStr);
+              } else if (action === 'toggle-ledger') {
+                  toggleWorkerLedger(wId);
+              }
+          });
+      }
+  });
 
   // Universal Modal Logic
   function openUniversalModal(title, templateId) {
