@@ -102,7 +102,7 @@
         <span>{{ w['jobs'] }} Jobs ({{ w['slabs'] }} Slabs)</span>
       </div>
       <div>
-        <span class="badge {% if w['payment_status'] == 'Paid' %}badge-success{% elif w['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}">
+        <span id="card-status-{{ w['worker_id'] }}" class="badge {% if w['payment_status'] == 'Paid' %}badge-success{% elif w['payment_status'] == 'Overpaid' %}badge-danger{% else %}badge-warning{% endif %}">
           {{ w['payment_status'] }}
         </span>
       </div>
@@ -649,6 +649,16 @@
                 
                 const slabsEl = document.getElementById('card-slabs-' + workerId);
                 if(slabsEl) slabsEl.innerText = slabsCount;
+                
+                // Update Badge
+                let overallStatus = 'Pending';
+                if (totalAdv > totalEarn) overallStatus = 'Overpaid';
+                else if (totalBal <= 0) overallStatus = 'Paid';
+                const statusBadge = document.getElementById('card-status-' + workerId);
+                if (statusBadge) {
+                    statusBadge.innerText = overallStatus;
+                    statusBadge.className = `badge ${overallStatus==='Paid'?'badge-success':overallStatus==='Overpaid'?'badge-danger':'badge-warning'}`;
+                }
 
                 // Also if the ledger is open, we should re-render it.
                 if (currentlyOpenLedger === workerId) {
@@ -733,6 +743,7 @@
           btn.innerText = 'Save Advance'; btn.disabled = false;
           if(d.success) {
               updateDOMStatus(recId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               closeModal('addAdvanceModal');
               showToast('Advance Added Successfully', 'success');
           } else showToast(d.message, 'danger');
@@ -879,6 +890,7 @@
       .then(r=>r.json()).then(d => {
           if(d.success) {
               updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               showToast('Balance Settled and Marked Paid', 'success');
           } else {
               if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
@@ -927,6 +939,7 @@
       .then(r=>r.json()).then(d => {
           if(d.success) {
               updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               showToast('Balance Settled and Marked Paid', 'success');
           } else {
               if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
@@ -975,6 +988,7 @@
       .then(r=>r.json()).then(d => {
           if(d.success) {
               updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               showToast('Balance Settled and Marked Paid', 'success');
           } else {
               if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
@@ -1023,6 +1037,7 @@
       .then(r=>r.json()).then(d => {
           if(d.success) {
               updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
               showToast('Balance Settled and Marked Paid', 'success');
           } else {
               if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
