@@ -1585,9 +1585,11 @@ def salary():
 # ─────────────────────────────────────────
 
 @app.route('/part-time')
+@app.route('/part-time/workers')
 @limiter.limit("60 per minute")
 @login_required
 def part_time():
+    show_all_workers = request.path == '/part-time/workers'
     uid = get_current_user_id()
     search = request.args.get('q', '').strip()
     selected_client = request.args.get('client', '').strip()
@@ -1816,7 +1818,8 @@ def part_time():
         client_summaries=client_summaries,
         recent_clients=recent_clients[:6],
         analytics=analytics,
-        worker_history=worker_history
+        worker_history=worker_history,
+        show_all_workers=show_all_workers
     )
 
 

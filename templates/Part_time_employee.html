@@ -49,7 +49,7 @@
 <!-- SECTION 3: Dashboard & Search -->
 <div class="mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
   <div class="flex items-center gap-3">
-    <h2 class="text-xl font-black text-slate-900 dark:text-white">Worker Dashboard</h2>
+    <h2 class="text-xl font-black text-slate-900 dark:text-white">{% if show_all_workers %}All Workers Directory{% else %}Worker Dashboard{% endif %}</h2>
     <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-extrabold font-mono">{{ worker_history|length }} Workers</span>
   </div>
   <div class="worker-search-wrapper">
@@ -166,6 +166,23 @@
     <p class="font-medium">No workers matched your search.</p>
   </div>
 </div>
+  
+  {% if not show_all_workers and worker_history|length > 5 %}
+  <div class="col-span-full flex justify-center mt-4">
+    <a href="{{ url_for('part_time', _external=True).replace('/part-time', '/part-time/workers') }}" class="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex items-center gap-2">
+      View All {{ worker_history|length }} Workers <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+  {% endif %}
+  
+  {% if show_all_workers %}
+  <div class="col-span-full flex justify-center mt-4">
+    <a href="{{ url_for('part_time') }}" class="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex items-center gap-2">
+      <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+  </div>
+  {% endif %}
+
 
 
 {% endblock %}
@@ -1175,14 +1192,16 @@
       input.focus();
   }
 
+  const SHOW_ALL_WORKERS = {{ 'true' if show_all_workers else 'false' }};
+  
   function filterDashboard(queryParam) {
       const q = (queryParam !== undefined ? queryParam : document.getElementById('dashboard-search').value).toLowerCase().trim();
       const cards = document.querySelectorAll('.dashboard-worker-card');
       let visibleCount = 0;
       cards.forEach((card, index) => {
           if (q === '') {
-              // No search query: only show first 5 workers
-              if (index < 5) {
+              // No search query: show all if on dedicated page, else only first 5
+              if (SHOW_ALL_WORKERS || index < 5) {
                   card.style.display = 'flex';
                   visibleCount++;
               } else {
