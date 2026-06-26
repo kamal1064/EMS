@@ -135,14 +135,18 @@
             <span class="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-widest">Loading...</span>
         </div>
         <table class="w-full text-left text-xs whitespace-nowrap">
-          <thead class="sticky top-0 bg-slate-100 dark:bg-slate-800 z-0">
+          <thead class="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10 shadow-sm">
             <tr>
-              <th class="px-4 py-2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Date</th>
-              <th class="px-4 py-2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Client</th>
-              <th class="px-4 py-2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Gross (₹)</th>
-              <th class="px-4 py-2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Adv (₹)</th>
-              <th class="px-4 py-2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Status</th>
-              <th class="px-4 py-2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Action</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Working Date</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Client / Project</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Delivery Location</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Slab Qty</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Price/Slab</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Gross Amount</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Total Adv</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Net Payable</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Status</th>
+              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Action</th>
             </tr>
           </thead>
           <tbody id="ledger-tbody-{{ w['worker_id'] }}" class="divide-y divide-slate-100 dark:divide-white/5">
@@ -912,6 +916,150 @@
       });
   }
 
+  function markPartTimePaid(recordId) {
+      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
+      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
+      
+      fetch('/api/part-time/mark_paid', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({record_id: recordId})
+      })
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              showToast('Balance Settled and Marked Paid', 'success');
+          } else {
+              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+              showToast(d.message, 'danger');
+          }
+      }).catch(e => {
+          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+          showToast('Network error', 'danger');
+      });
+  }
+
+
+  // Worker Summary
+  function openWorkerSummary(workerId) {
+      openModal('workerSummaryModal');
+      document.getElementById('ws-name').innerText = 'Loading...';
+      document.getElementById('ws-jobs').innerText = '-';
+      document.getElementById('ws-slabs').innerText = '-';
+      document.getElementById('ws-earnings').innerText = '-';
+      document.getElementById('ws-advances').innerText = '-';
+      document.getElementById('ws-balance').innerText = '-';
+      
+      fetch('/api/part-time/worker/' + workerId + '/summary')
+      .then(r=>r.json()).then(data => {
+          if(data.success) {
+              document.getElementById('ws-name').textContent = data.name;
+              document.getElementById('ws-id').textContent = data.worker_id_str || '—';
+              document.getElementById('ws-jobs').textContent = data.total_jobs;
+              document.getElementById('ws-slabs').textContent = data.total_slabs;
+              document.getElementById('ws-earnings').innerText = fmt(data.total_earnings);
+              document.getElementById('ws-advances').innerText = fmt(data.total_advance);
+              document.getElementById('ws-balance').innerText = fmt(data.outstanding_balance);
+              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${data.outstanding_balance > 0 ? 'text-primary' : data.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
+          }
+      });
+  }
+
+  function markPartTimePaid(recordId) {
+      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
+      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
+      
+      fetch('/api/part-time/mark_paid', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({record_id: recordId})
+      })
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              showToast('Balance Settled and Marked Paid', 'success');
+          } else {
+              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+              showToast(d.message, 'danger');
+          }
+      }).catch(e => {
+          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+          showToast('Network error', 'danger');
+      });
+  }
+
+
+  // Worker Summary
+  function openWorkerSummary(workerId) {
+      openModal('workerSummaryModal');
+      document.getElementById('ws-name').innerText = 'Loading...';
+      document.getElementById('ws-jobs').innerText = '-';
+      document.getElementById('ws-slabs').innerText = '-';
+      document.getElementById('ws-earnings').innerText = '-';
+      document.getElementById('ws-advances').innerText = '-';
+      document.getElementById('ws-balance').innerText = '-';
+      
+      fetch('/api/part-time/worker/' + workerId + '/summary')
+      .then(r=>r.json()).then(data => {
+          if(data.success) {
+              document.getElementById('ws-name').textContent = data.name;
+              document.getElementById('ws-id').textContent = data.worker_id_str || '—';
+              document.getElementById('ws-jobs').textContent = data.total_jobs;
+              document.getElementById('ws-slabs').textContent = data.total_slabs;
+              document.getElementById('ws-earnings').innerText = fmt(data.total_earnings);
+              document.getElementById('ws-advances').innerText = fmt(data.total_advance);
+              document.getElementById('ws-balance').innerText = fmt(data.outstanding_balance);
+              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${data.outstanding_balance > 0 ? 'text-primary' : data.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
+          }
+      });
+  }
+
+  function markPartTimePaid(recordId) {
+      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
+      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
+      
+      fetch('/api/part-time/mark_paid', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({record_id: recordId})
+      })
+      .then(r=>r.json()).then(d => {
+          if(d.success) {
+              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
+              showToast('Balance Settled and Marked Paid', 'success');
+          } else {
+              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+              showToast(d.message, 'danger');
+          }
+      }).catch(e => {
+          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
+          showToast('Network error', 'danger');
+      });
+  }
+
+
+  // Worker Summary
+  function openWorkerSummary(workerId) {
+      openModal('workerSummaryModal');
+      document.getElementById('ws-name').innerText = 'Loading...';
+      document.getElementById('ws-jobs').innerText = '-';
+      document.getElementById('ws-slabs').innerText = '-';
+      document.getElementById('ws-earnings').innerText = '-';
+      document.getElementById('ws-advances').innerText = '-';
+      document.getElementById('ws-balance').innerText = '-';
+      
+      fetch('/api/part-time/worker/' + workerId + '/summary')
+      .then(r=>r.json()).then(data => {
+          if(data.success) {
+              document.getElementById('ws-name').textContent = data.name;
+              document.getElementById('ws-id').textContent = data.worker_id_str || '—';
+              document.getElementById('ws-jobs').textContent = data.total_jobs;
+              document.getElementById('ws-slabs').textContent = data.total_slabs;
+              document.getElementById('ws-earnings').innerText = fmt(data.total_earnings);
+              document.getElementById('ws-advances').innerText = fmt(data.total_advance);
+              document.getElementById('ws-balance').innerText = fmt(data.outstanding_balance);
+              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${data.outstanding_balance > 0 ? 'text-primary' : data.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
+          }
+      });
+  }
+
   // Live Search & AJAX Pagination (Debounced)
   let searchTimeout = null;
   let currentSearchQuery = '';
@@ -1302,17 +1450,19 @@
               actionBtns += `</div>`;
               
               const tr = document.createElement('tr');
-              tr.className = 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors';
+              tr.className = 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group';
+              tr.id = `row-${r.id}`;
               tr.innerHTML = `
-                  <td class="px-4 py-3 font-mono text-[10px] text-slate-500">${r.working_date}</td>
-                  <td class="px-4 py-3">
-                      <div class="font-bold text-slate-800 dark:text-slate-200">${r.client_name}</div>
-                      <div class="text-[9px] text-slate-400 font-mono mt-0.5">${r.slab_quantity} slabs @ ₹${r.slab_price}</div>
-                  </td>
-                  <td class="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">₹${r.total_price.toLocaleString('en-IN')}</td>
-                  <td class="px-4 py-3 font-mono font-bold text-danger">₹${r.advance_paid.toLocaleString('en-IN')}</td>
-                  <td class="px-4 py-3">${statusBadge}</td>
-                  <td class="px-4 py-3 text-right">${actionBtns}</td>
+                  <td class="px-4 py-3 font-mono text-xs text-slate-500">${r.working_date}</td>
+                  <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">${r.client_name}</td>
+                  <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-[11px]">${r.delivery_location || '—'}</td>
+                  <td class="px-4 py-3 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">${r.slab_quantity}</td>
+                  <td class="px-4 py-3 font-mono text-[11px] text-slate-500">₹${parseFloat(r.slab_price).toLocaleString('en-IN')}</td>
+                  <td class="px-4 py-3 font-mono text-sm font-bold text-slate-900 dark:text-white" id="gross-${r.id}">₹${parseFloat(r.total_price).toLocaleString('en-IN')}</td>
+                  <td class="px-4 py-3 font-mono text-sm font-bold text-danger" id="total-adv-${r.id}">₹${parseFloat(r.advance_paid).toLocaleString('en-IN')}</td>
+                  <td class="px-4 py-3 font-mono text-sm font-black ${netClass}" id="net-${r.id}">${netValue}</td>
+                  <td class="px-4 py-3" id="status-${r.id}">${statusBadge}</td>
+                  <td class="px-4 py-3">${actionBtns}</td>
               `;
               tbody.appendChild(tr);
           });
