@@ -860,45 +860,45 @@
 
 <!-- ── ADVANCED EXPORT DATA MODAL ─────────────────────────── -->
 <div id="exportModal" class="premium-modal-backdrop" onclick="handleGlobalBackdropClick(event, 'exportModal')">
-  <div class="premium-modal-container" style="max-width: 680px; max-height: 92vh; overflow-y: auto;">
-    <div class="premium-modal-header" style="position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--card-border);">
+  <div class="premium-modal-container" style="max-width: 680px; max-height: 92vh; display: flex; flex-direction: column; background: #0F172A; color: #FFFFFF; border: 1px solid rgba(255,255,255,0.1);">
+    <div class="premium-modal-header" style="position:sticky;top:0;z-index:10;background:#0F172A;border-bottom:1px solid rgba(255,255,255,0.08);">
       <div>
         <div class="premium-modal-title" style="display:flex;align-items:center;gap:10px;">
           <span style="width:36px;height:36px;background:linear-gradient(135deg,#3B82F6,#8B5CF6);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;"><i class="bi bi-cloud-download"></i></span>
           Export Center
         </div>
-        <div class="premium-modal-subtitle">Select module, scope, and format to export your data</div>
+        <div class="premium-modal-subtitle" style="color:#94A3B8;font-size:13px;font-weight:500;margin-top:4px;">Select module, scope, and format to export your data</div>
       </div>
       <button class="premium-modal-close-btn" onclick="closeGlobalModal('exportModal')" aria-label="Close">&times;</button>
     </div>
 
-    <div class="premium-modal-body" style="gap:20px;">
+    <div class="premium-modal-body" style="gap:20px;background:#0F172A;">
 
       <!-- STEP 1: MODULE -->
       <div class="premium-field-group">
-        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#CBD5E1;font-weight:700;">
           <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;">1</span>
           Select Module
         </label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="exportModuleGrid">
           <button type="button" onclick="selectExportModule('employees')" id="mod-employees"
             class="export-module-btn active-module"
-            style="padding:14px 10px;border-radius:12px;border:2px solid #3B82F6;background:#EFF6FF;color:#1D4ED8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            style="padding:14px 10px;border-radius:12px;border:2px solid #3B82F6;background:rgba(59,130,246,0.15);color:#60A5FA;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
             <i class="bi bi-people-fill" style="font-size:20px;"></i> Employees
           </button>
           <button type="button" onclick="selectExportModule('part_time')" id="mod-part_time"
             class="export-module-btn"
-            style="padding:14px 10px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            style="padding:14px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1E293B;color:#94A3B8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
             <i class="bi bi-person-badge-fill" style="font-size:20px;"></i> Part-Time Workers
           </button>
           <button type="button" onclick="selectExportModule('attendance')" id="mod-attendance"
             class="export-module-btn"
-            style="padding:14px 10px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            style="padding:14px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1E293B;color:#94A3B8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
             <i class="bi bi-calendar-check-fill" style="font-size:20px;"></i> Attendance
           </button>
           <button type="button" onclick="selectExportModule('salary')" id="mod-salary"
             class="export-module-btn"
-            style="padding:14px 10px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            style="padding:14px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1E293B;color:#94A3B8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;">
             <i class="bi bi-cash-coin" style="font-size:20px;"></i> Salary
           </button>
         </div>
@@ -906,19 +906,19 @@
 
       <!-- STEP 2: SCOPE -->
       <div class="premium-field-group">
-        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#CBD5E1;font-weight:700;">
           <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;">2</span>
           Export Scope
         </label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <button type="button" onclick="selectExportScope('all')" id="scope-all"
             class="export-scope-btn active-scope"
-            style="padding:12px;border-radius:12px;border:2px solid #3B82F6;background:#EFF6FF;color:#1D4ED8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            style="padding:12px;border-radius:12px;border:2px solid #3B82F6;background:rgba(59,130,246,0.15);color:#60A5FA;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
             <i class="bi bi-collection-fill"></i> All Records
           </button>
           <button type="button" onclick="selectExportScope('individual')" id="scope-individual"
             class="export-scope-btn"
-            style="padding:12px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1E293B;color:#94A3B8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
             <i class="bi bi-person-lines-fill"></i> Individual Record
           </button>
         </div>
@@ -927,7 +927,7 @@
       <!-- STEP 3: RECORD SEARCH (conditional) -->
       <div id="exportRecordGroup" style="display:none;">
         <div class="premium-field-group">
-          <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+          <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#CBD5E1;font-weight:700;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;">3</span>
             Select Record
           </label>
@@ -953,20 +953,20 @@
 
       <!-- STEP 4: FORMAT -->
       <div class="premium-field-group">
-        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#CBD5E1;font-weight:700;">
           <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#3B82F6;color:#fff;border-radius:50%;font-size:9px;font-weight:800;margin-right:6px;" id="formatStepNum">4</span>
           File Format
         </label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <button type="button" onclick="selectExportFormat('excel')" id="fmt-excel"
             class="export-fmt-btn active-fmt"
-            style="padding:14px;border-radius:12px;border:2px solid #059669;background:#ECFDF5;color:#065F46;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            style="padding:14px;border-radius:12px;border:2px solid #10B981;background:rgba(16,185,129,0.15);color:#34D399;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
             <i class="bi bi-file-earmark-excel-fill" style="font-size:18px;"></i>
             <span><div style="font-size:13px;">Excel</div><div style="font-size:10px;font-weight:500;opacity:.7;">.xlsx</div></span>
           </button>
           <button type="button" onclick="selectExportFormat('pdf')" id="fmt-pdf"
             class="export-fmt-btn"
-            style="padding:14px;border-radius:12px;border:2px solid var(--card-border);background:var(--input-bg);color:var(--text2);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+            style="padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1E293B;color:#94A3B8;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;">
             <i class="bi bi-file-earmark-pdf-fill" style="font-size:18px;color:#EF4444;"></i>
             <span><div style="font-size:13px;">PDF</div><div style="font-size:10px;font-weight:500;opacity:.7;">.pdf</div></span>
           </button>
@@ -975,16 +975,16 @@
 
       <!-- DATE RANGE -->
       <div class="premium-field-group">
-        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;">
-          <i class="bi bi-calendar-range mr-2" style="color:#3B82F6;"></i> Date Range <span style="font-weight:400;color:var(--text3);"> (optional)</span>
+        <label class="premium-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#CBD5E1;font-weight:700;">
+          <i class="bi bi-calendar-range mr-2" style="color:#3B82F6;"></i> Date Range <span style="font-weight:400;color:#94A3B8;"> (optional)</span>
         </label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div class="premium-field-group" style="margin-bottom:0;">
-            <label for="export_start_date" class="premium-label">From</label>
+            <label for="export_start_date" class="premium-label" style="color:#CBD5E1;">From</label>
             <input type="date" id="export_start_date" class="premium-input"/>
           </div>
           <div class="premium-field-group" style="margin-bottom:0;">
-            <label for="export_end_date" class="premium-label">To</label>
+            <label for="export_end_date" class="premium-label" style="color:#CBD5E1;">To</label>
             <input type="date" id="export_end_date" class="premium-input"/>
           </div>
         </div>
@@ -1003,7 +1003,7 @@
       </select>
     </div>
 
-    <div class="premium-modal-footer" style="position:sticky;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--card-border);">
+    <div class="premium-modal-footer" style="position:sticky;bottom:0;z-index:10;background:#0F172A;border-top:1px solid rgba(255,255,255,0.08);">
       <button class="btn-premium-cancel" onclick="closeGlobalModal('exportModal')">Cancel</button>
       <button id="triggerExportBtn" class="btn-premium-save" onclick="triggerExport()" style="display:flex;align-items:center;gap:8px;min-width:160px;justify-content:center;">
         <i class="bi bi-file-earmark-excel-fill" id="exportBtnIcon"></i>
@@ -1449,30 +1449,26 @@ function _setActiveBtn(groupSelector, activeId) {
   document.querySelectorAll(groupSelector).forEach(function(btn) {
     var isActive = btn.id === activeId;
     if (isActive) {
-      if (groupSelector === '.export-module-btn') {
+      if (groupSelector === '.export-module-btn' || groupSelector === '.export-scope-btn') {
         btn.style.borderColor = '#3B82F6';
-        btn.style.background  = '#EFF6FF';
-        btn.style.color       = '#1D4ED8';
-      } else if (groupSelector === '.export-scope-btn') {
-        btn.style.borderColor = '#3B82F6';
-        btn.style.background  = '#EFF6FF';
-        btn.style.color       = '#1D4ED8';
+        btn.style.background  = 'rgba(59, 130, 246, 0.15)';
+        btn.style.color       = '#60A5FA';
       } else {
         /* format */
         if (activeId === 'fmt-excel') {
-          btn.style.borderColor = '#059669';
-          btn.style.background  = '#ECFDF5';
-          btn.style.color       = '#065F46';
+          btn.style.borderColor = '#10B981';
+          btn.style.background  = 'rgba(16, 185, 129, 0.15)';
+          btn.style.color       = '#34D399';
         } else {
           btn.style.borderColor = '#EF4444';
-          btn.style.background  = '#FEF2F2';
-          btn.style.color       = '#991B1B';
+          btn.style.background  = 'rgba(239, 68, 68, 0.15)';
+          btn.style.color       = '#F87171';
         }
       }
     } else {
-      btn.style.borderColor = 'var(--card-border)';
-      btn.style.background  = 'var(--input-bg)';
-      btn.style.color       = 'var(--text2)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+      btn.style.background  = '#1E293B';
+      btn.style.color       = '#94A3B8';
     }
   });
 }
