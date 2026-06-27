@@ -3074,6 +3074,13 @@ def export_data():
 
     uid = get_current_user_id()
     export_type = request.args.get('export_type', 'all_employees')
+    export_type_alias_map = {
+        'specific_part_time_worker': 'specific_part_time',
+        'all_part_time_workers': 'all_part_time',
+        'specific_employee_report': 'specific_employee',
+        'all_employees_report': 'all_employees'
+    }
+    export_type = export_type_alias_map.get(export_type, export_type)
     export_format = request.args.get('format', 'excel')
     employee_id = request.args.get('employee_id')
     worker_id = request.args.get('worker_id')
@@ -3555,6 +3562,7 @@ def export_data():
             "Price Per Slab", "Gross Amount", "Total Advances", "Remaining Balance", "Payment Status"
         ]
         log_rows = []
+        pdf_log_rows = []
         for log in work_logs:
             w = worker_map.get(log['worker_id'], {})
             lid = log['_id']
@@ -3575,7 +3583,38 @@ def export_data():
                 bal,
                 log.get('payment_status', 'Pending')
             ])
-        style_ws(ws_logs, f"Part-Time Work Logs{pt_title_suffix}", log_headers, log_rows)
+            if export_type == 'specific_part_time':
+                pdf_log_rows.append([
+                    log.get('working_date', 'N/A'),
+                    log.get('client_name', 'N/A'),
+                    log.get('delivery_location', 'N/A'),
+                    log.get('slab_quantity', 0),
+                    log.get('slab_price', 0.0),
+                    gross,
+                    bal
+                ])
+            else:
+                pdf_log_rows.append([
+                    w.get('worker_id') or 'N/A',
+                    w.get('name', 'Unknown'),
+                    log.get('working_date', 'N/A'),
+                    log.get('client_name', 'N/A'),
+                    log.get('delivery_location', 'N/A'),
+                    log.get('slab_quantity', 0),
+                    log.get('slab_price', 0.0),
+                    gross,
+                    bal,
+                    log.get('payment_status', 'Pending')
+                ])
+
+        if export_format == 'pdf':
+            if export_type == 'specific_part_time':
+                pdf_headers = ["Working Date", "Client Name", "Delivery Location", "Slab Quantity", "Price Per Slab", "Gross Amount", "Remaining Balance"]
+            else:
+                pdf_headers = ["Worker ID", "Worker Name", "Working Date", "Client Name", "Delivery Location", "Slab Quantity", "Price Per Slab", "Gross Amount", "Remaining Balance", "Payment Status"]
+            style_ws(ws_logs, f"Part-Time Work Logs{pt_title_suffix}", pdf_headers, pdf_log_rows)
+        else:
+            style_ws(ws_logs, f"Part-Time Work Logs{pt_title_suffix}", log_headers, log_rows)
 
         # --- SHEET 3: ADVANCE HISTORY ---
         ws_advances = wb.create_sheet(title="Advance History")
