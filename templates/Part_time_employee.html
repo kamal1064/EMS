@@ -219,7 +219,7 @@
 
 <!-- Hidden Templates for Universal Modal -->
 <div id="template-log-work" class="hidden">
-  <form id="modalLogWorkForm" onsubmit="submitLogWorkModal(event)" class="space-y-5">
+  <form id="modalLogWorkForm" action="/part-time/add" method="POST" onsubmit="submitLogWorkModal(event)" class="space-y-5">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="space-y-2">
             <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Worker Name *</label>
@@ -636,12 +636,31 @@
       submitBtn.disabled = true;
 
       try {
-          const res = await fetch(form.action, {
+          const endpoint = form.action && !form.action.endsWith('/part-time') ? form.action : '/part-time/add';
+          const res = await fetch(endpoint, {
               method: 'POST',
               body: formData,
               redirect: 'manual' // Prevents browser from following the redirect to reload the page
           });
           
+          if (!res.ok && res.status !== 302 && res.status !== 0 && res.type !== 'opaqueredirect') {
+              let errorMsg = `Server error (${res.status})`;
+              if (res.status === 405) errorMsg = 'Method Not Allowed (405)';
+              else if (res.status === 400) errorMsg = 'Invalid data submitted (400)';
+              else if (res.status === 404) errorMsg = 'Endpoint not found (404)';
+              else if (res.status === 500) errorMsg = 'Internal server error (500)';
+              
+              try {
+                  const data = await res.json();
+                  if (data && data.error) errorMsg = data.error;
+              } catch(jsonErr) {}
+
+              showToast(errorMsg, 'error');
+              submitBtn.innerHTML = '<i class="bi bi-save-fill"></i> Log Work Entry';
+              submitBtn.disabled = false;
+              return;
+          }
+
           closeUniversalModal();
           showToast('Work Logged Successfully!', 'success');
           
