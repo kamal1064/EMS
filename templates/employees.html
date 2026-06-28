@@ -65,7 +65,7 @@
       </thead>
       <tbody>
         {% for e in employees %}
-        <tr>
+        <tr id="emp-row-{{ e['id'] }}">
           <td class="mono text-sm" style="color:var(--text3);">{{ loop.index }}</td>
           <td class="mono font-bold" style="color:var(--primary);">{{ e.get('employee_id', '—') }}</td>
           <td>
@@ -142,7 +142,7 @@
   </div>
 
   {% for e in employees %}
-  <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+  <div id="emp-card-{{ e['id'] }}" class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:10px;">
         {{ render_avatar(e['name'], e.get('profile_image_url'), '36px') }}
@@ -326,11 +326,58 @@
 
   function confirmDelete(id, name) {
     document.getElementById('deleteMsg').textContent = '"' + name + '" and all their attendance/salary records will be permanently deleted.';
-    document.getElementById('confirmDeleteBtn').onclick = function() {
-      setLoaderState(true);
-      document.getElementById('del-' + id).submit();
+    var confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.innerHTML = 'Delete';
+    confirmBtn.disabled = false;
+    
+    confirmBtn.onclick = async function() {
+      confirmBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Deleting...';
+      confirmBtn.disabled = true;
+      
+      try {
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var headers = {
+          'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (csrfMeta) {
+          headers['X-CSRFToken'] = csrfMeta.getAttribute('content');
+        }
+        
+        var res = await fetch('/employees/delete/' + id, {
+          method: 'POST',
+          headers: headers
+        });
+        
+        if (res.ok || res.status === 302) {
+          closeModal('deleteModal');
+          var row = document.getElementById('emp-row-' + id);
+          if (row) row.remove();
+          var card = document.getElementById('emp-card-' + id);
+          if (card) card.remove();
+          if (typeof showToast === 'function') {
+            showToast('Employee deleted successfully', 'success');
+          }
+        } else {
+          var errorMsg = 'Failed to delete employee (' + res.status + ')';
+          try {
+            var data = await res.json();
+            if (data && data.error) errorMsg = data.error;
+          } catch(e) {}
+          if (typeof showToast === 'function') {
+            showToast(errorMsg, 'error');
+          }
+          confirmBtn.innerHTML = 'Delete';
+          confirmBtn.disabled = false;
+        }
+      } catch(err) {
+        if (typeof showToast === 'function') {
+          showToast('Network error while deleting employee', 'error');
+        }
+        confirmBtn.innerHTML = 'Delete';
+        confirmBtn.disabled = false;
+      }
     };
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    openModal('deleteModal');
   }
 
   function changePage(p) {

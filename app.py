@@ -1254,18 +1254,30 @@ def delete_employee(emp_id):
     uid = get_current_user_id()
     invalidate_dashboard_cache(uid)
     emp_id_obj = safe_object_id(emp_id)
+    app.logger.info(f"Deleting employee: {emp_id}")
+    print(f"Deleting employee: {emp_id}")
+    
     if not emp_id_obj:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({"success": False, "error": "Invalid employee ID"}), 400
         return redirect(url_for('employees'))
 
     # Verify employee belongs to current user before deleting anything
     emp = db.employees.find_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
     if not emp:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({"success": False, "error": "Employee not found or access denied"}), 404
         return redirect(url_for('employees'))
 
     db.attendance.delete_many({"emp_id": emp_id_obj})
     db.salary_records.delete_many({"emp_id": emp_id_obj})
     db.salary_advance_payments.delete_many({"emp_id": emp_id_obj})
-    db.employees.delete_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    result = db.employees.delete_one({"_id": emp_id_obj, "user_id": ObjectId(uid)})
+    app.logger.info(f"Deleted count: {result.deleted_count}")
+    print(f"Deleted count: {result.deleted_count}")
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({"success": True, "message": "Employee deleted successfully", "deleted_count": result.deleted_count})
     return redirect(url_for('employees'))
 
 
