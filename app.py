@@ -1389,8 +1389,16 @@ def mark_attendance():
 def attendance_summary():
     uid = get_current_user_id()
     month_filter = request.args.get('month', datetime.now().strftime('%Y-%m'))
+    search_query = request.args.get('q', request.args.get('search', '')).strip()
 
-    emps = list(db.employees.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    emp_query = {"user_id": ObjectId(uid)}
+    if search_query:
+        emp_query["$or"] = [
+            {"name": {"$regex": search_query, "$options": "i"}},
+            {"employee_id": {"$regex": search_query, "$options": "i"}}
+        ]
+
+    emps = list(db.employees.find(emp_query).sort("name", 1))
     emps = serialize_docs(emps)
     
     try:
@@ -1434,13 +1442,22 @@ def attendance_summary():
         summary.append({
             'id': e['id'],
             'name': e['name'],
+            'employee_id': e.get('employee_id', '—'),
             'profile_image_url': e.get('profile_image_url', ''),
             'present': present_days,
             'absent': absent_days,
             'total': total_days
         })
 
-    return render_template('attendance_summary.html', summary=summary, month_filter=month_filter)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.args.get('ajax') == '1':
+        return jsonify({
+            "success": True,
+            "summary": summary,
+            "month_filter": month_filter,
+            "search_query": search_query
+        })
+
+    return render_template('attendance_summary.html', summary=summary, month_filter=month_filter, search_query=search_query)
 
 
 @app.route('/api/attendance/absent_days/<emp_id>')

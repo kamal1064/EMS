@@ -12,23 +12,37 @@
 {% endblock %}
 
 {% block content %}
-<!-- Month Filter Bar -->
-<div class="glass-panel p-4">
-  <form method="GET" class="flex flex-wrap items-center gap-3">
-    <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase flex items-center gap-2">
-      <i class="bi bi-calendar-month text-primary"></i>
-      <span>Selected Month:</span>
-    </label>
-    <input type="month" name="month" value="{{ month_filter }}"
-           class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono"/>
-    <button type="submit" onclick="setLoaderState(true);"
-            class="btn-saas btn-saas-md btn-saas-secondary">
-      Filter
+<!-- Month & Search Filter Bar -->
+<div class="glass-panel p-4 mb-6">
+  <form id="attendanceFilterForm" method="GET" action="{{ url_for('attendance_summary') }}" onsubmit="handleAttendanceSearch(event)" class="grid grid-cols-1 md:flex md:flex-wrap items-center gap-3">
+    <div class="flex items-center gap-2">
+      <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase flex items-center gap-1.5 whitespace-nowrap">
+        <i class="bi bi-calendar-month text-primary"></i>
+        <span>Month:</span>
+      </label>
+      <input type="month" id="monthInput" name="month" value="{{ month_filter }}"
+             class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono w-full md:w-auto"/>
+    </div>
+
+    <div class="flex-1 min-w-[240px] relative">
+      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+        <i class="bi bi-search"></i>
+      </div>
+      <input type="text" id="searchInput" name="q" value="{{ search_query or '' }}" placeholder="Search Employee Name or Employee ID..."
+             class="w-full bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 placeholder-slate-400 dark:placeholder-slate-500 transition-all"/>
+    </div>
+
+    <button type="submit" id="searchBtn"
+            class="btn-saas btn-saas-md btn-saas-primary flex items-center justify-center gap-2 px-5 py-2 font-semibold">
+      <i class="bi bi-search"></i>
+      <span>Search</span>
     </button>
-    <a href="{{ url_for('attendance_summary') }}" onclick="setLoaderState(true);"
-       class="btn-saas btn-saas-md btn-saas-secondary">
-      Reset
-    </a>
+
+    <button type="button" onclick="resetAttendanceFilter()"
+            class="btn-saas btn-saas-md btn-saas-secondary flex items-center justify-center gap-2 px-4 py-2 font-semibold">
+      <i class="bi bi-arrow-counterclockwise"></i>
+      <span>Reset</span>
+    </button>
   </form>
 </div>
 
@@ -37,9 +51,9 @@
   <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <i class="bi bi-table text-primary"></i>
-      <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Attendance Ledger — {{ month_filter }}</h3>
+      <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider" id="tableHeaderTitle">Attendance Ledger — {{ month_filter }}</h3>
     </div>
-    <span class="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-extrabold text-primary font-mono">
+    <span class="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-extrabold text-primary font-mono" id="profileCountBadge">
       {{ summary|length }} Profiles
     </span>
   </div>
@@ -58,7 +72,7 @@
           <th class="py-4 px-6 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-white/90">
+      <tbody id="summaryTableBody" class="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-white/90">
         {% for s in summary %}
         {% set pct = ((s.present / s.total * 100) | int) if s.total > 0 else 0 %}
         <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all">
@@ -68,7 +82,10 @@
               <div class="flex-shrink-0">
                 {{ render_avatar(s.name, s.get('profile_image_url'), '36px') }}
               </div>
-              <span class="font-semibold text-slate-900 dark:text-white">{{ s.name }}</span>
+              <div>
+                <span class="font-semibold text-slate-900 dark:text-white block">{{ s.name }}</span>
+                <span class="text-xs font-mono text-slate-400 dark:text-slate-500 block">{{ s.get('employee_id', '—') }}</span>
+              </div>
             </div>
           </td>
           <td class="py-4 px-6 font-mono font-bold text-success">{{ s.present }}</td>
@@ -97,7 +114,7 @@
                 <div class="bg-warning h-full transition-all duration-500" style="width: {{ pct }}%"></div>
               {% else %}
                 <div class="bg-danger h-full transition-all duration-500" style="width: {{ pct }}%"></div>
-              {%   endif %}
+              {% endif %}
             </div>
           </td>
           <td class="py-4 px-6 text-right">
@@ -108,18 +125,15 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="py-16 text-center text-slate-500 dark:text-textsecondary">
-            <div class="flex flex-col items-center gap-4 max-w-sm mx-auto">
-              <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-center text-2xl text-slate-400 dark:text-textmuted mx-auto">
-                <i class="bi bi-calendar-x"></i>
+          <td colspan="8" class="py-16 text-center text-slate-500 dark:text-textsecondary">
+            <div class="flex flex-col items-center gap-3 max-w-sm mx-auto">
+              <div class="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl text-primary mx-auto">
+                <i class="bi bi-search"></i>
               </div>
               <div class="space-y-1">
-                <h4 class="font-bold text-slate-900 dark:text-white text-base">No entries found</h4>
-                <p class="text-xs text-slate-500 dark:text-textsecondary">No daily attendance logs exist for the specified calendar month.</p>
+                <h4 class="font-bold text-slate-900 dark:text-white text-base">No attendance records found</h4>
+                <p class="text-xs text-slate-500 dark:text-textsecondary">🔍 No attendance records found for the selected filters.</p>
               </div>
-              <a href="{{ url_for('attendance') }}" class="px-4 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-glow-primary transition-all">
-                Mark Roster Now
-              </a>
             </div>
           </td>
         </tr>
@@ -135,9 +149,10 @@
     <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2);">
       <i class="bi bi-bar-chart-fill text-primary"></i> Attendance Summary
     </h3>
-    <span class="badge badge-primary">{{ summary|length }} Profiles</span>
+    <span class="badge badge-primary" id="mobileProfileCountBadge">{{ summary|length }} Profiles</span>
   </div>
 
+  <div id="mobileCardsContainer" class="space-y-4">
   {% for s in summary %}
   {% set pct = ((s.present / s.total * 100) | int) if s.total > 0 else 0 %}
   <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
@@ -146,7 +161,10 @@
         <div class="flex-shrink-0">
           {{ render_avatar(s.name, s.get('profile_image_url'), '36px') }}
         </div>
-        <span style="font-weight:700;font-size:14px;color:var(--text);">{{ s.name }}</span>
+        <div>
+          <span style="font-weight:700;font-size:14px;color:var(--text);display:block;">{{ s.name }}</span>
+          <span class="text-xs font-mono text-slate-400 dark:text-slate-500 block">{{ s.get('employee_id', '—') }}</span>
+        </div>
       </div>
       
       {% if pct >= 80 %}
@@ -203,10 +221,18 @@
   </div>
   {% else %}
   <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
-    <i class="bi bi-calendar-x text-2xl text-muted block mb-2"></i>
-    No entries found.
+    <div class="flex flex-col items-center gap-3 max-w-sm mx-auto">
+      <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xl text-primary mx-auto">
+        <i class="bi bi-search"></i>
+      </div>
+      <div class="space-y-1">
+        <h4 class="font-bold text-slate-900 dark:text-white text-sm">No attendance records found</h4>
+        <p class="text-xs text-slate-500 dark:text-textsecondary">🔍 No attendance records found for the selected filters.</p>
+      </div>
+    </div>
   </div>
   {% endfor %}
+  </div>
 </div>
 
 {% endblock %}
@@ -433,6 +459,194 @@ function handleBackdropClick(event, id) {
         if(id === 'absentDaysModal') closeAbsentModal();
         else closeModal(id);
     }
+}
+
+async function handleAttendanceSearch(e) {
+    if (e) e.preventDefault();
+    const month = document.getElementById('monthInput').value;
+    const q = document.getElementById('searchInput').value.trim();
+    const searchBtn = document.getElementById('searchBtn');
+    
+    if (searchBtn.disabled) return;
+    searchBtn.disabled = true;
+    const origBtnHtml = searchBtn.innerHTML;
+    searchBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> <span>Searching...</span>';
+    
+    try {
+        const params = new URLSearchParams();
+        if (month) params.set('month', month);
+        if (q) params.set('q', q);
+        
+        const newUrl = window.location.pathname + '?' + params.toString();
+        window.history.pushState(null, '', newUrl);
+        
+        const res = await fetch(newUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            updateSummaryUI(data.summary, data.month_filter);
+        }
+    } catch(err) {
+        console.error('Attendance search failed:', err);
+        if (typeof showToast === 'function') {
+            showToast('Error searching attendance records', 'error');
+        }
+    } finally {
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = origBtnHtml;
+    }
+}
+
+function resetAttendanceFilter() {
+    const searchInput = document.getElementById('searchInput');
+    const monthInput = document.getElementById('monthInput');
+    searchInput.value = '';
+    const now = new Date();
+    const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    monthInput.value = currentMonth;
+    handleAttendanceSearch(null);
+}
+
+function updateSummaryUI(summary, monthFilter) {
+    document.getElementById('tableHeaderTitle').textContent = 'Attendance Ledger — ' + monthFilter;
+    document.getElementById('profileCountBadge').textContent = summary.length + ' Profiles';
+    document.getElementById('mobileProfileCountBadge').textContent = summary.length + ' Profiles';
+    
+    const tbody = document.getElementById('summaryTableBody');
+    const mobileCards = document.getElementById('mobileCardsContainer');
+    
+    if (!summary || summary.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+              <td colspan="8" class="py-16 text-center text-slate-500 dark:text-textsecondary">
+                <div class="flex flex-col items-center gap-3 max-w-sm mx-auto">
+                  <div class="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl text-primary mx-auto">
+                    <i class="bi bi-search"></i>
+                  </div>
+                  <div class="space-y-1">
+                    <h4 class="font-bold text-slate-900 dark:text-white text-base">No attendance records found</h4>
+                    <p class="text-xs text-slate-500 dark:text-textsecondary">🔍 No attendance records found for the selected filters.</p>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+            
+        mobileCards.innerHTML = `
+            <div class="card text-center p-8 text-muted text-sm" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+                <div class="flex flex-col items-center gap-3 max-w-sm mx-auto">
+                  <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xl text-primary mx-auto">
+                    <i class="bi bi-search"></i>
+                  </div>
+                  <div class="space-y-1">
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm">No attendance records found</h4>
+                    <p class="text-xs text-slate-500 dark:text-textsecondary">🔍 No attendance records found for the selected filters.</p>
+                  </div>
+                </div>
+            </div>`;
+        return;
+    }
+    
+    let tableHtml = '';
+    let cardsHtml = '';
+    
+    summary.forEach((s, idx) => {
+        const pct = s.total > 0 ? Math.round((s.present / s.total) * 100) : 0;
+        let badgeClass = 'bg-danger/10 border-danger/20 text-danger';
+        let barClass = 'bg-danger';
+        if (pct >= 80) {
+            badgeClass = 'bg-success/10 border-success/20 text-success';
+            barClass = 'bg-success shadow-glow-primary';
+        } else if (pct >= 50) {
+            badgeClass = 'bg-warning/10 border-warning/20 text-warning';
+            barClass = 'bg-warning';
+        }
+        
+        let avatarHtml = '';
+        if (s.profile_image_url) {
+            avatarHtml = `<img src="${s.profile_image_url}" class="w-[36px] h-[36px] rounded-full object-cover border border-white/10" alt="${s.name}"/>`;
+        } else {
+            const initial = (s.name || '?').charAt(0).toUpperCase();
+            avatarHtml = `<div class="w-[36px] h-[36px] rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-sm uppercase">${initial}</div>`;
+        }
+        
+        tableHtml += `
+            <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all">
+              <td class="py-4 px-6 font-mono text-xs text-textmuted">${idx + 1}</td>
+              <td class="py-4 px-6">
+                <div class="flex items-center gap-3">
+                  <div class="flex-shrink-0">${avatarHtml}</div>
+                  <div>
+                    <span class="font-semibold text-slate-900 dark:text-white block">${s.name}</span>
+                    <span class="text-xs font-mono text-slate-400 dark:text-slate-500 block">${s.employee_id || '—'}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-6 font-mono font-bold text-success">${s.present}</td>
+              <td class="py-4 px-6 font-mono font-bold text-danger">${s.absent}</td>
+              <td class="py-4 px-6 font-mono text-slate-500 dark:text-textsecondary">${s.total}</td>
+              <td class="py-4 px-6">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}">
+                  ${pct}%
+                </span>
+              </td>
+              <td class="py-4 px-6 min-w-[160px]">
+                <div class="w-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-full h-2 overflow-hidden flex">
+                  <div class="${barClass} h-full transition-all duration-500" style="width: ${pct}%"></div>
+                </div>
+              </td>
+              <td class="py-4 px-6 text-right">
+                <button onclick="openAbsentModal('${s.id}', '${s.name.replace(/'/g, "\\'")}', ${s.present}, ${s.absent}, '${monthFilter}')" class="btn-saas btn-saas-sm btn-saas-secondary" title="View Absent Days">
+                  <i class="bi bi-calendar-x"></i> View Absent Days
+                </button>
+              </td>
+            </tr>`;
+            
+        cardsHtml += `
+            <div class="card p-4 space-y-3 relative transition-all" style="border-radius:14px;border:1px solid var(--card-border);background:var(--card);">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="flex-shrink-0">${avatarHtml}</div>
+                    <div>
+                      <span style="font-weight:700;font-size:14px;color:var(--text);display:block;">${s.name}</span>
+                      <span class="text-xs font-mono text-slate-400 dark:text-slate-500 block">${s.employee_id || '—'}</span>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}">
+                    ${pct}%
+                  </span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--card-border);border-bottom:1px solid var(--card-border);font-size:12px;text-align:center;">
+                  <div>
+                    <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Present</span>
+                    <span class="font-bold text-success font-mono">${s.present}</span>
+                  </div>
+                  <div>
+                    <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Absent</span>
+                    <span class="font-bold text-danger font-mono">${s.absent}</span>
+                  </div>
+                  <div>
+                    <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:2px;">Total Marked</span>
+                    <span class="font-semibold font-mono" style="color:var(--text2);">${s.total}</span>
+                  </div>
+                </div>
+                <div style="padding-top:4px;">
+                  <span class="text-muted block text-[9px] uppercase font-bold tracking-wider" style="color:var(--text3);margin-bottom:6px;">Monthly Score Progress</span>
+                  <div class="w-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-full h-2 overflow-hidden flex">
+                    <div class="${barClass} h-full transition-all duration-500" style="width: ${pct}%"></div>
+                  </div>
+                </div>
+                <div class="pt-2">
+                  <button onclick="openAbsentModal('${s.id}', '${s.name.replace(/'/g, "\\'")}', ${s.present}, ${s.absent}, '${monthFilter}')" class="btn-saas btn-saas-sm btn-saas-secondary w-full" style="justify-content:center;">
+                    <i class="bi bi-calendar-x"></i> View Absent Days
+                  </button>
+                </div>
+            </div>`;
+    });
+    
+    tbody.innerHTML = tableHtml;
+    mobileCards.innerHTML = cardsHtml;
 }
 
 </script>
