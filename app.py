@@ -1366,11 +1366,12 @@ def mark_attendance():
         if status == 'Present':
             db.attendance.delete_one({"emp_id": emp_id_obj, "date": att_date})
         else:
-            update_data = {"status": status, "user_id": ObjectId(uid)}
-            if leave_reason:
-                update_data["leave_reason"] = leave_reason
-            if leave_note:
-                update_data["leave_note"] = leave_note
+            update_data = {
+                "status": status,
+                "user_id": ObjectId(uid),
+                "leave_reason": leave_reason or "",
+                "leave_note": leave_note or ""
+            }
                 
             db.attendance.update_one(
                 {"emp_id": emp_id_obj, "date": att_date},

@@ -194,9 +194,9 @@
           </div>
         </div>
         <div class="premium-field-group mt-4">
-          <label class="premium-label">Reason Category *</label>
-          <select id="leaveReasonCategory" class="premium-input" required>
-            <option value="">Select Reason</option>
+          <label class="premium-label">Reason Category</label>
+          <select id="leaveReasonCategory" class="premium-input">
+            <option value="">Select Reason (Optional)</option>
             <option value="Sick Leave">Sick Leave</option>
             <option value="Personal Work">Personal Work</option>
             <option value="Family Emergency">Family Emergency</option>
@@ -208,8 +208,8 @@
           </select>
         </div>
         <div class="premium-field-group mt-4">
-          <label class="premium-label">Leave Note *</label>
-          <textarea id="leaveNoteText" class="premium-input" rows="3" minlength="5" maxlength="500" placeholder="e.g. Fever and advised bed rest." required></textarea>
+          <label class="premium-label">Leave Note</label>
+          <textarea id="leaveNoteText" class="premium-input" rows="3" maxlength="500" placeholder="e.g. Fever and advised bed rest (Optional)"></textarea>
         </div>
       </div>
       <div class="premium-modal-footer">
@@ -313,9 +313,13 @@ function markAttendance(empId, status, leave_reason = null, leave_note = null) {
     if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-danger';
   }
 
-  const payload = { emp_id: empId, date: date, status: status };
-  if (leave_reason) payload.leave_reason = leave_reason;
-  if (leave_note) payload.leave_note = leave_note;
+  const payload = { 
+    emp_id: empId, 
+    date: date, 
+    status: status,
+    leave_reason: leave_reason || '',
+    leave_note: leave_note || ''
+  };
 
   fetch('{{ url_for("mark_attendance") }}', {
     method: 'POST',
