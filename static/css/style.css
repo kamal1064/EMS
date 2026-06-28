@@ -76,12 +76,22 @@
 }
 
 /* ── Base ────────────────────────────────────────── */
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 body {
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   background-color: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
   background-image:
@@ -1226,6 +1236,23 @@ body.modal-open { overflow:hidden !important; }
 
 /* ── Mobile Responsive Overrides ─────────────────── */
 @media (max-width: 767px) {
+  /* Prevent any element from exceeding phone viewport width */
+  *, *::before, *::after {
+    max-width: 100%;
+  }
+
+  .app-shell, .main-wrapper, .page-content {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .card, .glass-panel, .info-panel, .auth-card, .stat-card, .premium-modal-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   /* Shrink table padding and font size for phone viewports */
   table th, table td,
   tr td[style*="padding"],
@@ -1269,9 +1296,11 @@ body.modal-open { overflow:hidden !important; }
   }
   
   /* Shrink Saas Buttons for touch friendliness without overflow */
-  .btn-saas-md, .btn-saas-lg {
+  .btn, .btn-saas, .btn-saas-md, .btn-saas-lg {
     padding: 8px 14px !important;
     font-size: 12px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   
   /* Adjust Dashboard charts heights for phones */
