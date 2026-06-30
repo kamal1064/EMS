@@ -657,10 +657,10 @@ function markPaid(button) {
   var empId = button.dataset.empId;
   var month = button.dataset.month;
   if (!confirm('Mark salary as fully paid? This will record a final settlement advance for any remaining balance.')) return;
-  fetch('/api/salary/advance/add', {
+  fetch('/salary/mark_paid', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({record_id: recordId, amount: 999999999, payment_date: new Date().toISOString().slice(0,10), notes: 'Marked Paid'})
+    body: JSON.stringify({emp_id: empId, month: month})
   })
   .then(function(r){ return r.json(); })
   .then(function(d) {

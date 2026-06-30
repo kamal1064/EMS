@@ -2226,11 +2226,54 @@ def mark_paid():
     if not emp:
         return jsonify({'success': False, 'message': 'Unauthorized or Employee not found'}), 403
 
+    # Find the corresponding salary record
+    rec = db.salary_records.find_one({"emp_id": emp_id_obj, "month": month})
+    if not rec:
+        return jsonify({'success': False, 'message': 'Salary record not found'}), 404
+
+    # Calculate current advances
+    advances = list(db.salary_advance_payments.find({"salary_record_id": rec['_id']}))
+    total_advances = sum(a['amount'] for a in advances)
+    total_salary = float(rec.get('total_salary', 0))
+    net_payable = round(total_salary - total_advances, 2)
+
+    # Prevent double payment
+    if rec.get('payment_status') == 'Settled':
+        return jsonify({'success': False, 'message': 'Salary already settled'}), 400
+
+    # If there's a remaining balance, record a final settlement advance payment
+    if net_payable > 0:
+        db.salary_advance_payments.insert_one({
+            "salary_record_id": rec['_id'],
+            "emp_id": emp_id_obj,
+            "user_id": ObjectId(uid),
+            "month": month,
+            "amount": net_payable,
+            "payment_date": datetime.now().strftime('%Y-%m-%d'),
+            "notes": "Final Salary Settlement",
+            "is_migrated": False,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        })
+        total_advances += net_payable
+        net_payable = 0.0
+
     db.salary_records.update_one(
-        {"emp_id": emp_id_obj, "month": month},
-        {"$set": {"payment_status": "Paid", "paid_at": paid_at}}
+        {"_id": rec['_id']},
+        {"$set": {
+            "payment_status": "Settled",
+            "paid_at": paid_at,
+            "advance_amount_paid": total_advances
+        }}
     )
-    return jsonify({'success': True, 'paid_at': paid_at})
+
+    return jsonify({
+        'success': True,
+        'total_advance': total_advances,
+        'net_payable': net_payable,
+        'payment_status': 'Settled',
+        'paid_at': paid_at
+    })
 
 
 @app.route('/salary/set_advance', methods=['POST'])
