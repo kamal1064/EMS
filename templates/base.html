@@ -1068,17 +1068,72 @@
   function showLiveToast(msg,type){ showToast(msg,type); }
 
   /* ── Spinner ── */
+  var loaderTimeout = null;
+  var ignoreNextBeforeUnload = false;
+
   function setLoaderState(on){
-    var s=document.getElementById('loading-spinner');
-    if(s) s.classList.toggle('active',!!on);
+    var s = document.getElementById('loading-spinner');
+    if (!s) return;
+    
+    s.classList.toggle('active', !!on);
+    
+    if (loaderTimeout) {
+      clearTimeout(loaderTimeout);
+      loaderTimeout = null;
+    }
+    
+    if (on) {
+      // Safety net: Auto-hide the loader after 10 seconds to prevent the user from being trapped
+      loaderTimeout = setTimeout(function() {
+        console.warn('Loader safety timeout reached. Hiding spinner.');
+        s.classList.remove('active');
+      }, 10000);
+    }
   }
 
   /* ── Form submit / unload ── */
-  document.addEventListener('DOMContentLoaded',function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    // Form submits
     document.querySelectorAll('form').forEach(function(f){
-      f.addEventListener('submit',function(){ setLoaderState(true); });
+      f.addEventListener('submit', function() {
+        // Only show loader if form is valid
+        if (f.checkValidity && !f.checkValidity()) {
+          return;
+        }
+        setLoaderState(true);
+      });
     });
-    window.addEventListener('beforeunload',function(){ setLoaderState(true); });
+    
+    // Detect clicks on anchor tags to prevent showing loader on downloads or new window targets
+    document.addEventListener('click', function(e) {
+      var a = e.target.closest('a');
+      if (a) {
+        var href = a.getAttribute('href') || '';
+        var download = a.hasAttribute('download');
+        var target = a.getAttribute('target') || '';
+        
+        // If it's a download, mailto/tel link, or targets another window/tab, ignore beforeunload loader
+        if (download || href.indexOf('/export') !== -1 || href.indexOf('export_type=') !== -1 || href.startsWith('mailto:') || href.startsWith('tel:') || (target && target !== '_self')) {
+          ignoreNextBeforeUnload = true;
+          // Also immediately clear loader if it was somehow activated
+          setLoaderState(false);
+        }
+      }
+    });
+    
+    // Page show event (handles bfcache back/forward navigation)
+    window.addEventListener('pageshow', function() {
+      setLoaderState(false);
+    });
+    
+    // Beforeunload event
+    window.addEventListener('beforeunload', function() {
+      if (ignoreNextBeforeUnload) {
+        ignoreNextBeforeUnload = false;
+        return;
+      }
+      setLoaderState(true);
+    });
   });
 
 
@@ -1659,6 +1714,7 @@ function triggerExport() {
   if (start)    params.append('start_date',  start);
   if (end)      params.append('end_date',    end);
 
+  ignoreNextBeforeUnload = true;
   window.location.href = '/export?' + params.toString();
   closeGlobalModal('exportModal');
 }
