@@ -1782,10 +1782,10 @@ def part_time():
         }
         
     # Fetch all part-time advances for the user
-    all_advances = list(db.advance_payments.find({"user_id": ObjectId(uid)}))
+    all_advances = list(db.advance_payments.find({"user_id": ObjectId(uid)}, {"amount": 1, "worker_id": 1, "work_log_id": 1}))
     
     # Build log to worker mapping globally
-    all_user_logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}))
+    all_user_logs = list(db.part_time_work_logs.find({"worker_id": {"$in": worker_ids}}, {"worker_id": 1}))
     log_to_worker = {str(log['_id']): str(log['worker_id']) for log in all_user_logs}
     
     # Map each advance to its worker

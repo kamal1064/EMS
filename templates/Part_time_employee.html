@@ -486,73 +486,121 @@
               
               const fileInput = this.querySelector('input[type="file"]');
               const selectedFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+              const self = this;
               
-              const formData = new FormData(this);
-              fetch(this.action, {
-                  method: 'POST',
-                  body: formData,
-                  headers: {
-                      'Accept': 'application/json'
+              const proceedSubmit = (finalBlob) => {
+                  const formData = new FormData();
+                  formData.append('name', self.querySelector('input[name="name"]').value);
+                  if (finalBlob) {
+                      formData.append('profile_image', finalBlob, 'profile_image.jpg');
                   }
-              })
-              .then(response => {
-                  if (response.redirected) {
-                      // Fallback if backend redirected
-                      window.location.href = response.url;
-                      return null;
-                  }
-                  return response.json();
-              })
-              .then(data => {
-                  if (!data) return;
-                  if (data.success) {
-                      showToast('Worker registered successfully!', 'success');
-                      this.reset();
-                      
-                      // Fetch the new card HTML
-                      fetch('/api/part-time/worker/' + data.worker_id + '/card_html')
-                        .then(r => r.json())
-                        .then(htmlData => {
-                            if (htmlData.success) {
-                                const grid = document.getElementById('worker-dashboard-grid');
-                                grid.insertAdjacentHTML('afterbegin', htmlData.html);
-                                
-                                // Optimistically render the profile image locally
-                                if (selectedFile) {
-                                    const localUrl = URL.createObjectURL(selectedFile);
-                                    const newCard = grid.firstElementChild;
-                                    if (newCard) {
-                                        const groupContainer = newCard.querySelector('.cursor-pointer.group');
-                                        if (groupContainer) {
-                                            const placeholderDiv = groupContainer.querySelector('div.w-12.h-12');
-                                            if (placeholderDiv) {
-                                                const img = document.createElement('img');
-                                                img.src = localUrl;
-                                                img.className = 'w-12 h-12 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/10';
-                                                placeholderDiv.replaceWith(img);
+                  
+                  fetch(self.action, {
+                      method: 'POST',
+                      body: formData,
+                      headers: {
+                          'Accept': 'application/json'
+                      }
+                  })
+                  .then(response => {
+                      if (response.redirected) {
+                          window.location.href = response.url;
+                          return null;
+                      }
+                      return response.json();
+                  })
+                  .then(data => {
+                      if (!data) return;
+                      if (data.success) {
+                          showToast('Worker registered successfully!', 'success');
+                          self.reset();
+                          
+                          // Fetch the new card HTML
+                          fetch('/api/part-time/worker/' + data.worker_id + '/card_html')
+                            .then(r => r.json())
+                            .then(htmlData => {
+                                if (htmlData.success) {
+                                    const grid = document.getElementById('worker-dashboard-grid');
+                                    grid.insertAdjacentHTML('afterbegin', htmlData.html);
+                                    
+                                    // optimistically render the profile image locally
+                                    if (selectedFile) {
+                                        const localUrl = URL.createObjectURL(selectedFile);
+                                        const newCard = grid.firstElementChild;
+                                        if (newCard) {
+                                            const groupContainer = newCard.querySelector('.cursor-pointer.group');
+                                            if (groupContainer) {
+                                                const placeholderDiv = groupContainer.querySelector('div.w-12.h-12');
+                                                if (placeholderDiv) {
+                                                    const img = document.createElement('img');
+                                                    img.src = localUrl;
+                                                    img.className = 'w-12 h-12 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/10';
+                                                    placeholderDiv.replaceWith(img);
+                                                }
                                             }
                                         }
                                     }
+                                    
+                                    // Re-run search filter if active
+                                    if (typeof filterDashboard === 'function') {
+                                        filterDashboard();
+                                    }
                                 }
-                                
-                                // Re-run search filter if active
-                                if (typeof filterDashboard === 'function') {
-                                    filterDashboard(); // re-evaluates input value internally
-                                }
-                            }
-                        });
-                  } else {
-                      showToast(data.error || 'Failed to register worker', 'danger');
-                  }
-              })
-              .catch(err => {
-                  console.error(err);
-                  showToast('Error registering worker', 'danger');
-              })
-              .finally(() => {
-                  btn.innerHTML = originalHtml;
-                  btn.disabled = false;
-              });
+                            });
+                      } else {
+                          showToast(data.error || 'Failed to register worker', 'danger');
+                      }
+                  })
+                  .catch(err => {
+                      console.error(err);
+                      showToast('Error registering worker', 'danger');
+                  })
+                  .finally(() => {
+                      btn.innerHTML = originalHtml;
+                      btn.disabled = false;
+                  });
+              };
+
+              if (selectedFile) {
+                  const reader = new FileReader();
+                  reader.readAsDataURL(selectedFile);
+                  reader.onload = function(event) {
+                      const img = new Image();
+                      img.src = event.target.result;
+                      img.onload = function() {
+                          const canvas = document.createElement('canvas');
+                          const maxDim = 200;
+                          let width = img.width;
+                          let height = img.height;
+                          if (width > height) {
+                              if (width > maxDim) {
+                                  height = Math.round((height * maxDim) / width);
+                                  width = maxDim;
+                              }
+                          } else {
+                              if (height > maxDim) {
+                                  width = Math.round((width * maxDim) / height);
+                                  height = maxDim;
+                              }
+                          }
+                          canvas.width = width;
+                          canvas.height = height;
+                          const ctx = canvas.getContext('2d');
+                          ctx.drawImage(img, 0, 0, width, height);
+                          canvas.toBlob(function(blob) {
+                              proceedSubmit(blob);
+                          }, 'image/jpeg', 0.8);
+                      };
+                      img.onerror = function() {
+                          proceedSubmit(null);
+                      };
+                  };
+                  reader.onerror = function() {
+                      proceedSubmit(null);
+                  };
+              } else {
+                  proceedSubmit(null);
+              }
           });
       }
   });

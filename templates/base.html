@@ -1095,12 +1095,15 @@
   document.addEventListener('DOMContentLoaded', function(){
     // Form submits
     document.querySelectorAll('form').forEach(function(f){
-      f.addEventListener('submit', function() {
+      f.addEventListener('submit', function(e) {
         // Only show loader if form is valid
         if (f.checkValidity && !f.checkValidity()) {
           return;
         }
-        setLoaderState(true);
+        setTimeout(function() {
+          if (e.defaultPrevented) return;
+          setLoaderState(true);
+        }, 0);
       });
     });
     
