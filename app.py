@@ -28,6 +28,12 @@ import secrets
 import os
 import csv
 import io
+try:
+    import dns.resolver
+    dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+    dns.resolver.default_resolver.nameservers = ['8.8.8.8', '8.8.4.4', '1.1.1.1']
+except Exception:
+    pass
 import calendar
 import bcrypt
 import logging
@@ -1992,22 +1998,42 @@ def add_part_time_work():
     return redirect(url_for('part_time'))
 
 
+def async_upload_avatar_to_cloudinary(worker_id_obj, file_bytes, filename):
+    import io
+    try:
+        file_like = io.BytesIO(file_bytes)
+        file_like.name = filename
+        file_like.filename = filename
+        p_url = upload_avatar_to_cloudinary(file_like)
+        if p_url:
+            db.part_time_workers.update_one(
+                {"_id": worker_id_obj},
+                {"$set": {"profile_image_url": p_url}}
+            )
+            app.logger.info(f"Async Cloudinary upload complete for worker {worker_id_obj}: {p_url}")
+    except Exception as e:
+        app.logger.error(f"Async Cloudinary upload failed for worker {worker_id_obj}: {e}")
+
+
 @app.route('/part-time/workers/add', methods=['POST'])
 @limiter.limit("20 per minute")
 @login_required
 def add_part_time_worker():
+    import threading
     uid = get_current_user_id()
     name = request.form.get('name', '').strip()
     if not name:
         return redirect(url_for('part_time'))
     
-    profile_image_url = ""
+    file_bytes = None
+    filename = ""
     if 'profile_image' in request.files and request.files['profile_image'].filename != '':
+        f = request.files['profile_image']
+        filename = f.filename
         try:
-            p_url = upload_avatar_to_cloudinary(request.files['profile_image'])
-            if p_url: profile_image_url = p_url
+            file_bytes = f.read()
         except Exception as e:
-            flash(str(e), "error")
+            app.logger.error(f"Failed to read upload file bytes: {e}")
 
     # Generate unique worker ID
     wrk_id_str = generate_worker_id()
@@ -2015,14 +2041,27 @@ def add_part_time_worker():
     worker_doc = {
         "worker_id": wrk_id_str,
         "name": name,
-        "profile_image_url": profile_image_url,
+        "profile_image_url": "",
         "user_id": ObjectId(uid),
         "created_at": datetime.now().isoformat()
     }
     result = db.part_time_workers.insert_one(worker_doc)
+    worker_id_obj = result.inserted_id
+    
+    if file_bytes:
+        threading.Thread(
+            target=async_upload_avatar_to_cloudinary,
+            args=(worker_id_obj, file_bytes, filename),
+            daemon=True
+        ).start()
     
     if request.headers.get('Accept') and 'application/json' in request.headers.get('Accept'):
-        return jsonify({"success": True, "worker_id": str(result.inserted_id)})
+        return jsonify({
+            "success": True, 
+            "worker_id": str(worker_id_obj),
+            "worker_id_str": wrk_id_str,
+            "name": name
+        })
         
     return redirect(url_for('part_time'))
 

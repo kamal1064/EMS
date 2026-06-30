@@ -484,6 +484,9 @@
               btn.innerHTML = '<div class="spinner-border text-white inline-block w-4 h-4 border-2 rounded-full animate-spin border-t-transparent mr-2"></div> Registering...';
               btn.disabled = true;
               
+              const fileInput = this.querySelector('input[type="file"]');
+              const selectedFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+              
               const formData = new FormData(this);
               fetch(this.action, {
                   method: 'POST',
@@ -513,6 +516,24 @@
                             if (htmlData.success) {
                                 const grid = document.getElementById('worker-dashboard-grid');
                                 grid.insertAdjacentHTML('afterbegin', htmlData.html);
+                                
+                                // Optimistically render the profile image locally
+                                if (selectedFile) {
+                                    const localUrl = URL.createObjectURL(selectedFile);
+                                    const newCard = grid.firstElementChild;
+                                    if (newCard) {
+                                        const groupContainer = newCard.querySelector('.cursor-pointer.group');
+                                        if (groupContainer) {
+                                            const placeholderDiv = groupContainer.querySelector('div.w-12.h-12');
+                                            if (placeholderDiv) {
+                                                const img = document.createElement('img');
+                                                img.src = localUrl;
+                                                img.className = 'w-12 h-12 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/10';
+                                                placeholderDiv.replaceWith(img);
+                                            }
+                                        }
+                                    }
+                                }
                                 
                                 // Re-run search filter if active
                                 if (typeof filterDashboard === 'function') {
