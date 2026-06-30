@@ -13,11 +13,11 @@
 
 {% block content %}
 <!-- ── Date Filter Bar ── -->
-<div class="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
   <form method="GET" class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1">
     <div class="input-icon-wrap" style="flex:1; max-width: 300px; position:relative;">
       <i class="bi bi-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3);"></i>
-      <input type="text" name="q" placeholder="Search employee..." value="{{ search or '' }}" class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 w-full" style="padding-left:36px;"/>
+      <input type="text" name="q" placeholder="Search employee..." value="{{ search or '' }}" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[var(--radius-sm)] px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 w-full" style="padding-left:36px;"/>
     </div>
     
     <label class="text-xs font-bold text-slate-500 dark:text-textsecondary tracking-wider uppercase flex items-center gap-2">
@@ -25,7 +25,7 @@
       <span>Date:</span>
     </label>
     <input type="date" name="date" value="{{ selected_date }}" onchange="setLoaderState(true); this.form.submit();"
-           class="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono"/>
+           class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[var(--radius-sm)] px-4 py-2 text-sm text-slate-800 dark:text-white outline-none focus:border-primary/50 font-mono"/>
            
     <button type="submit" class="btn-saas btn-saas-sm btn-saas-primary">Search</button>
     <a href="{{ url_for('attendance') }}" class="btn-saas btn-saas-sm btn-saas-secondary">
@@ -43,12 +43,12 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 desktop-only">
   {% for e in employees %}
   {% set status = att_map.get(e.id, 'Present') %}
-  <div class="glass-panel p-5 space-y-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:hover:shadow-2xl relative group" id="card-{{ e.id }}">
+  <div class="card card-hover p-5 space-y-4 flex flex-col justify-between transition-all relative group" id="card-{{ e.id }}">
     <div class="space-y-3">
       <!-- Employee Profile Header -->
       <div class="flex items-center gap-3">
         <div class="flex-shrink-0">
-          {{ render_avatar(e.name, e.get('profile_image_url'), '40px', 'shadow-sm group-hover:scale-105 transition-transform') }}
+          {{ render_avatar(e.name, e.get('profile_image_url'), '40px', 'group-hover:scale-[1.02] transition-transform') }}
         </div>
         <div class="min-w-0">
           <h4 class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ e.name }}</h4>
@@ -58,9 +58,8 @@
 
       <!-- Badge Status Pill -->
       <div class="pt-1">
-        <span id="badge-{{ e.id }}" 
-              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border transition-all {% if status == 'Present' %}bg-success/15 border-success/30 text-success{% else %}bg-danger/15 border-danger/30 text-danger{% endif %}">
-          <span class="w-1.5 h-1.5 rounded-full {% if status == 'Present' %}bg-success{% else %}bg-danger{% endif %}"></span>
+        <span id="badge-{{ e.id }}" class="badge {% if status == 'Present' %}badge-success{% else %}badge-danger{% endif %}">
+          <span class="badge-dot" style="background:{% if status == 'Present' %}var(--success){% else %}var(--danger){% endif %};"></span>
           <span>{{ status }}</span>
         </span>
       </div>
@@ -86,7 +85,7 @@
   </div>
   {% else %}
   <div class="col-span-full">
-    <div class="glass-panel text-center p-12 text-slate-500 dark:text-textsecondary max-w-md mx-auto space-y-4">
+    <div class="card text-center p-12 text-slate-500 dark:text-textsecondary max-w-md mx-auto space-y-4">
       <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-center text-2xl text-slate-400 dark:text-textmuted mx-auto">
         <i class="bi bi-people"></i>
       </div>
@@ -94,7 +93,7 @@
         <h4 class="font-bold text-slate-900 dark:text-white text-base">Roster database is vacant</h4>
         <p class="text-xs text-slate-500 dark:text-textsecondary mt-1">Please configure full-time salaried members inside the Directory index before tracking attendance.</p>
       </div>
-      <a href="{{ url_for('employees') }}" class="inline-flex px-4 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-glow-primary transition-all">
+      <a href="{{ url_for('employees') }}" class="btn-saas btn-saas-md btn-saas-primary">
         Go to Directory
       </a>
     </div>
@@ -282,15 +281,15 @@ function markAttendance(empId, status, leave_reason = null, leave_note = null) {
   // Optimistic UI updates (Desktop)
   if (status === 'Present') {
     if (badge) {
-      badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-success/15 border-success/30 text-success';
-      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-success"></span><span>Present</span>';
+      badge.className = 'badge badge-success';
+      badge.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span><span>Present</span>';
     }
     if (btnPresent) btnPresent.className = 'btn-saas btn-saas-sm btn-saas-success';
     if (btnAbsent) btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
   } else {
     if (badge) {
-      badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border bg-danger/15 border-danger/30 text-danger';
-      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-danger"></span><span>Absent</span>';
+      badge.className = 'badge badge-danger';
+      badge.innerHTML = '<span class="badge-dot" style="background:var(--danger);"></span><span>Absent</span>';
     }
     if (btnPresent) btnPresent.className = 'btn-saas btn-saas-sm btn-saas-secondary';
     if (btnAbsent) btnAbsent.className = 'btn-saas btn-saas-sm btn-saas-danger';
@@ -300,14 +299,14 @@ function markAttendance(empId, status, leave_reason = null, leave_note = null) {
   if (status === 'Present') {
     if (badgeMob) {
       badgeMob.className = 'badge badge-success';
-      badgeMob.innerText = 'Present';
+      badgeMob.innerHTML = '<span class="badge-dot" style="background:var(--success);"></span><span>Present</span>';
     }
     if (btnPresentMob) btnPresentMob.className = 'btn-saas btn-saas-success';
     if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-secondary';
   } else {
     if (badgeMob) {
       badgeMob.className = 'badge badge-danger';
-      badgeMob.innerText = 'Absent';
+      badgeMob.innerHTML = '<span class="badge-dot" style="background:var(--danger);"></span><span>Absent</span>';
     }
     if (btnPresentMob) btnPresentMob.className = 'btn-saas btn-saas-secondary';
     if (btnAbsentMob) btnAbsentMob.className = 'btn-saas btn-saas-danger';

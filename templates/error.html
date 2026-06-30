@@ -1,82 +1,231 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ title or "Error" }} — Employee Management System</title>
-  <!-- Google Fonts -->
+  <title>{{ title or "Error" }} — WorkNest EMS</title>
+  <!-- Inter Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com" nonce="{{ csp_nonce() }}"></script>
-  <script nonce="{{ csp_nonce() }}">
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-            outfit: ['Outfit', 'sans-serif'],
-          },
-          colors: {
-            primary: '#3b82f6',
-            danger: '#f43f5e',
-          }
-        }
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #ffffff;
+      --card:      #ffffff;
+      --card-border: #e5e7eb;
+      --text:      #1a1a1a;
+      --text2:     #6b7280;
+      --text3:     #9ca3af;
+      --primary:   #4f46e5;
+      --primary-lo:rgba(79,70,229,0.08);
+      --danger:    #ef4444;
+      --danger-lo: rgba(239,68,68,0.08);
+      --radius:    8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #09090b;
+        --card:       #18181b;
+        --card-border:#27272a;
+        --text:       #fafafa;
+        --text2:      #a1a1aa;
+        --text3:      #71717a;
+        --primary:    #6366f1;
+        --primary-lo: rgba(99,102,241,0.15);
+        --danger-lo:  rgba(239,68,68,0.15);
       }
     }
-  </script>
-  <style>
+
     body {
-      background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 40%),
-                  radial-gradient(circle at bottom left, rgba(244, 63, 94, 0.05), transparent 40%),
-                  #0b0f19;
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .error-wrapper {
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    /* Brand */
+    .error-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+    }
+    .error-brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .error-brand-name {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    /* Code */
+    .error-code {
+      font-size: 96px;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      color: var(--primary);
+    }
+
+    /* Card */
+    .error-card {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .error-icon-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: var(--danger-lo);
+      border: 1px solid rgba(239,68,68,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--danger);
+      margin: 0 auto 4px;
+    }
+
+    .error-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .error-message {
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.65;
+    }
+
+    /* Buttons */
+    .error-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s ease;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--text3); background: var(--primary-lo); }
+
+    /* Footer */
+    .error-footer {
+      font-size: 11px;
+      color: var(--text3);
+      font-family: monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
   </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 text-slate-100 selection:bg-primary/30 selection:text-white">
+<body>
 
-  <div class="w-full max-w-lg text-center space-y-8 animate-fade-in">
-    <!-- Icon & Status Code -->
-    <div class="relative inline-flex items-center justify-center">
-      <div class="absolute inset-0 bg-primary/20 rounded-full blur-3xl w-48 h-48 mx-auto -z-10"></div>
-      <div class="text-[120px] font-black font-outfit tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500 leading-none">
-        {{ code or 500 }}
-      </div>
+  <div class="error-wrapper">
+
+    <!-- Brand -->
+    <div class="error-brand">
+      <div class="error-brand-icon"><i class="bi bi-people-fill"></i></div>
+      <span class="error-brand-name">WorkNest EMS</span>
     </div>
 
-    <!-- Error Details Card -->
-    <div class="bg-[#151b2c]/80 backdrop-blur-xl border border-white/5 p-8 md:p-10 rounded-3xl shadow-2xl space-y-6">
-      <h1 class="text-2xl font-bold font-outfit text-white tracking-tight">
-        {{ title or "An Error Occurred" }}
-      </h1>
-      
-      <p class="text-slate-400 text-base leading-relaxed max-w-md mx-auto">
-        {{ message or "An unexpected issue has occurred. The administration team has been notified." }}
-      </p>
+    <!-- Code -->
+    <div class="error-code">{{ code or 500 }}</div>
 
-      <!-- Action Buttons -->
-      <div class="pt-4 flex flex-col sm:flex-row gap-4 justify-center items-center">
-        <a href="/dashboard" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-primary/25 hover:shadow-primary/35 flex items-center justify-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-          </svg>
-          Go to Dashboard
+    <!-- Card -->
+    <div class="error-card">
+      <div class="error-icon-wrap">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+      <div class="error-title">{{ title or "An Error Occurred" }}</div>
+      <div class="error-message">
+        {{ message or "An unexpected issue has occurred. Please try again or return to the dashboard." }}
+      </div>
+      <div class="error-actions">
+        <a href="/dashboard" class="btn-primary">
+          <i class="bi bi-house"></i> Go to Dashboard
         </a>
-        <button onclick="window.history.back()" class="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-          </svg>
-          Go Back
+        <button onclick="window.history.back()" class="btn-secondary">
+          <i class="bi bi-arrow-left"></i> Go Back
         </button>
       </div>
     </div>
 
     <!-- Footer -->
-    <div class="text-slate-600 text-xs font-mono tracking-wider uppercase">
-      Employee Management System &copy; 2026
-    </div>
+    <div class="error-footer">WorkNest EMS &copy; 2026</div>
+
   </div>
 
 </body>

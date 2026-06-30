@@ -24,13 +24,13 @@
     <form method="GET" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div class="input-icon-wrap" style="position:relative;flex:1;min-width:200px;">
         <i class="bi bi-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3);"></i>
-        <input type="text" name="q" placeholder="Search employee..." value="{{ search or '' }}" style="font-size:13px;padding:6px 12px 6px 36px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;width:100%;"/>
+        <input type="text" name="q" placeholder="Search employee..." value="{{ search or '' }}" style="font-size:13px;padding:6px 12px 6px 36px;border-radius:var(--radius-sm);border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;width:100%;"/>
       </div>
       <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap;">
         <i class="bi bi-calendar-month" style="color:var(--primary);"></i> Payroll Month:
       </label>
       <input type="month" name="month" value="{{ month_filter }}"
-             style="font-size:13px;padding:6px 12px;border-radius:10px;border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;font-family:monospace;"/>
+             style="font-size:13px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);outline:none;font-family:monospace;"/>
       <button type="submit" class="btn-saas btn-saas-md btn-saas-primary">Load</button>
     </form>
   </div>
@@ -108,11 +108,11 @@
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button onclick="openAddAdvance('{{ s.record_id }}','{{ s.name }}','{{ s.final_salary }}')"
-                      class="btn-saas btn-saas-sm" style="font-size:11px;padding:4px 8px;border-radius:8px;color:var(--primary);border:1px solid var(--primary);background:transparent;">
+                      class="btn-saas btn-saas-sm btn-saas-secondary" style="color:var(--primary);border-color:var(--primary-lo);">
                 <i class="bi bi-plus-circle"></i> Add
               </button>
               <button onclick="openHistory('{{ s.record_id }}','{{ s.name }}')"
-                      class="btn-saas btn-saas-sm" style="font-size:11px;padding:4px 8px;border-radius:8px;color:var(--text2);border:1px solid var(--card-border);background:transparent;">
+                      class="btn-saas btn-saas-sm btn-saas-secondary">
                 <i class="bi bi-clock-history"></i> History
               </button>
             </div>
@@ -242,11 +242,11 @@
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px dashed var(--card-border);">
       <div style="display:flex;gap:6px;">
         <button onclick="openAddAdvance('{{ s.record_id }}','{{ s.name }}','{{ s.final_salary }}')"
-                style="font-size:11px;padding:4px 10px;border-radius:8px;color:var(--primary);border:1px solid var(--primary);background:transparent;cursor:pointer;">
+                class="btn-saas btn-saas-xs btn-saas-secondary" style="color:var(--primary);border-color:var(--primary-lo);">
           <i class="bi bi-plus-circle"></i> Add Advance
         </button>
         <button onclick="openHistory('{{ s.record_id }}','{{ s.name }}')"
-                style="font-size:11px;padding:4px 10px;border-radius:8px;color:var(--text2);border:1px solid var(--card-border);background:transparent;cursor:pointer;">
+                class="btn-saas btn-saas-xs btn-saas-secondary">
           <i class="bi bi-clock-history"></i>
         </button>
       </div>

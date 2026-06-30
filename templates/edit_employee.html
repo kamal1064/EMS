@@ -11,45 +11,44 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto glass-panel overflow-hidden">
-  <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center gap-2">
-    <i class="bi bi-pencil-square text-primary"></i>
-    <h3 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Modify Employee Fields</h3>
+<div class="max-w-3xl mx-auto card overflow-hidden">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-pencil-square"></i> Modify Employee Fields</span>
   </div>
 
   <form method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div class="space-y-1.5">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Employee ID</label>
-        <div class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-sm font-mono font-bold text-primary cursor-not-allowed">
+        <label class="premium-label">Employee ID</label>
+        <div style="width:100%;background:var(--input-bg);border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;font-family:monospace;font-weight:700;color:var(--primary);cursor:not-allowed;">
           {{ emp.get('employee_id', '—') }}
         </div>
       </div>
       <div class="space-y-1.5">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Full Name *</label>
+        <label class="premium-label">Full Name *</label>
         <input type="text" name="name" value="{{ emp['name'] }}" required
                class="form-input"/>
       </div>
       <div class="space-y-1.5">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Phone Number</label>
+        <label class="premium-label">Phone Number</label>
         <input type="text" name="phone" value="{{ emp['phone'] or '' }}" placeholder="Enter phone"
                class="form-input"/>
       </div>
       <div class="space-y-1.5 md:col-span-2">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Profile Picture (Leave empty to keep current)</label>
+        <label class="premium-label">Profile Picture (Leave empty to keep current)</label>
         <input type="file" name="profile_image" class="form-input" accept="image/png, image/jpeg, image/webp"/>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
       <div class="space-y-1.5">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Age</label>
+        <label class="premium-label">Age</label>
         <input type="number" name="age" value="{{ emp['age'] }}" min="16" max="80"
                class="form-input"/>
       </div>
 
       <div class="space-y-1.5">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Gender</label>
+        <label class="premium-label">Gender</label>
         <select name="gender" class="form-input">
           <option value="Male" {% if emp['gender'] == 'Male' %}selected{% endif %}>Male</option>
           <option value="Female" {% if emp['gender'] == 'Female' %}selected{% endif %}>Female</option>
@@ -58,13 +57,13 @@
       </div>
 
       <div class="space-y-1.5">
-        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">Monthly Salary (₹)</label>
+        <label class="premium-label">Monthly Salary (₹)</label>
         <input type="number" name="salary" value="{{ emp['salary'] }}" step="0.01" required
                class="form-input"/>
       </div>
     </div>
 
-    <div class="pt-4 border-t border-slate-200 dark:border-white/5 flex items-center justify-end gap-3">
+    <div class="pt-4 border-t flex items-center justify-end gap-3" style="border-color:var(--card-border);">
       <a href="{{ url_for('employees') }}" class="btn-saas btn-saas-md btn-saas-secondary">
         Cancel
       </a>

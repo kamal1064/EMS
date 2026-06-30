@@ -158,18 +158,18 @@
 <script nonce="{{ csp_nonce() }}">
   var isDark = document.documentElement.classList.contains('dark');
   var gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-  var textColor = isDark ? '#94a3b8' : '#64748b';
-  var bgTooltip  = isDark ? '#111827' : '#fff';
-  var borderTooltip = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  var textColor = isDark ? '#a1a1aa' : '#6b7280';
+  var bgTooltip  = isDark ? '#18181b' : '#fff';
+  var borderTooltip = isDark ? '#27272a' : '#e5e7eb';
+  var accentColor = isDark ? '#6366f1' : '#4f46e5';
+  var hoverAccent = isDark ? '#4f46e5' : '#4338ca';
+  
   Chart.defaults.color = textColor;
-  Chart.defaults.font.family = 'Plus Jakarta Sans';
+  Chart.defaults.font.family = 'Inter, sans-serif';
 
   // Salary Bar Chart
   var salaryData = {{ salary_data | tojson }};
   var salaryCtx = document.getElementById('salaryBarChart').getContext('2d');
-  var salGrad = salaryCtx.createLinearGradient(0,0,0,260);
-  salGrad.addColorStop(0,'rgba(139,92,246,0.85)');
-  salGrad.addColorStop(1,'rgba(59,130,246,0.15)');
   new Chart(salaryCtx,{
     type:'bar',
     data:{
@@ -177,15 +177,15 @@
       datasets:[{
         label:'Monthly Salary (₹)',
         data:salaryData.map(function(d){return d.salary;}),
-        backgroundColor:salGrad,
-        borderColor:'#8b5cf6',borderWidth:1.5,
-        borderRadius:8,barThickness:24,
-        hoverBackgroundColor:'#3b82f6'
+        backgroundColor:accentColor,
+        borderColor:accentColor,borderWidth:1,
+        borderRadius:4,barThickness:20,
+        hoverBackgroundColor:hoverAccent
       }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:bgTooltip,titleColor:textColor,bodyColor:'#3b82f6',borderWidth:1,borderColor:borderTooltip,padding:10,cornerRadius:8,bodyFont:{family:'JetBrains Mono',weight:'bold'}}},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:bgTooltip,titleColor:textColor,bodyColor:accentColor,borderWidth:1,borderColor:borderTooltip,padding:10,cornerRadius:6,bodyFont:{family:'JetBrains Mono',weight:'bold'}}},
       scales:{y:{beginAtZero:true,grid:{color:gridColor},border:{dash:[4,4]}},x:{grid:{display:false}}}
     }
   });
@@ -197,8 +197,8 @@
     var ctx=document.getElementById('attPieChart').getContext('2d');
     pieChart=new Chart(ctx,{
       type:'doughnut',
-      data:{labels:['Present','Absent'],datasets:[{data:[present,absent],backgroundColor:['#10b981','#ef4444'],hoverBackgroundColor:['#059669','#dc2626'],borderWidth:4,borderColor:bgTooltip,hoverOffset:6}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{backgroundColor:bgTooltip,padding:10,cornerRadius:8,borderWidth:1,borderColor:borderTooltip}}}
+      data:{labels:['Present','Absent'],datasets:[{data:[present,absent],backgroundColor:['#10b981','#ef4444'],hoverBackgroundColor:['#059669','#dc2626'],borderWidth:1,borderColor:borderTooltip,hoverOffset:4}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'75%',plugins:{legend:{display:false},tooltip:{backgroundColor:bgTooltip,padding:10,cornerRadius:6,borderWidth:1,borderColor:borderTooltip}}}
     });
     document.getElementById('presentCount').textContent=present;
     document.getElementById('absentCount').textContent=absent;
@@ -230,10 +230,10 @@
         empAttChart=new Chart(ctx,{
           type:'bar',
           data:{labels:d.labels,datasets:[
-            {label:'Present',data:d.present,backgroundColor:'rgba(16,185,129,0.7)',borderColor:'#10b981',borderWidth:1,borderRadius:6,barPercentage:0.5},
-            {label:'Absent', data:d.absent, backgroundColor:'rgba(239,68,68,0.7)', borderColor:'#ef4444',borderWidth:1,borderRadius:6,barPercentage:0.5}
+            {label:'Present',data:d.present,backgroundColor:'rgba(16,185,129,0.85)',borderColor:'#10b981',borderWidth:1,borderRadius:4,barPercentage:0.4},
+            {label:'Absent', data:d.absent, backgroundColor:'rgba(239,68,68,0.85)', borderColor:'#ef4444',borderWidth:1,borderRadius:4,barPercentage:0.4}
           ]},
-          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},tooltip:{backgroundColor:bgTooltip,padding:10,cornerRadius:8,borderWidth:1,borderColor:borderTooltip}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:gridColor},border:{dash:[4,4]}}}}
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},tooltip:{backgroundColor:bgTooltip,padding:10,cornerRadius:6,borderWidth:1,borderColor:borderTooltip}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:gridColor},border:{dash:[4,4]}}}}
         });
       }).catch(function(){setLoaderState(false);});
   }

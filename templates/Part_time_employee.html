@@ -21,7 +21,7 @@
 <!-- SECTION 1 & 2: Registration -->
 <div class="flex justify-start mb-8">
   <!-- Quick Add Worker Panel -->
-  <div class="max-w-md w-full glass-panel p-6 flex flex-col justify-between" style="border-radius:16px;">
+  <div class="max-w-md w-full card p-6 flex flex-col justify-between" style="border-radius:16px;">
     <div>
       <div class="flex items-center gap-2 pb-4 border-b border-slate-200 dark:border-white/5 mb-6">
         <div class="w-8 h-8 rounded-lg bg-purpleaccent/10 flex items-center justify-center text-purpleaccent">
@@ -43,7 +43,7 @@
           <input type="file" name="profile_image" accept="image/png, image/jpeg, image/webp" class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"/>
         </div>
         <div class="pt-2">
-          <button id="addWorkerSubmitBtn" type="submit" class="w-full btn-saas btn-saas-md bg-purpleaccent hover:bg-purpleaccent/90 text-white shadow-sm hover:shadow-glow-purple flex items-center justify-center gap-1.5 focus:outline-none min-h-[44px]">
+          <button id="addWorkerSubmitBtn" type="submit" class="w-full btn-saas btn-saas-md btn-saas-primary flex items-center justify-center gap-1.5 focus:outline-none min-h-[44px]">
             <i class="bi bi-person-plus"></i>
             <span>Register Slab Worker</span>
           </button>
@@ -57,7 +57,7 @@
 <div class="mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
   <div class="flex items-center gap-3">
     <h2 class="text-xl font-black text-slate-900 dark:text-white">{% if show_all_workers %}All Workers Directory{% else %}Worker Dashboard{% endif %}</h2>
-    <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-extrabold font-mono">{{ worker_history|length }} Workers</span>
+    <span class="badge badge-primary font-mono">{{ worker_history|length }} Workers</span>
   </div>
   <div class="worker-search-wrapper">
     <i class="bi bi-search worker-search-icon"></i>
@@ -71,7 +71,7 @@
 <!-- Dashboard Grid -->
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="worker-dashboard-grid">
   {% for w in worker_history %}
-  <div class="dashboard-worker-card glass-panel flex flex-col rounded-2xl overflow-hidden transition-all hover:shadow-lg border border-slate-200 dark:border-white/10" data-name="{{ w['name']|lower }}" data-id="{{ w['worker_id_str']|lower }}" data-clients="{{ w['clients']|join(' ')|lower }}">
+  <div class="dashboard-worker-card card flex flex-col rounded-2xl overflow-hidden transition-all card-hover" data-name="{{ w['name']|lower }}" data-id="{{ w['worker_id_str']|lower }}" data-clients="{{ w['clients']|join(' ')|lower }}">
     <!-- Card Header / Identity -->
     <div class="p-5 flex items-start justify-between border-b border-slate-100 dark:border-white/5 relative">
       <div class="flex items-center gap-3 cursor-pointer group" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}', '{{ w['earnings'] }}', '{{ w['advances'] }}', '{{ w['balance'] }}', '{{ w['jobs'] }}', '{{ w['slabs'] }}')">
@@ -106,7 +106,7 @@
     </div>
 
     <!-- Activity & Status -->
-    <div class="p-4 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
+    <div class="p-4 flex items-center justify-between" style="background:var(--bg2);">
       <div class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
         <i class="bi bi-briefcase text-slate-400"></i>
         <span><span id="card-jobs-{{ w['worker_id'] }}">{{ w['jobs'] }}</span> Jobs (<span id="card-slabs-{{ w['worker_id'] }}">{{ w['slabs'] }}</span> Slabs)</span>
@@ -119,30 +119,30 @@
     </div>
 
     <!-- Actions -->
-    <div class="p-4 grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-      <button data-action="log-work" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold text-[11px] rounded-xl transition-colors">
+    <div class="p-4 grid grid-cols-3 gap-2 border-t" style="border-color:var(--card-border);background:var(--bg2);">
+      <button data-action="log-work" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm btn-saas-primary font-semibold text-[11px]">
         <i class="bi bi-file-earmark-plus mr-1"></i> Log Work
       </button>
-      <button data-action="advance" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" data-worker-id-str="{{ w['worker_id_str']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white border border-transparent dark:border-white/5 font-semibold text-[11px] rounded-xl transition-colors">
+      <button data-action="advance" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" data-worker-id-str="{{ w['worker_id_str']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm btn-saas-secondary font-semibold text-[11px]">
         <i class="bi bi-cash-coin mr-1 opacity-70 text-warning"></i> Advance
       </button>
-      <button data-action="toggle-ledger" data-worker-id="{{ w['worker_id'] }}" id="toggle-ledger-btn-{{ w['worker_id'] }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary/10 hover:bg-primary/20 text-primary border border-primary/10 font-bold text-[11px] rounded-xl transition-all">
+      <button data-action="toggle-ledger" data-worker-id="{{ w['worker_id'] }}" id="toggle-ledger-btn-{{ w['worker_id'] }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm btn-saas-secondary font-bold text-[11px]" style="color:var(--primary);border-color:var(--primary-lo);">
         <span class="flex items-center justify-center gap-1 pointer-events-none">Ledger <i class="bi bi-chevron-down text-[9px] ml-0.5 transition-transform" id="chevron-{{ w['worker_id'] }}"></i></span>
       </button>
     </div>
 
     <!-- Collapsible Ledger Accordion -->
-    <div id="ledger-{{ w['worker_id'] }}" class="hidden overflow-hidden bg-white dark:bg-[#1f2937] border-t border-slate-200 dark:border-white/10">
-      <div class="p-4 bg-slate-50 dark:bg-white/[0.02] flex items-center justify-between border-b border-slate-100 dark:border-white/5">
-        <span class="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider"><i class="bi bi-journal-text mr-1 text-primary"></i> Work Ledger</span>
+    <div id="ledger-{{ w['worker_id'] }}" class="hidden overflow-hidden border-t" style="background:var(--card);border-color:var(--card-border);">
+      <div class="p-4 flex items-center justify-between border-b" style="background:var(--bg2);border-color:var(--card-border);">
+        <span class="text-xs font-bold uppercase tracking-wider" style="color:var(--text2);"><i class="bi bi-journal-text mr-1 text-primary"></i> Work Ledger</span>
         <div class="flex gap-2 overflow-visible">
           <div class="relative inline-block text-left group">
-            <button type="button" class="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1">
+            <button type="button" class="text-[10px] font-bold flex items-center gap-1" style="color:var(--text3);">
               <i class="bi bi-download"></i> Export <i class="bi bi-chevron-down ml-0.5"></i>
             </button>
-            <div class="absolute right-0 mt-1 w-32 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
-              <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['_id'] }}&format=excel" class="block px-3 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
-              <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['_id'] }}&format=pdf" class="block px-3 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
+            <div class="dropdown-panel" style="position:absolute;right:0;margin-top:4px;min-width:128px;">
+              <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['_id'] }}&format=excel" class="dropdown-item"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
+              <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['_id'] }}&format=pdf" class="dropdown-item"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
             </div>
           </div>
         </div>
@@ -153,18 +153,18 @@
             <span class="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-widest">Loading...</span>
         </div>
         <table class="w-full text-left text-xs whitespace-nowrap">
-          <thead class="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10 shadow-sm">
+          <thead class="sticky top-0 z-10" style="background:var(--bg2);">
             <tr>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Working Date</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Client / Project</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Delivery Location</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Slab Qty</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Price/Slab</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Gross Amount</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Total Adv</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Net Payable</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Status</th>
-              <th class="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px]">Action</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Working Date</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Client / Project</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Delivery Location</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Slab Qty</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Price/Slab</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Gross Amount</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Total Adv</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Net Payable</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Status</th>
+              <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Action</th>
             </tr>
           </thead>
           <tbody id="ledger-tbody-{{ w['worker_id'] }}" class="divide-y divide-slate-100 dark:divide-white/5">
@@ -184,7 +184,7 @@
   
   {% if not show_all_workers and worker_history|length > 5 %}
   <div class="col-span-full flex justify-center mt-4">
-    <a href="{{ url_for('part_time_workers_full') }}" class="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex items-center gap-2">
+    <a href="{{ url_for('part_time_workers_full') }}" class="btn-saas btn-saas-md btn-saas-secondary flex items-center gap-2">
       View All {{ worker_history|length }} Workers <i class="bi bi-arrow-right"></i>
     </a>
   </div>
@@ -192,7 +192,7 @@
   
   {% if show_all_workers %}
   <div class="col-span-full flex justify-center mt-4">
-    <a href="{{ url_for('part_time') }}" class="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex items-center gap-2">
+    <a href="{{ url_for('part_time') }}" class="btn-saas btn-saas-md btn-saas-secondary flex items-center gap-2">
       <i class="bi bi-arrow-left"></i> Back to Dashboard
     </a>
   </div>
@@ -205,13 +205,13 @@
 {% block modals %}
 
 <!-- Universal Modal System -->
-<div id="universalModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
-  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] transform scale-95 transition-transform" id="universalModalInner">
-    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
-      <h3 class="font-bold text-lg dark:text-white" id="um-title">Modal Title</h3>
-      <button onclick="closeUniversalModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+<div id="universalModal" class="fixed inset-0 z-50 hidden premium-modal-backdrop flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="premium-modal-container w-full max-w-lg flex flex-col max-h-[90vh] transform scale-95 transition-transform" id="universalModalInner">
+    <div class="premium-modal-header">
+      <h3 class="premium-modal-title" id="um-title">Modal Title</h3>
+      <button onclick="closeUniversalModal()" class="premium-modal-close-btn">&times;</button>
     </div>
-    <div class="p-6 overflow-y-auto custom-scrollbar flex-1" id="um-body">
+    <div class="premium-modal-body overflow-y-auto flex-1" id="um-body">
       <!-- Body injected via JS -->
     </div>
   </div>
@@ -300,9 +300,9 @@
         <input type="text" id="modal-adv-notes" class="w-full bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary"/>
       </div>
       
-      <div class="pt-4 flex items-center justify-end border-t border-slate-100 dark:border-white/5 mt-4 gap-2">
-          <button type="button" onclick="closeUniversalModal()" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
-          <button type="submit" id="modal-adv-submit-btn" class="px-5 py-2 rounded-xl bg-warning hover:bg-warning/90 text-white font-bold text-sm shadow-sm flex items-center gap-2 transition-colors">
+      <div class="pt-4 flex items-center justify-end border-t mt-4 gap-2" style="border-color:var(--card-border);">
+          <button type="button" onclick="closeUniversalModal()" class="btn-premium-cancel">Cancel</button>
+          <button type="submit" id="modal-adv-submit-btn" class="btn-premium-save">
               <i class="bi bi-check-lg"></i> Save Advance
           </button>
       </div>
@@ -375,15 +375,15 @@
 </div>
 
 <!-- History Modal -->
-<div id="historyModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity">
-  <div class="bg-white dark:bg-[#1f2937] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] transform scale-95 transition-transform" id="historyModalInner">
-    <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
-      <h3 class="font-bold text-lg dark:text-white"><i class="bi bi-clock-history text-primary mr-2"></i>Advance Ledger</h3>
-      <button onclick="closeModal('historyModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="bi bi-x-lg"></i></button>
+<div id="historyModal" class="fixed inset-0 z-50 hidden premium-modal-backdrop flex items-center justify-center p-4 opacity-0 transition-opacity">
+  <div class="premium-modal-container w-full max-w-lg flex flex-col max-h-[80vh]" id="historyModalInner">
+    <div class="premium-modal-header">
+      <h3 class="premium-modal-title"><i class="bi bi-clock-history text-primary mr-2"></i>Advance Ledger</h3>
+      <button onclick="closeModal('historyModal')" class="premium-modal-close-btn">&times;</button>
     </div>
     <div class="p-0 overflow-y-auto flex-1">
-      <div id="history-loading" class="p-8 text-center text-slate-500"><i class="bi bi-arrow-repeat animate-spin text-2xl"></i></div>
-      <div id="history-content" class="hidden divide-y divide-slate-100 dark:divide-white/5">
+      <div id="history-loading" class="p-8 text-center" style="color:var(--text3);"><i class="bi bi-arrow-repeat animate-spin text-2xl"></i></div>
+      <div id="history-content" class="hidden" style="border-top:1px solid var(--card-border);">
         <!-- populated via js -->
       </div>
     </div>
@@ -391,22 +391,22 @@
 </div>
 
 <!-- View Profile Side Drawer -->
-<div id="workerProfileDrawer" class="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-white dark:bg-[#1a222c] shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200 dark:border-white/10">
-  <div class="p-6 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+<div id="workerProfileDrawer" class="fixed inset-y-0 right-0 z-[60] w-full max-w-md shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l" style="background:var(--modal-bg);border-color:var(--card-border);">
+  <div class="p-6 flex items-center justify-between border-b" style="background:var(--bg2);border-color:var(--card-border);">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-primary text-xl" style="background:var(--primary-lo);">
         <i class="bi bi-person-badge"></i>
       </div>
       <div>
-        <h3 class="font-bold text-lg text-slate-900 dark:text-white leading-tight">Worker Profile</h3>
-        <span class="text-[10px] font-mono text-slate-500 tracking-wider uppercase">Identity & Statistics</span>
+        <h3 class="font-bold text-lg leading-tight" style="color:var(--text);">Worker Profile</h3>
+        <span class="text-[10px] font-mono tracking-wider uppercase" style="color:var(--text3);">Identity & Statistics</span>
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <a id="wp-delete-btn" href="#" class="w-8 h-8 flex items-center justify-center rounded-full bg-danger/10 hover:bg-danger/20 text-danger transition-colors" title="Delete Worker">
+      <a id="wp-delete-btn" href="#" class="w-8 h-8 flex items-center justify-center rounded-full text-danger transition-colors" style="background:var(--danger-lo);" title="Delete Worker">
         <i class="bi bi-trash3"></i>
       </a>
-      <button onclick="closeWorkerProfile()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-600 dark:text-white transition-colors">
+      <button onclick="closeWorkerProfile()" class="w-8 h-8 flex items-center justify-center rounded-full transition-colors" style="background:var(--input-bg);color:var(--text2);">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>

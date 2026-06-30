@@ -11,9 +11,9 @@
     <span>Export All</span>
     <i class="bi bi-chevron-down" style="font-size:10px;"></i>
   </button>
-  <div class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden" style="top:100%;">
-    <a href="/export?export_type=all_employees&format=excel" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i class="bi bi-file-earmark-excel text-emerald-500 mr-2"></i> Export as Excel</a>
-    <a href="/export?export_type=all_employees&format=pdf" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i class="bi bi-file-earmark-pdf text-red-500 mr-2"></i> Export as PDF</a>
+  <div class="absolute right-0 mt-2 w-48 rounded-md shadow-sm bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden" style="top:100%;">
+    <a href="/export?export_type=all_employees&format=excel" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"><i class="bi bi-file-earmark-excel text-emerald-500 mr-2"></i> Export as Excel</a>
+    <a href="/export?export_type=all_employees&format=pdf" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"><i class="bi bi-file-earmark-pdf text-red-500 mr-2"></i> Export as PDF</a>
   </div>
 </div>
 
@@ -79,11 +79,11 @@
           <td>
             {% set gender = e['gender']|lower %}
             {% if gender == 'male' %}
-              <span class="badge badge-primary"><i class="bi bi-gender-male"></i> Male</span>
+              <span class="badge badge-secondary"><i class="bi bi-gender-male"></i> Male</span>
             {% elif gender == 'female' %}
-              <span class="badge badge-purple"><i class="bi bi-gender-female"></i> Female</span>
+              <span class="badge badge-secondary"><i class="bi bi-gender-female"></i> Female</span>
             {% else %}
-              <span class="badge badge-warning"><i class="bi bi-gender-ambiguous"></i> Other</span>
+              <span class="badge badge-secondary"><i class="bi bi-gender-ambiguous"></i> Other</span>
             {% endif %}
           </td>
           <td class="mono" style="font-weight:600;">₹{{ "{:,.2f}".format(e['salary']) }}</td>
@@ -93,9 +93,9 @@
                 <button type="button" class="btn-saas btn-saas-icon" title="Export">
                   <i class="bi bi-download"></i>
                 </button>
-                <div class="absolute right-0 mt-1 w-32 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
-                  <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=excel" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
-                  <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=pdf" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
+                <div class="absolute right-0 mt-1 w-32 rounded-md shadow-sm bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-50 overflow-hidden">
+                  <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=excel" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
+                  <a href="/export?export_type=specific_employee&employee_id={{ e['id'] }}&format=pdf" class="block px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors" style="text-align:left;"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
                 </div>
               </div>
               <a href="{{ url_for('edit_employee', emp_id=e['id']) }}" class="btn-saas btn-saas-icon" title="Edit">
