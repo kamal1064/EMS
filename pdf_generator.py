@@ -50,9 +50,9 @@ def generate_pdf_response(pdf_sections, export_type, company_name=None, company_
         'CompanyBrandingName',
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=20,
-        leading=24,
-        textColor=colors.HexColor("#0F172A")
+        fontSize=22,
+        leading=26,
+        textColor=colors.HexColor("#4F46E5")
     )
     
     title_style = ParagraphStyle(
@@ -102,18 +102,19 @@ def generate_pdf_response(pdf_sections, export_type, company_name=None, company_
     # Download and process logo if present
     logo_img = None
     downloaded_logo_path = None
+    scaled_w = 60.0
     if company_logo_url:
         downloaded_logo_path = download_temp_image(company_logo_url)
         if downloaded_logo_path:
             try:
                 with PILImage.open(downloaded_logo_path) as img:
                     w, h = img.size
-                # Limit height to 40pt, scale width proportionally
-                max_h = 40.0
+                # Limit height to 60pt, scale width proportionally
+                max_h = 60.0
                 scale = max_h / h
                 scaled_w = w * scale
-                # Limit width to 120pt
-                max_w = 120.0
+                # Limit width to 80pt
+                max_w = 80.0
                 if scaled_w > max_w:
                     scale = max_w / w
                     scaled_w = max_w
@@ -127,12 +128,14 @@ def generate_pdf_response(pdf_sections, export_type, company_name=None, company_
     # Build company branding header
     header_title_cell = Paragraph(company_name or "WorkNest EMS", company_name_style)
     if logo_img:
-        # Logo and name side-by-side
-        header_table = Table([[logo_img, header_title_cell]], colWidths=[130, printable_width - 130])
+        # Logo and name side-by-side with exact custom column spacing
+        col_w1 = scaled_w + 12.0
+        col_w2 = printable_width - col_w1
+        header_table = Table([[logo_img, header_title_cell]], colWidths=[col_w1, col_w2])
         header_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
             ('TOPPADDING', (0, 0), (-1, -1), 0),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
         ]))
