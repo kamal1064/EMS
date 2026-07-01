@@ -660,9 +660,12 @@
       document.getElementById('um-body').innerHTML = document.getElementById(templateId).innerHTML;
       
       m.classList.remove('hidden');
+      if(m.classList.contains('premium-modal-backdrop')) {
+        m.style.display = 'flex';
+      }
       void m.offsetWidth; // trigger reflow
       m.classList.remove('opacity-0');
-      inner.classList.remove('scale-95');
+      if (inner) inner.classList.remove('scale-95');
   }
 
   function closeUniversalModal() {
@@ -670,8 +673,14 @@
       const m = document.getElementById('universalModal');
       const inner = document.getElementById('universalModalInner');
       m.classList.add('opacity-0');
-      inner.classList.add('scale-95');
-      setTimeout(() => { m.classList.add('hidden'); document.getElementById('um-body').innerHTML = ''; }, 300);
+      if (inner) inner.classList.add('scale-95');
+      setTimeout(() => {
+          if(m.classList.contains('premium-modal-backdrop')) {
+            m.style.display = 'none';
+          }
+          m.classList.add('hidden');
+          document.getElementById('um-body').innerHTML = '';
+      }, 300);
   }
 
   // Log Work Flow
@@ -887,12 +896,13 @@
     document.body.style.overflow = 'hidden';
     var m = document.getElementById(id);
     if (m) {
+      // Always remove Tailwind 'hidden' class first — its !important defeats inline styles
+      m.classList.remove('hidden');
       if(m.classList.contains('premium-modal-backdrop')) {
         m.style.display = 'flex';
         m.style.opacity = '0';
         setTimeout(function(){ m.style.opacity = '1'; }, 10);
       } else {
-        m.classList.remove('hidden');
         void m.offsetWidth;
         m.classList.remove('opacity-0');
       }
@@ -905,7 +915,10 @@
     if (m) {
       if(m.classList.contains('premium-modal-backdrop')) {
         m.style.opacity = '0';
-        setTimeout(function(){ m.style.display = 'none'; }, 200);
+        setTimeout(function(){
+          m.style.display = 'none';
+          m.classList.add('hidden');
+        }, 200);
       } else {
         m.classList.add('opacity-0');
         setTimeout(() => m.classList.add('hidden'), 200);
@@ -1143,152 +1156,6 @@
       });
   }
 
-  function markPartTimePaid(recordId) {
-      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
-      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
-      
-      fetch('/api/part-time/mark_paid', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({record_id: recordId})
-      })
-      .then(r=>r.json()).then(d => {
-          if(d.success) {
-              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
-              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
-              showToast('Balance Settled and Marked Paid', 'success');
-          } else {
-              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
-              showToast(d.message, 'danger');
-          }
-      }).catch(e => {
-          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
-          showToast('Network error', 'danger');
-      });
-  }
-
-
-  // Worker Summary
-  function openWorkerSummary(workerId) {
-      openModal('workerSummaryModal');
-      document.getElementById('ws-name').innerText = 'Loading...';
-      document.getElementById('ws-jobs').innerText = '-';
-      document.getElementById('ws-slabs').innerText = '-';
-      document.getElementById('ws-earnings').innerText = '-';
-      document.getElementById('ws-advances').innerText = '-';
-      document.getElementById('ws-balance').innerText = '-';
-      
-      fetch('/api/part-time/worker/' + workerId + '/summary')
-      .then(r=>r.json()).then(data => {
-          if(data.success) {
-              document.getElementById('ws-name').textContent = data.name;
-              document.getElementById('ws-id').textContent = data.worker_id_str || '—';
-              document.getElementById('ws-jobs').textContent = data.total_jobs;
-              document.getElementById('ws-slabs').textContent = data.total_slabs;
-              document.getElementById('ws-earnings').innerText = fmt(data.total_earnings);
-              document.getElementById('ws-advances').innerText = fmt(data.total_advance);
-              document.getElementById('ws-balance').innerText = fmt(data.outstanding_balance);
-              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${data.outstanding_balance > 0 ? 'text-primary' : data.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
-          }
-      });
-  }
-
-  function markPartTimePaid(recordId) {
-      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
-      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
-      
-      fetch('/api/part-time/mark_paid', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({record_id: recordId})
-      })
-      .then(r=>r.json()).then(d => {
-          if(d.success) {
-              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
-              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
-              showToast('Balance Settled and Marked Paid', 'success');
-          } else {
-              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
-              showToast(d.message, 'danger');
-          }
-      }).catch(e => {
-          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
-          showToast('Network error', 'danger');
-      });
-  }
-
-
-  // Worker Summary
-  function openWorkerSummary(workerId) {
-      openModal('workerSummaryModal');
-      document.getElementById('ws-name').innerText = 'Loading...';
-      document.getElementById('ws-jobs').innerText = '-';
-      document.getElementById('ws-slabs').innerText = '-';
-      document.getElementById('ws-earnings').innerText = '-';
-      document.getElementById('ws-advances').innerText = '-';
-      document.getElementById('ws-balance').innerText = '-';
-      
-      fetch('/api/part-time/worker/' + workerId + '/summary')
-      .then(r=>r.json()).then(data => {
-          if(data.success) {
-              document.getElementById('ws-name').textContent = data.name;
-              document.getElementById('ws-id').textContent = data.worker_id_str || '—';
-              document.getElementById('ws-jobs').textContent = data.total_jobs;
-              document.getElementById('ws-slabs').textContent = data.total_slabs;
-              document.getElementById('ws-earnings').innerText = fmt(data.total_earnings);
-              document.getElementById('ws-advances').innerText = fmt(data.total_advance);
-              document.getElementById('ws-balance').innerText = fmt(data.outstanding_balance);
-              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${data.outstanding_balance > 0 ? 'text-primary' : data.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
-          }
-      });
-  }
-
-  function markPartTimePaid(recordId) {
-      const btn = document.getElementById('pay-btn-' + recordId) || document.getElementById('pay-btn-mob-' + recordId);
-      if(btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
-      
-      fetch('/api/part-time/mark_paid', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({record_id: recordId})
-      })
-      .then(r=>r.json()).then(d => {
-          if(d.success) {
-              updateDOMStatus(recordId, d.total_advance, d.remaining_balance, d.payment_status);
-              if (typeof currentlyOpenLedger !== 'undefined' && currentlyOpenLedger) { refreshWorkerData(currentlyOpenLedger); }
-              showToast('Balance Settled and Marked Paid', 'success');
-          } else {
-              if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
-              showToast(d.message, 'danger');
-          }
-      }).catch(e => {
-          if(btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> Mark Paid'; btn.disabled = false; }
-          showToast('Network error', 'danger');
-      });
-  }
-
-
-  // Worker Summary
-  function openWorkerSummary(workerId) {
-      openModal('workerSummaryModal');
-      document.getElementById('ws-name').innerText = 'Loading...';
-      document.getElementById('ws-jobs').innerText = '-';
-      document.getElementById('ws-slabs').innerText = '-';
-      document.getElementById('ws-earnings').innerText = '-';
-      document.getElementById('ws-advances').innerText = '-';
-      document.getElementById('ws-balance').innerText = '-';
-      
-      fetch('/api/part-time/worker/' + workerId + '/summary')
-      .then(r=>r.json()).then(data => {
-          if(data.success) {
-              document.getElementById('ws-name').textContent = data.name;
-              document.getElementById('ws-id').textContent = data.worker_id_str || '—';
-              document.getElementById('ws-jobs').textContent = data.total_jobs;
-              document.getElementById('ws-slabs').textContent = data.total_slabs;
-              document.getElementById('ws-earnings').innerText = fmt(data.total_earnings);
-              document.getElementById('ws-advances').innerText = fmt(data.total_advance);
-              document.getElementById('ws-balance').innerText = fmt(data.outstanding_balance);
-              document.getElementById('ws-balance').className = `font-mono font-black text-xl ${data.outstanding_balance > 0 ? 'text-primary' : data.outstanding_balance < 0 ? 'text-warning' : 'text-success'}`;
-          }
-      });
-  }
 
   // Worker Dashboard Logic
   let filterTimeout;

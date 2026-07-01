@@ -1083,11 +1083,11 @@
     }
     
     if (on) {
-      // Safety net: Auto-hide the loader after 10 seconds to prevent the user from being trapped
+      // Safety net: Auto-hide the loader after 4 seconds to prevent the user from being trapped
       loaderTimeout = setTimeout(function() {
         console.warn('Loader safety timeout reached. Hiding spinner.');
         s.classList.remove('active');
-      }, 10000);
+      }, 4000);
     }
   }
 
@@ -1107,19 +1107,22 @@
       });
     });
     
-    // Detect clicks on anchor tags to prevent showing loader on downloads or new window targets
+    // Detect clicks on anchor tags to prevent showing loader on non-navigation clicks
     document.addEventListener('click', function(e) {
       var a = e.target.closest('a');
       if (a) {
         var href = a.getAttribute('href') || '';
         var download = a.hasAttribute('download');
         var target = a.getAttribute('target') || '';
+        var hasOnclick = a.hasAttribute('onclick');
         
-        // If it's a download, mailto/tel link, or targets another window/tab, ignore beforeunload loader
-        if (download || href.indexOf('/export') !== -1 || href.indexOf('export_type=') !== -1 || href.startsWith('mailto:') || href.startsWith('tel:') || (target && target !== '_self')) {
+        // If it's a non-navigating link, download, mailto/tel, or targets another window/tab, ignore beforeunload loader
+        if (download || href === '#' || href === '' || href.startsWith('#') || href.startsWith('javascript:') || href.indexOf('/export') !== -1 || href.indexOf('export_type=') !== -1 || href.startsWith('mailto:') || href.startsWith('tel:') || (target && target !== '_self') || hasOnclick) {
           ignoreNextBeforeUnload = true;
           // Also immediately clear loader if it was somehow activated
           setLoaderState(false);
+          // Reset the flag after a short delay (in case no beforeunload fires)
+          setTimeout(function() { ignoreNextBeforeUnload = false; }, 500);
         }
       }
     });
@@ -1127,6 +1130,13 @@
     // Page show event (handles bfcache back/forward navigation)
     window.addEventListener('pageshow', function() {
       setLoaderState(false);
+    });
+    
+    // Visibility change — if the user switches back to this tab, clear the spinner
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        setLoaderState(false);
+      }
     });
     
     // Beforeunload event
@@ -1153,7 +1163,7 @@
     if(icon) icon.className=isDark?'bi bi-sun-fill':'bi bi-moon-fill';
   }
   updateThemeIcon(document.documentElement.classList.contains('dark'));
-  updatePPToggle();
+  if (typeof updatePPToggle === 'function') updatePPToggle();
 </script>
 
 {% block scripts %}{% endblock %}
