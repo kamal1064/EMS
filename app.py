@@ -1106,15 +1106,7 @@ def employees():
     emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
     
-    # Filter out employees who haven't joined yet by selected_date
-    filtered_emps = []
-    for e in emps:
-        jd = e.get('joining_date')
-        if jd and selected_date < jd:
-            continue
-        filtered_emps.append(e)
-    emps = filtered_emps
-    
+
     
     return render_template('employees.html', 
                            employees=emps, 
@@ -1440,15 +1432,7 @@ def attendance_summary():
     emps = list(db.employees.find(emp_query).sort("name", 1))
     emps = serialize_docs(emps)
     
-    # Filter out employees who haven't joined yet by selected_date
-    filtered_emps = []
-    for e in emps:
-        jd = e.get('joining_date')
-        if jd and selected_date < jd:
-            continue
-        filtered_emps.append(e)
-    emps = filtered_emps
-    
+
     
     try:
         year, month_num = map(int, month_filter.split('-'))
@@ -1603,15 +1587,7 @@ def salary():
     emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
     
-    # Filter out employees who haven't joined yet by selected_date
-    filtered_emps = []
-    for e in emps:
-        jd = e.get('joining_date')
-        if jd and selected_date < jd:
-            continue
-        filtered_emps.append(e)
-    emps = filtered_emps
-    
+
     
     try:
         year, month_num = map(int, month_filter.split('-'))
