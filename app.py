@@ -2201,13 +2201,15 @@ def get_part_time_worker_card_html(worker_id):
         "advances": 0,
         "balance": 0,
         "jobs": 0,
-        "slabs": 0
+        "slabs": 0,
+        "payment_status": "Pending"
     }
     
     card_template = """
-    <div class="dashboard-worker-card bg-white dark:bg-[#1a222c] glass-panel flex flex-col rounded-2xl overflow-hidden transition-all hover:shadow-lg border border-slate-200 dark:border-white/10" data-name="{{ w['name']|lower }}" data-id="{{ w['worker_id_str']|lower }}" data-clients="{{ w['clients']|join(' ')|lower }}">
+    <div class="dashboard-worker-card card flex flex-col rounded-2xl overflow-hidden transition-all card-hover" data-name="{{ w['name']|lower }}" data-id="{{ w['worker_id_str']|lower }}" data-clients="{{ w['clients']|join(' ')|lower }}">
+      <!-- Card Header / Identity -->
       <div class="p-5 flex items-start justify-between border-b border-slate-100 dark:border-white/5 relative">
-        <div class="flex items-center gap-3 cursor-pointer group" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}')">
+        <div class="flex items-center gap-3 cursor-pointer group" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}', '{{ w['earnings'] }}', '{{ w['advances'] }}', '{{ w['balance'] }}', '{{ w['jobs'] }}', '{{ w['slabs'] }}')">
           {% if w['profile_image_url'] %}
             <img src="{{ w['profile_image_url'] }}" class="w-12 h-12 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-slate-200 dark:border-white/10">
           {% else %}
@@ -2215,69 +2217,101 @@ def get_part_time_worker_card_html(worker_id):
               {{ w['name'][:1]|upper }}
             </div>
           {% endif %}
-          <div class="flex flex-col">
-            <h3 class="font-bold text-slate-900 dark:text-white leading-tight group-hover:text-primary transition-colors text-base">{{ w['name'] }}</h3>
-            <span class="text-xs font-mono text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Part-Time</span>
+          <div>
+            <div class="font-bold text-slate-900 dark:text-white text-base group-hover:text-primary transition-colors">{{ w['name'] }}</div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[11px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{{ w['worker_id_str'] or '—' }}</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Part-Time</span>
+            </div>
           </div>
         </div>
-        <button class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/10 transition-all" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}')">
+        <button class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/10 transition-all" onclick="openWorkerProfile('{{ w['worker_id'] }}', '{{ w['name']|escape }}', '{{ w['worker_id_str']|escape }}', '{{ w['profile_image_url']|escape }}', '{{ w['earnings'] }}', '{{ w['advances'] }}', '{{ w['balance'] }}', '{{ w['jobs'] }}', '{{ w['slabs'] }}')">
           <i class="bi bi-three-dots-vertical"></i>
         </button>
       </div>
 
+      <!-- Financial Summary -->
       <div class="p-5 grid grid-cols-3 gap-4 border-b border-slate-100 dark:border-white/5">
         <div class="flex flex-col">
           <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Earnings</span>
-          <span class="font-mono text-sm font-bold text-slate-900 dark:text-white" id="card-earnings-{{ w['worker_id'] }}">₹0</span>
+          <span class="font-mono text-sm font-bold text-slate-900 dark:text-white" id="card-earnings-{{ w['worker_id'] }}">₹{{ "{:,.0f}".format(w['earnings']) }}</span>
         </div>
         <div class="flex flex-col">
           <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Advances</span>
-          <span class="font-mono text-sm font-bold text-danger" id="card-advances-{{ w['worker_id'] }}">₹0</span>
+          <span class="font-mono text-sm font-bold text-danger" id="card-advances-{{ w['worker_id'] }}">₹{{ "{:,.0f}".format(w['advances']) }}</span>
         </div>
         <div class="flex flex-col text-right">
           <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold mb-1">Balance</span>
-          <span id="card-balance-{{ w['worker_id'] }}" class="font-mono text-[15px] font-black text-slate-900 dark:text-white">₹0</span>
+          <span id="card-balance-{{ w['worker_id'] }}" class="font-mono text-[15px] font-black text-slate-900 dark:text-white">₹{{ "{:,.0f}".format(w['balance']) }}</span>
         </div>
       </div>
 
-      <div class="p-4 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
+      <!-- Activity & Status -->
+      <div class="p-4 flex items-center justify-between" style="background:var(--bg2);">
         <div class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
           <i class="bi bi-briefcase text-slate-400"></i>
-          <span><span id="card-jobs-{{ w['worker_id'] }}">0</span> Jobs (<span id="card-slabs-{{ w['worker_id'] }}">0</span> Slabs)</span>
+          <span><span id="card-jobs-{{ w['worker_id'] }}">{{ w['jobs'] }}</span> Jobs (<span id="card-slabs-{{ w['worker_id'] }}">{{ w['slabs'] }}</span> Slabs)</span>
         </div>
         <div>
-          <span id="card-status-{{ w['worker_id'] }}" class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400">No Work</span>
+          <span id="card-status-{{ w['worker_id'] }}" class="badge badge-warning">
+            {{ w['payment_status'] }}
+          </span>
         </div>
       </div>
 
-      <div class="p-4 grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-        <button data-action="log-work" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold text-[11px] rounded-xl transition-colors">
+      <!-- Actions -->
+      <div class="p-4 grid grid-cols-3 gap-2 border-t" style="border-color:var(--card-border);background:var(--bg2);">
+        <button data-action="log-work" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm btn-saas-primary font-semibold text-[11px]">
           <i class="bi bi-file-earmark-plus mr-1"></i> Log Work
         </button>
-        <button data-action="advance" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" data-worker-id-str="{{ w['worker_id_str']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-200 font-semibold text-[11px] rounded-xl transition-colors">
-          <i class="bi bi-cash-stack mr-1"></i> Advance
+        <button data-action="advance" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" data-worker-id-str="{{ w['worker_id_str']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm btn-saas-secondary font-semibold text-[11px]">
+          <i class="bi bi-cash-coin mr-1 opacity-70 text-warning"></i> Advance
         </button>
-        <button data-action="ledger" data-worker-id="{{ w['worker_id'] }}" data-worker-name="{{ w['name']|escape }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-200 font-semibold text-[11px] rounded-xl transition-colors">
-          <i class="bi bi-journal-text mr-1"></i> Ledger
+        <button data-action="toggle-ledger" data-worker-id="{{ w['worker_id'] }}" id="toggle-ledger-btn-{{ w['worker_id'] }}" class="flex-1 min-h-[40px] btn-saas btn-saas-sm btn-saas-secondary font-bold text-[11px]" style="color:var(--primary);border-color:var(--primary-lo);">
+          <span class="flex items-center justify-center gap-1 pointer-events-none">Ledger <i class="bi bi-chevron-down text-[9px] ml-0.5 transition-transform" id="chevron-{{ w['worker_id'] }}"></i></span>
         </button>
       </div>
-      
-      <div id="ledger-container-{{ w['worker_id'] }}" class="hidden border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#151b23]">
-        <div class="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5">
-          <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <i class="bi bi-journal-text text-primary"></i> Ledger
-          </h4>
-          <button onclick="toggleWorkerLedger('{{ w['worker_id'] }}')" class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-500 transition-colors">
-            <i class="bi bi-x-lg text-[10px]"></i>
-          </button>
-        </div>
-        <div class="p-4 overflow-x-auto custom-scrollbar">
-          <div id="ledger-content-{{ w['worker_id'] }}" class="min-w-[800px]">
-            <div class="py-10 text-center text-slate-500">
-              <div class="spinner-border text-primary inline-block w-6 h-6 border-2 rounded-full animate-spin border-t-transparent"></div>
-              <p class="mt-2 text-sm font-medium">Loading ledger...</p>
+
+      <!-- Collapsible Ledger Accordion -->
+      <div id="ledger-{{ w['worker_id'] }}" class="hidden overflow-hidden border-t" style="background:var(--card);border-color:var(--card-border);">
+        <div class="p-4 flex items-center justify-between border-b" style="background:var(--bg2);border-color:var(--card-border);">
+          <span class="text-xs font-bold uppercase tracking-wider" style="color:var(--text2);"><i class="bi bi-journal-text mr-1 text-primary"></i> Work Ledger</span>
+          <div class="flex gap-2 overflow-visible">
+            <div class="relative inline-block text-left group">
+              <button type="button" class="text-[10px] font-bold flex items-center gap-1" style="color:var(--text3);">
+                <i class="bi bi-download"></i> Export <i class="bi bi-chevron-down ml-0.5"></i>
+              </button>
+              <div class="dropdown-panel" style="position:absolute;right:0;margin-top:4px;min-width:128px;">
+                <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['worker_id'] }}&format=excel" class="dropdown-item"><i class="bi bi-file-earmark-excel text-emerald-500 mr-1"></i> Excel</a>
+                <a href="/export?export_type=specific_part_time_worker&worker_id={{ w['worker_id'] }}&format=pdf" class="dropdown-item"><i class="bi bi-file-earmark-pdf text-red-500 mr-1"></i> PDF</a>
+              </div>
             </div>
           </div>
+        </div>
+        <div class="p-0 overflow-x-auto max-h-[350px] overflow-y-auto custom-scrollbar relative">
+          <div id="ledger-loader-{{ w['worker_id'] }}" class="hidden absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+              <div class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <span class="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-widest">Loading...</span>
+          </div>
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="sticky top-0 z-10" style="background:var(--bg2);">
+              <tr>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Working Date</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Client / Project</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Delivery Location</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Slab Qty</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Price/Slab</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Gross Amount</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Total Adv</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Net Payable</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Status</th>
+                <th class="px-4 py-3 font-bold uppercase tracking-wider text-[9px]" style="color:var(--text2);">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ledger-tbody-{{ w['worker_id'] }}" class="divide-y divide-slate-100 dark:divide-white/5">
+              <!-- Populated via AJAX -->
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
