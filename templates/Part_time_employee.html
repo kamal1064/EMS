@@ -608,25 +608,34 @@
   // Event Delegation for Worker Cards & Ledger Actions
   (() => {
       const grid = document.getElementById('worker-dashboard-grid');
+      console.log("[DEBUG] worker-dashboard-grid is:", grid);
       if (grid) {
           grid.addEventListener('click', (e) => {
+              console.log("[DEBUG] Click target in grid:", e.target);
               const btn = e.target.closest('button[data-action]');
-              if (!btn) return;
+              if (!btn) {
+                  console.log("[DEBUG] No closest button[data-action] found for target");
+                  return;
+              }
               
               const action = btn.getAttribute('data-action');
+              console.log("[DEBUG] Button action clicked:", action);
               
               // Worker Card Actions
               if (action === 'log-work') {
                   const wId = btn.getAttribute('data-worker-id');
                   const wName = btn.getAttribute('data-worker-name');
+                  console.log("[DEBUG] Log Work clicked. Worker ID:", wId, "Name:", wName);
                   openLogWorkModal(wId, wName);
               } else if (action === 'advance') {
                   const wId = btn.getAttribute('data-worker-id');
                   const wName = btn.getAttribute('data-worker-name');
                   const wIdStr = btn.getAttribute('data-worker-id-str');
+                  console.log("[DEBUG] Advance clicked. Worker ID:", wId, "Name:", wName, "IdStr:", wIdStr);
                   openAdvanceModal(wId, wName, wIdStr);
               } else if (action === 'toggle-ledger') {
                   const wId = btn.getAttribute('data-worker-id');
+                  console.log("[DEBUG] Ledger clicked. Worker ID:", wId);
                   toggleWorkerLedger(wId);
               }
               
