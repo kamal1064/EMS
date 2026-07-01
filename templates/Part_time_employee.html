@@ -474,7 +474,7 @@
   
   
   // AJAX Add Worker
-  document.addEventListener('DOMContentLoaded', () => {
+  (() => {
       const addForm = document.getElementById('addWorkerForm');
       if (addForm) {
           addForm.addEventListener('submit', function(e) {
@@ -606,7 +606,7 @@
   });
 
   // Event Delegation for Worker Cards & Ledger Actions
-  document.addEventListener('DOMContentLoaded', () => {
+  (() => {
       const grid = document.getElementById('worker-dashboard-grid');
       if (grid) {
           grid.addEventListener('click', (e) => {
@@ -1219,7 +1219,7 @@
   }
   
   // Initialize dashboard view on load
-  document.addEventListener('DOMContentLoaded', () => {
+  (() => {
       filterDashboard('');
   });
 
