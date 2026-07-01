@@ -11,7 +11,7 @@ try:
 except ImportError:
     pass  # dotenv optional; env vars may be set by the OS/host
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, Blueprint, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, Blueprint, make_response, flash
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -1106,6 +1106,16 @@ def employees():
     emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
     
+    # Filter out employees who haven't joined yet by selected_date
+    filtered_emps = []
+    for e in emps:
+        jd = e.get('joining_date')
+        if jd and selected_date < jd:
+            continue
+        filtered_emps.append(e)
+    emps = filtered_emps
+    
+    
     return render_template('employees.html', 
                            employees=emps, 
                            search=search,
@@ -1129,6 +1139,11 @@ def add_employee():
         return redirect(url_for('employees'))
 
     phone = request.form.get('phone', '').strip()
+    joining_date = request.form.get('joining_date', '').strip()
+    if not joining_date:
+        flash("Joining date is required.", "error")
+        return redirect(url_for('employees'))
+    
     gender = request.form.get('gender', '')
 
     try:
@@ -1170,6 +1185,7 @@ def add_employee():
         "employee_id": emp_id_str,
         "name": name,
         "phone": phone,
+        "joining_date": joining_date,
         "age": age,
         "gender": gender,
         "salary": salary,
@@ -1222,9 +1238,15 @@ def edit_employee(emp_id):
             hours = 40.0
         hours = max(hours, 0.0)
 
+        joining_date = request.form.get('joining_date', '').strip()
+        if not joining_date:
+            flash("Joining date is required.", "error")
+            return redirect(url_for('edit_employee', emp_id=emp_id))
+            
         update_data = {
             "name": request.form.get('name'),
             "phone": request.form.get('phone'),
+            "joining_date": joining_date,
             "age": age,
             "gender": request.form.get('gender'),
             "salary": salary,
@@ -1318,6 +1340,16 @@ def attendance():
 
     emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
+    
+    # Filter out employees who haven't joined yet by selected_date
+    filtered_emps = []
+    for e in emps:
+        jd = e.get('joining_date')
+        if jd and selected_date < jd:
+            continue
+        filtered_emps.append(e)
+    emps = filtered_emps
+    
     att_map = {e['id']: 'Present' for e in emps}
 
     if emps:
@@ -1408,6 +1440,16 @@ def attendance_summary():
     emps = list(db.employees.find(emp_query).sort("name", 1))
     emps = serialize_docs(emps)
     
+    # Filter out employees who haven't joined yet by selected_date
+    filtered_emps = []
+    for e in emps:
+        jd = e.get('joining_date')
+        if jd and selected_date < jd:
+            continue
+        filtered_emps.append(e)
+    emps = filtered_emps
+    
+    
     try:
         year, month_num = map(int, month_filter.split('-'))
     except ValueError:
@@ -1428,19 +1470,21 @@ def attendance_summary():
     emp_ids = [ObjectId(e['id']) for e in emps] if emps else []
     absent_map = {}
     if emp_ids:
-        pipeline = [
-            {"$match": {
-                "emp_id": {"$in": emp_ids},
-                "status": "Absent",
-                "date": {"$regex": f"^{month_filter}"}
-            }},
-            {"$group": {
-                "_id": "$emp_id",
-                "absent_count": {"$sum": 1}
-            }}
-        ]
-        absent_cursor = db.attendance.aggregate(pipeline)
-        absent_map = {str(doc['_id']): doc['absent_count'] for doc in absent_cursor}
+        att_cursor = db.attendance.find({
+            "emp_id": {"$in": emp_ids},
+            "status": "Absent",
+            "date": {"$regex": f"^{month_filter}"}
+        })
+        absent_map = {}
+        for r in att_cursor:
+            wid = str(r['emp_id'])
+            att_date = r['date']
+            emp = next((x for x in emps if x['id'] == wid), None)
+            if emp:
+                jd = emp.get('joining_date')
+                if jd and att_date < jd:
+                    continue # Ignore absences before joining date
+            absent_map[wid] = absent_map.get(wid, 0) + 1
 
     summary = []
     for e in emps:
@@ -1544,6 +1588,16 @@ def salary():
     emps = list(db.employees.find(query).sort("name", 1).skip(skip).limit(limit))
     emps = serialize_docs(emps)
     
+    # Filter out employees who haven't joined yet by selected_date
+    filtered_emps = []
+    for e in emps:
+        jd = e.get('joining_date')
+        if jd and selected_date < jd:
+            continue
+        filtered_emps.append(e)
+    emps = filtered_emps
+    
+    
     try:
         year, month_num = map(int, month_filter.split('-'))
     except ValueError:
@@ -1567,19 +1621,21 @@ def salary():
     advance_map = {}
     
     if emp_ids:
-        pipeline = [
-            {"$match": {
-                "emp_id": {"$in": emp_ids},
-                "status": "Absent",
-                "date": {"$regex": f"^{month_filter}"}
-            }},
-            {"$group": {
-                "_id": "$emp_id",
-                "absent_count": {"$sum": 1}
-            }}
-        ]
-        absent_cursor = db.attendance.aggregate(pipeline)
-        absent_map = {str(doc['_id']): doc['absent_count'] for doc in absent_cursor}
+        att_cursor = db.attendance.find({
+            "emp_id": {"$in": emp_ids},
+            "status": "Absent",
+            "date": {"$regex": f"^{month_filter}"}
+        })
+        absent_map = {}
+        for r in att_cursor:
+            wid = str(r['emp_id'])
+            att_date = r['date']
+            emp = next((x for x in emps if x['id'] == wid), None)
+            if emp:
+                jd = emp.get('joining_date')
+                if jd and att_date < jd:
+                    continue # Ignore absences before joining date
+            absent_map[wid] = absent_map.get(wid, 0) + 1
         
         records_cursor = db.salary_records.find({"emp_id": {"$in": emp_ids}, "month": month_filter})
         for r in records_cursor:
@@ -1596,8 +1652,24 @@ def salary():
     if missing_emps:
         docs_to_insert = []
         for e in missing_emps:
+            # Calculate employee-specific effective days based on joining date
+            emp_effective = effective_days
+            jd_str = e.get('joining_date')
+            if jd_str:
+                try:
+                    jy, jm, jd = map(int, jd_str.split('-'))
+                    if jy == year and jm == month_num:
+                        if year == current_date.year and month_num == current_date.month:
+                            emp_effective = max(min(current_date.day, 30) - jd, 0)
+                        else:
+                            emp_effective = max(30 - jd, 0)
+                    elif (year < jy) or (year == jy and month_num < jm):
+                        emp_effective = 0
+                except:
+                    pass
+
             absent_days = absent_map.get(e['id'], 0)
-            present_days = max(effective_days - absent_days, 0)
+            present_days = max(emp_effective - absent_days, 0)
             salary_per_day = e.get('salary', 0.0) / total_days
             final_salary = round(salary_per_day * present_days, 2)
             
@@ -1622,8 +1694,24 @@ def salary():
     salary_details = []
     
     for e in emps:
+        # Calculate employee-specific effective days based on joining date
+        emp_effective = effective_days
+        jd_str = e.get('joining_date')
+        if jd_str:
+            try:
+                jy, jm, jd = map(int, jd_str.split('-'))
+                if jy == year and jm == month_num:
+                    if year == current_date.year and month_num == current_date.month:
+                        emp_effective = max(min(current_date.day, 30) - jd, 0)
+                    else:
+                        emp_effective = max(30 - jd, 0)
+                elif (year < jy) or (year == jy and month_num < jm):
+                    emp_effective = 0
+            except:
+                pass
+                
         absent_days = absent_map.get(e['id'], 0)
-        present_days = max(effective_days - absent_days, 0)
+        present_days = max(emp_effective - absent_days, 0)
         salary_per_day = e.get('salary', 0.0) / total_days
         final_salary = round(salary_per_day * present_days, 2)
         

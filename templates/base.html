@@ -1149,7 +1149,14 @@
     });
   });
 
-
+  function updatePPToggle() {
+    var isDark  = document.documentElement.classList.contains('dark');
+    var toggle  = document.getElementById('pp-theme-toggle');
+    var knob    = document.getElementById('pp-toggle-knob');
+    var label   = toggle ? toggle.closest('.pp-menu-item').querySelector('span') : null;
+    if (toggle) toggle.classList.toggle('active', isDark);
+    if (label)  label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+  }
 
   /* ── Theme ── */
   function toggleTheme(){
@@ -1163,7 +1170,7 @@
     if(icon) icon.className=isDark?'bi bi-sun-fill':'bi bi-moon-fill';
   }
   updateThemeIcon(document.documentElement.classList.contains('dark'));
-  if (typeof updatePPToggle === 'function') updatePPToggle();
+  updatePPToggle();
 </script>
 
 {% block scripts %}{% endblock %}
@@ -1327,14 +1334,6 @@ function ppTogglePw(id, btn) {
 function ppToggleTheme() {
   toggleTheme();        /* calls the global toggleTheme() */
   updatePPToggle();
-}
-function updatePPToggle() {
-  var isDark  = document.documentElement.classList.contains('dark');
-  var toggle  = document.getElementById('pp-theme-toggle');
-  var knob    = document.getElementById('pp-toggle-knob');
-  var label   = toggle ? toggle.closest('.pp-menu-item').querySelector('span') : null;
-  if (toggle) toggle.classList.toggle('active', isDark);
-  if (label)  label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
 }
 
 /* Close popup on Escape */
