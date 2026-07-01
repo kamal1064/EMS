@@ -671,9 +671,12 @@
       m.classList.remove('hidden');
       if(m.classList.contains('premium-modal-backdrop')) {
         m.style.display = 'flex';
+        m.style.opacity = '0';
+        setTimeout(function(){ m.style.opacity = '1'; }, 10);
+      } else {
+        void m.offsetWidth; // trigger reflow
+        m.classList.remove('opacity-0');
       }
-      void m.offsetWidth; // trigger reflow
-      m.classList.remove('opacity-0');
       if (inner) inner.classList.remove('scale-95');
   }
 
@@ -681,29 +684,38 @@
       document.body.style.overflow = '';
       const m = document.getElementById('universalModal');
       const inner = document.getElementById('universalModalInner');
-      m.classList.add('opacity-0');
-      if (inner) inner.classList.add('scale-95');
-      setTimeout(() => {
-          if(m.classList.contains('premium-modal-backdrop')) {
-            m.style.display = 'none';
-          }
+      
+      if(m.classList.contains('premium-modal-backdrop')) {
+        m.style.opacity = '0';
+        if (inner) inner.classList.add('scale-95');
+        setTimeout(() => {
+          m.style.display = 'none';
           m.classList.add('hidden');
           document.getElementById('um-body').innerHTML = '';
-      }, 300);
+        }, 200);
+      } else {
+        m.classList.add('opacity-0');
+        if (inner) inner.classList.add('scale-95');
+        setTimeout(() => {
+          m.classList.add('hidden');
+          document.getElementById('um-body').innerHTML = '';
+        }, 200);
+      }
   }
 
   // Log Work Flow
   function openLogWorkModal(workerId, workerName) {
       openUniversalModal('<i class="bi bi-file-earmark-plus text-primary mr-2"></i>Log Slab Work', 'template-log-work');
       
-      // We must hook into the newly injected DOM elements
-      document.getElementById('modal-lw-worker-id').value = workerId;
-      document.getElementById('modal-lw-worker-name').value = workerName;
+      const body = document.getElementById('um-body');
+      // We must hook into the newly injected DOM elements specifically inside um-body to avoid duplicate ID lookup issues
+      body.querySelector('#modal-lw-worker-id').value = workerId;
+      body.querySelector('#modal-lw-worker-name').value = workerName;
       
       // Re-bind the math logic for gross price
-      const qtyInput = document.getElementById('slab_qty');
-      const priceInput = document.getElementById('slab_price');
-      const totalInput = document.getElementById('total_price');
+      const qtyInput = body.querySelector('#slab_qty');
+      const priceInput = body.querySelector('#slab_price');
+      const totalInput = body.querySelector('#total_price');
       
       function calc() {
           const q = parseFloat(qtyInput.value) || 0;
@@ -766,16 +778,17 @@
       openUniversalModal('<i class="bi bi-cash-stack text-warning mr-2"></i>Advance Salary', 'template-advance-salary');
       document.body.setAttribute('data-current-worker', workerId);
       
-      document.getElementById('modal-adv-name').value = workerName;
-      document.getElementById('modal-adv-id').value = workerIdStr;
-      document.getElementById('modal-adv-date').value = new Date().toISOString().split('T')[0];
-      document.getElementById('modal-adv-amount').value = '';
-      document.getElementById('modal-adv-notes').value = '';
+      const body = document.getElementById('um-body');
+      body.querySelector('#modal-adv-name').value = workerName;
+      body.querySelector('#modal-adv-id').value = workerIdStr;
+      body.querySelector('#modal-adv-date').value = new Date().toISOString().split('T')[0];
+      body.querySelector('#modal-adv-amount').value = '';
+      body.querySelector('#modal-adv-notes').value = '';
       
-      const select = document.getElementById('modal-adv-log-select');
+      const select = body.querySelector('#modal-adv-log-select');
       select.innerHTML = '<option value="">General Salary Advance (No Work Log)</option>';
       
-      const submitBtn = document.getElementById('modal-adv-submit-btn');
+      const submitBtn = body.querySelector('#modal-adv-submit-btn');
       if (submitBtn) submitBtn.disabled = false;
       
       // Fetch unpaid logs to populate dropdown
@@ -798,14 +811,15 @@
 
   async function submitAdvanceModal(e) {
       e.preventDefault();
-      const btn = document.getElementById('modal-adv-submit-btn');
+      const form = e.target;
+      const btn = form.querySelector('#modal-adv-submit-btn');
       btn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
       btn.disabled = true;
       
-      const recordId = document.getElementById('modal-adv-log-select').value;
-      const amt = document.getElementById('modal-adv-amount').value;
-      const date = document.getElementById('modal-adv-date').value;
-      const notes = document.getElementById('modal-adv-notes').value;
+      const recordId = form.querySelector('#modal-adv-log-select').value;
+      const amt = form.querySelector('#modal-adv-amount').value;
+      const date = form.querySelector('#modal-adv-date').value;
+      const notes = form.querySelector('#modal-adv-notes').value;
       const workerId = document.body.getAttribute("data-current-worker") || "";
       
       try {
