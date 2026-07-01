@@ -1853,7 +1853,13 @@ def part_time():
     skip = (page - 1) * limit
     setup_error = None
     
-    pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort("name", 1))
+    total_workers_count = db.part_time_workers.count_documents({"user_id": ObjectId(uid)})
+    
+    if show_all_workers:
+        pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort([("updated_at", -1), ("created_at", -1), ("_id", -1)]))
+    else:
+        pt_workers = list(db.part_time_workers.find({"user_id": ObjectId(uid)}).sort([("updated_at", -1), ("created_at", -1), ("_id", -1)]).limit(4))
+        
     worker_info = {str(w['_id']): {"name": w['name'], "profile_image_url": w.get('profile_image_url', ''), "worker_id_str": w.get('worker_id', ''), "created_at": w.get('created_at', '')} for w in pt_workers}
     worker_ids = [ObjectId(wid) for wid in worker_info.keys()]
     
@@ -2101,7 +2107,8 @@ def part_time():
         recent_clients=recent_clients[:6],
         analytics=analytics,
         worker_history=worker_history,
-        show_all_workers=show_all_workers
+        show_all_workers=show_all_workers,
+        total_workers_count=total_workers_count
     )
 
 
@@ -2151,6 +2158,10 @@ def add_part_time_work():
         "created_at": datetime.now().isoformat()
     }
     db.part_time_work_logs.insert_one(log_doc)
+    db.part_time_workers.update_one(
+        {"_id": worker_id_obj, "user_id": ObjectId(uid)},
+        {"$set": {"updated_at": datetime.now().isoformat()}}
+    )
     return redirect(url_for('part_time'))
 
 
@@ -2199,7 +2210,8 @@ def add_part_time_worker():
         "name": name,
         "profile_image_url": "",
         "user_id": ObjectId(uid),
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
     }
     result = db.part_time_workers.insert_one(worker_doc)
     worker_id_obj = result.inserted_id
@@ -2822,6 +2834,11 @@ def api_add_advance():
         "updated_at": datetime.now().isoformat()
     })
     
+    db.part_time_workers.update_one(
+        {"_id": worker_id_obj, "user_id": ObjectId(uid)},
+        {"$set": {"updated_at": datetime.now().isoformat()}}
+    )
+    
     db.audit_logs.insert_one({
         "user_id": ObjectId(uid),
         "module": "Part-Time Advance",
@@ -2895,6 +2912,7 @@ def api_edit_advance():
     db.advance_payments.update_one({"_id": adv_id_obj}, {"$set": {
         "amount": amount, "payment_date": payment_date, "notes": notes, "updated_at": datetime.now().isoformat()
     }})
+    db.part_time_workers.update_one({"_id": ObjectId(worker_id), "user_id": ObjectId(uid)}, {"$set": {"updated_at": datetime.now().isoformat()}})
     
     db.audit_logs.insert_one({
         "user_id": ObjectId(uid),
@@ -2961,6 +2979,7 @@ def api_delete_advance():
     if not worker: return jsonify({'success': False, 'message': 'Not authorized'}), 403
     
     db.advance_payments.delete_one({"_id": adv_id_obj})
+    db.part_time_workers.update_one({"_id": ObjectId(worker_id), "user_id": ObjectId(uid)}, {"$set": {"updated_at": datetime.now().isoformat()}})
     
     db.audit_logs.insert_one({
         "user_id": ObjectId(uid),
@@ -3057,6 +3076,7 @@ def api_part_time_mark_paid():
     elif rem_bal <= 0: status = 'Paid'
     
     db.part_time_work_logs.update_one({"_id": record_id_obj}, {"$set": {"payment_status": status, "remaining_balance": rem_bal}})
+    db.part_time_workers.update_one({"_id": log_record['worker_id'], "user_id": ObjectId(uid)}, {"$set": {"updated_at": datetime.now().isoformat()}})
     
     return jsonify({
         'success': True,

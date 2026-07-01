@@ -56,8 +56,13 @@
 <!-- SECTION 3: Dashboard & Search -->
 <div class="mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
   <div class="flex items-center gap-3">
-    <h2 class="text-xl font-black text-slate-900 dark:text-white">{% if show_all_workers %}All Workers Directory{% else %}Worker Dashboard{% endif %}</h2>
-    <span class="badge badge-primary font-mono">{{ worker_history|length }} Workers</span>
+    <div class="flex flex-col">
+      <h2 class="text-xl font-black text-slate-900 dark:text-white">{% if show_all_workers %}All Workers Directory{% else %}Recent Part-Time Workers{% endif %}</h2>
+      {% if not show_all_workers %}
+        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Showing the most recently updated workers</p>
+      {% endif %}
+    </div>
+    <span class="badge badge-primary font-mono">{% if show_all_workers %}{{ total_workers_count }}{% else %}{{ worker_history|length }}{% endif %} Workers</span>
   </div>
   <div class="worker-search-wrapper">
     <i class="bi bi-search worker-search-icon"></i>
@@ -182,10 +187,10 @@
   </div>
 </div>
   
-  {% if not show_all_workers and worker_history|length > 5 %}
+  {% if not show_all_workers and total_workers_count > 4 %}
   <div class="col-span-full flex justify-center mt-4">
     <a href="{{ url_for('part_time_workers_full') }}" class="btn-saas btn-saas-md btn-saas-secondary flex items-center gap-2">
-      View All {{ worker_history|length }} Workers <i class="bi bi-arrow-right"></i>
+      View All Workers <i class="bi bi-arrow-right"></i>
     </a>
   </div>
   {% endif %}
@@ -1211,8 +1216,8 @@
       let visibleCount = 0;
       cards.forEach((card, index) => {
           if (q === '') {
-              // No search query: show all if on dedicated page, else only first 5
-              if (SHOW_ALL_WORKERS || index < 5) {
+              // No search query: show all if on dedicated page, else only first 4
+              if (SHOW_ALL_WORKERS || index < 4) {
                   card.style.display = 'flex';
                   visibleCount++;
               } else {
