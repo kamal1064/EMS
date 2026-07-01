@@ -347,6 +347,13 @@
       <i class="bi bi-chevron-right pp-menu-arrow"></i>
     </button>
 
+    <!-- Company Branding -->
+    <button class="pp-menu-item" onclick="togglePPPanel('company-branding')">
+      <div class="pp-menu-icon green"><i class="bi bi-building"></i></div>
+      <span>Company Branding</span>
+      <i class="bi bi-chevron-right pp-menu-arrow"></i>
+    </button>
+
     <!-- Change Password -->
     <button class="pp-menu-item" onclick="togglePPPanel('change-pw')">
       <div class="pp-menu-icon purple"><i class="bi bi-lock-fill"></i></div>
@@ -377,6 +384,36 @@
       <input type="email" id="pp-edit-email" class="pp-input" placeholder="you@example.com" readonly style="opacity:.6;cursor:not-allowed;" />
     </div>
     <button class="pp-action-btn blue" onclick="ppSaveProfile()">
+      <i class="bi bi-check-lg"></i> Save Changes
+    </button>
+  </div>
+
+  <!-- ── Company Branding Drawer ─────────────────── -->
+  <div class="pp-drawer" id="pp-drawer-company-branding">
+    <div class="pp-drawer-title"><i class="bi bi-building"></i> Company Branding</div>
+    <div class="pp-form-field">
+      <label class="pp-label">Company Name *</label>
+      <input type="text" id="pp-company-name" class="pp-input" placeholder="e.g. WorkNest" required />
+    </div>
+    <div class="pp-form-field">
+      <label class="pp-label">Company Logo (Max 5MB)</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="pp-logo-preview-container" style="width:64px;height:64px;border-radius:10px;border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg2);">
+          <span id="pp-logo-placeholder" style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;">No Logo</span>
+          <img id="pp-logo-preview" style="width:100%;height:100%;object-fit:contain;display:none;"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button type="button" class="btn-saas btn-saas-xs btn-saas-primary" onclick="document.getElementById('pp-logo-file-input').click()">
+            Upload Logo
+          </button>
+          <button type="button" id="pp-remove-logo-btn" class="text-danger hover:underline" style="display:none;font-size:10px;font-weight:700;background:none;border:none;cursor:pointer;padding:0;text-align:left;" onclick="ppRemoveCompanyLogo()">
+            Remove Logo
+          </button>
+          <input type="file" id="pp-logo-file-input" style="display:none;" accept="image/png, image/jpeg, image/jpg" onchange="ppUploadCompanyLogo(this.files[0])" />
+        </div>
+      </div>
+    </div>
+    <button class="pp-action-btn green" id="pp-save-branding-btn" onclick="ppSaveCompanyBranding()">
       <i class="bi bi-check-lg"></i> Save Changes
     </button>
   </div>
@@ -1242,6 +1279,27 @@ function loadProfileInfo() {
       if (llEl)    llEl.textContent    = d.last_login || 'This session';
       if (enEl)    enEl.value          = dispName;
       if (eeEl)    eeEl.value          = d.email || '';
+
+      // Load branding details
+      var compNameEl = document.getElementById('pp-company-name');
+      var logoPrev = document.getElementById('pp-logo-preview');
+      var logoPlaceholder = document.getElementById('pp-logo-placeholder');
+      var removeLogoBtn = document.getElementById('pp-remove-logo-btn');
+      
+      if (compNameEl) compNameEl.value = d.company_name || '';
+      if (logoPrev && logoPlaceholder) {
+        if (d.company_logo_url) {
+          logoPrev.src = d.company_logo_url;
+          logoPrev.style.display = 'block';
+          logoPlaceholder.style.display = 'none';
+          if (removeLogoBtn) removeLogoBtn.style.display = 'inline-block';
+        } else {
+          logoPrev.src = '';
+          logoPrev.style.display = 'none';
+          logoPlaceholder.style.display = 'block';
+          if (removeLogoBtn) removeLogoBtn.style.display = 'none';
+        }
+      }
     })
     .catch(function() {
       var n = document.getElementById('pp-name');
@@ -1272,6 +1330,115 @@ function ppSaveProfile() {
   if (navAv)  navAv.textContent  = nameVal.charAt(0).toUpperCase();
   showToast('Profile updated successfully!', 'success');
   document.querySelectorAll('.pp-drawer').forEach(function(d){ d.classList.remove('open'); });
+}
+
+/* Upload Company Logo */
+function ppUploadCompanyLogo(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('File exceeds 5MB limit', 'error');
+    return;
+  }
+  const allowed = ['image/png', 'image/jpeg', 'image/jpg'];
+  if (!allowed.includes(file.type)) {
+    showToast('Invalid file type. Only JPG, PNG allowed.', 'error');
+    return;
+  }
+
+  var formData = new FormData();
+  formData.append('file', file);
+
+  showToast('Uploading logo...', 'info');
+
+  fetch('/api/v1/branding/logo/upload', {
+    method: 'POST',
+    body: formData
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showToast('Logo uploaded successfully!', 'success');
+      // Update preview
+      var logoPrev = document.getElementById('pp-logo-preview');
+      var logoPlaceholder = document.getElementById('pp-logo-placeholder');
+      var removeLogoBtn = document.getElementById('pp-remove-logo-btn');
+      if (logoPrev && logoPlaceholder) {
+        logoPrev.src = d.company_logo_url;
+        logoPrev.style.display = 'block';
+        logoPlaceholder.style.display = 'none';
+        if (removeLogoBtn) removeLogoBtn.style.display = 'inline-block';
+      }
+    } else {
+      showToast(d.error || 'Failed to upload logo', 'error');
+    }
+  })
+  .catch(function() {
+    showToast('Network error during logo upload', 'error');
+  });
+}
+
+/* Remove Company Logo */
+function ppRemoveCompanyLogo() {
+  if (!confirm('Are you sure you want to remove the company logo?')) return;
+  
+  fetch('/api/v1/branding/logo/remove', {
+    method: 'POST'
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showToast('Logo removed successfully!', 'success');
+      var logoPrev = document.getElementById('pp-logo-preview');
+      var logoPlaceholder = document.getElementById('pp-logo-placeholder');
+      var removeLogoBtn = document.getElementById('pp-remove-logo-btn');
+      if (logoPrev && logoPlaceholder) {
+        logoPrev.src = '';
+        logoPrev.style.display = 'none';
+        logoPlaceholder.style.display = 'block';
+        if (removeLogoBtn) removeLogoBtn.style.display = 'none';
+      }
+      // Reset file input
+      var fileInp = document.getElementById('pp-logo-file-input');
+      if (fileInp) fileInp.value = '';
+    } else {
+      showToast(d.error || 'Failed to remove logo', 'error');
+    }
+  })
+  .catch(function() {
+    showToast('Network error during logo removal', 'error');
+  });
+}
+
+/* Save Company Branding Changes */
+function ppSaveCompanyBranding() {
+  var nameVal = (document.getElementById('pp-company-name').value || '').trim();
+  if (!nameVal) { showToast('Company name is required.', 'warning'); return; }
+  
+  var btn = document.getElementById('pp-save-branding-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="opacity:.7">Saving\u2026</span>';
+
+  fetch('/api/v1/branding', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ company_name: nameVal })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+    if (d.success) {
+      showToast('Company branding updated successfully!', 'success');
+      document.querySelectorAll('.pp-drawer').forEach(function(d){ d.classList.remove('open'); });
+    } else {
+      showToast(d.error || 'Failed to save company branding', 'error');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+    showToast('Network error while saving company branding', 'error');
+  });
 }
 
 /* Change password via API */

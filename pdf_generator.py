@@ -1,14 +1,32 @@
 import os
 import tempfile
+import urllib.request
+import shutil
 from datetime import datetime
 from flask import Response, current_app
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
-def generate_pdf_response(pdf_sections, export_type):
+def download_temp_image(url):
+    if not url:
+        return None
+    try:
+        suffix = ".png" if ".png" in url.lower() else (".jpg" if ".jpg" in url.lower() else ".jpeg")
+        # Download file to a temp file
+        with urllib.request.urlopen(url, timeout=5) as response:
+            fd, tmp_filename = tempfile.mkstemp(suffix=suffix)
+            with os.fdopen(fd, 'wb') as tmp_file:
+                shutil.copyfileobj(response, tmp_file)
+            return tmp_filename
+    except Exception as e:
+        current_app.logger.error(f"Failed to download company logo: {e}")
+        return None
+
+def generate_pdf_response(pdf_sections, export_type, company_name=None, company_logo_url=None):
     fd, temp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
     
@@ -27,12 +45,23 @@ def generate_pdf_response(pdf_sections, export_type):
     elements = []
     styles = getSampleStyleSheet()
     
+    # Company branding style
+    company_name_style = ParagraphStyle(
+        'CompanyBrandingName',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor("#0F172A")
+    )
+    
     title_style = ParagraphStyle(
         'ReportTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=18,
-        leading=22,
+        fontSize=15,
+        leading=18,
+        spaceBefore=10,
         spaceAfter=4,
         textColor=colors.HexColor("#1E293B")
     )
@@ -41,9 +70,9 @@ def generate_pdf_response(pdf_sections, export_type):
         'ReportSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=12,
-        spaceAfter=14,
+        fontSize=8.5,
+        leading=11,
+        spaceAfter=10,
         textColor=colors.HexColor("#64748B")
     )
     
@@ -70,6 +99,59 @@ def generate_pdf_response(pdf_sections, export_type):
     ts_left = ParagraphStyle('TS_Left', fontName='Helvetica-Bold', fontSize=8.5, leading=11, textColor=colors.HexColor("#0F172A"), alignment=0)
     ts_right = ParagraphStyle('TS_Right', fontName='Helvetica-Bold', fontSize=8.5, leading=11, textColor=colors.HexColor("#0F172A"), alignment=2)
 
+    # Download and process logo if present
+    logo_img = None
+    downloaded_logo_path = None
+    if company_logo_url:
+        downloaded_logo_path = download_temp_image(company_logo_url)
+        if downloaded_logo_path:
+            try:
+                with PILImage.open(downloaded_logo_path) as img:
+                    w, h = img.size
+                # Limit height to 40pt, scale width proportionally
+                max_h = 40.0
+                scale = max_h / h
+                scaled_w = w * scale
+                # Limit width to 120pt
+                max_w = 120.0
+                if scaled_w > max_w:
+                    scale = max_w / w
+                    scaled_w = max_w
+                    scaled_h = h * scale
+                else:
+                    scaled_h = max_h
+                logo_img = RLImage(downloaded_logo_path, width=scaled_w, height=scaled_h)
+            except Exception as e:
+                current_app.logger.error(f"Error processing logo in ReportLab: {e}")
+                
+    # Build company branding header
+    header_title_cell = Paragraph(company_name or "WorkNest EMS", company_name_style)
+    if logo_img:
+        # Logo and name side-by-side
+        header_table = Table([[logo_img, header_title_cell]], colWidths=[130, printable_width - 130])
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(header_table)
+    else:
+        # Text only
+        elements.append(header_title_cell)
+        
+    # Top divider line
+    divider_table = Table([[""]], colWidths=[printable_width])
+    divider_table.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, -1), 1, colors.HexColor("#CBD5E1")),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(divider_table)
+    elements.append(Spacer(1, 5))
+    
+    # Report Title and Date
     report_title_map = {
         'all_employees': 'All Employees Report',
         'specific_employee': 'Employee Details Report',
@@ -81,7 +163,17 @@ def generate_pdf_response(pdf_sections, export_type):
     
     title_text = report_title_map.get(export_type, 'EMS Export Report')
     elements.append(Paragraph(title_text, title_style))
-    elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}", subtitle_style))
+    elements.append(Paragraph(f"Generated On: {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style))
+    
+    # Bottom divider line under title block
+    divider2_table = Table([[""]], colWidths=[printable_width])
+    divider2_table.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(divider2_table)
+    elements.append(Spacer(1, 8))
 
     def format_cell_value(val, col_index, headers):
         if val is None:
@@ -217,6 +309,13 @@ def generate_pdf_response(pdf_sections, export_type):
 
     doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)
     
+    # Clean up downloaded logo temp file if it was created
+    if downloaded_logo_path:
+        try:
+            os.remove(downloaded_logo_path)
+        except Exception as e:
+            current_app.logger.error(f"Failed to delete temp logo file {downloaded_logo_path}: {e}")
+            
     filename = f"export_{export_type}_{datetime.now().strftime('%Y-%m-%d')}.pdf"
 
     def generate_and_delete():

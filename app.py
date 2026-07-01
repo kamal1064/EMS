@@ -929,8 +929,84 @@ def api_profile_info():
         'last_login': session.get('last_login', 'Unknown'),
         'avatar':     user.get('avatar') if user else session.get('avatar', ''),
         'profile_image_url': user.get('profile_image_url') if user else '',
-        'is_google':  bool(user.get('google_id')) if user else False
+        'is_google':  bool(user.get('google_id')) if user else False,
+        'company_name': user.get('company_name', '') if user else '',
+        'company_logo_url': user.get('company_logo_url', '') if user else ''
     })
+
+
+@api_v1.route('/branding', methods=['POST'])
+@login_required
+def api_save_branding():
+    """Save company branding name."""
+    data = request.get_json(silent=True) or {}
+    company_name = data.get('company_name', '').strip()
+    if not company_name:
+        return jsonify({'success': False, 'error': 'Company name is required.'}), 400
+    
+    uid = get_current_user_id()
+    db.users.update_one({"_id": ObjectId(uid)}, {"$set": {"company_name": company_name}})
+    return jsonify({'success': True})
+
+
+@api_v1.route('/branding/logo/upload', methods=['POST'])
+@login_required
+def api_upload_company_logo():
+    """Upload company logo to Cloudinary."""
+    if 'file' not in request.files:
+        return jsonify({"success": False, "error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected file"}), 400
+    
+    # 5MB size limit check
+    file.seek(0, os.SEEK_END)
+    file_length = file.tell()
+    if file_length > 5 * 1024 * 1024:
+        return jsonify({"success": False, "error": "File exceeds 5MB limit"}), 400
+    file.seek(0) # reset pointer
+
+    # Check extension
+    filename = file.filename.lower()
+    ext = filename.rsplit('.', 1)[1] if '.' in filename else ''
+    if ext not in ['png', 'jpg', 'jpeg']:
+        return jsonify({"success": False, "error": "Invalid file type. Only JPG, PNG allowed."}), 400
+
+    # MIME type check
+    allowed_mimes = {'image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/x-png'}
+    if not file.content_type or file.content_type.lower() not in allowed_mimes:
+        return jsonify({"success": False, "error": "Invalid MIME type. Only JPG, PNG allowed."}), 400
+
+    uid = get_current_user_id()
+
+    try:
+        # Upload to Cloudinary with no crop (preserve aspect ratio)
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder="ems_logos",
+            transformation=[
+                {'fetch_format': 'auto', 'quality': 'auto'}
+            ]
+        )
+        image_url = upload_result.get('secure_url')
+
+        # Update MongoDB
+        db.users.update_one({"_id": ObjectId(uid)}, {"$set": {"company_logo_url": image_url}})
+
+        return jsonify({"success": True, "company_logo_url": image_url})
+    except Exception as e:
+        app.logger.error(f"Cloudinary logo upload error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_v1.route('/branding/logo/remove', methods=['POST'])
+@login_required
+def api_remove_company_logo():
+    """Remove company logo."""
+    uid = get_current_user_id()
+    db.users.update_one({"_id": ObjectId(uid)}, {"$set": {"company_logo_url": ""}})
+    return jsonify({"success": True})
+
 
 
 
@@ -3998,8 +4074,18 @@ def export_data():
             os.remove(temp_path)
         except:
             pass
+        uid = get_current_user_id()
+        user_doc = db.users.find_one({"_id": ObjectId(uid)})
+        company_name = user_doc.get('company_name') if user_doc else None
+        company_logo_url = user_doc.get('company_logo_url') if user_doc else None
+        
         from pdf_generator import generate_pdf_response
-        return generate_pdf_response(pdf_sections, export_type)
+        return generate_pdf_response(
+            pdf_sections, 
+            export_type, 
+            company_name=company_name, 
+            company_logo_url=company_logo_url
+        )
 
     wb.save(temp_path)
     filename = f"export_{export_type}_{date.today().isoformat()}.xlsx"
