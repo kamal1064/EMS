@@ -1503,7 +1503,7 @@ body.modal-open { overflow:hidden !important; }
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   font-weight: 600;
-  color: #CBD5E1;
+  color: var(--text2);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1512,11 +1512,11 @@ body.modal-open { overflow:hidden !important; }
 .premium-input,
 .premium-select,
 .premium-textarea {
-  background: #1E293B;
-  border: 1px solid #334155;
+  background-color: var(--input-bg);
+  border: 1px solid var(--card-border);
   border-radius: 10px;
   padding: 14px 16px;
-  color: #FFFFFF;
+  color: var(--text);
   font-size: 14px;
   font-family: inherit;
   outline: none;
@@ -1527,15 +1527,15 @@ body.modal-open { overflow:hidden !important; }
 
 .premium-input::placeholder,
 .premium-textarea::placeholder {
-  color: #94A3B8;
+  color: var(--text3);
 }
 
 .premium-input:focus,
 .premium-select:focus,
 .premium-textarea:focus {
-  border-color: #3B82F6;
+  border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-  background: #1E293B;
+  background-color: var(--input-bg);
 }
 
 .premium-input-amount {
@@ -1548,18 +1548,18 @@ body.modal-open { overflow:hidden !important; }
 /* Footer & Buttons */
 .premium-modal-footer {
   padding: 24px 32px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--card-border);
   display: flex;
   justify-content: flex-end;
   gap: 16px;
-  background: rgba(15, 23, 42, 0.95); /* Ensure solid background so it doesn't blend with body */
+  background-color: var(--modal-bg); /* Ensure solid background so it doesn't blend with body */
   flex-shrink: 0; /* Ensures footer is always visible and never hidden by scroll */
 }
 
 .btn-premium-cancel {
   background: transparent;
-  border: 1px solid #475569;
-  color: #FFFFFF;
+  border: 1px solid var(--card-border);
+  color: var(--text2);
   border-radius: 10px;
   padding: 12px 24px;
   font-weight: 600;
@@ -1572,8 +1572,9 @@ body.modal-open { overflow:hidden !important; }
 }
 
 .btn-premium-cancel:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: #64748b;
+  background-color: var(--bg2);
+  border-color: var(--card-border);
+  color: var(--text);
 }
 
 .btn-premium-save {
@@ -1639,8 +1640,8 @@ body.modal-open { overflow:hidden !important; }
 }
 
 .premium-history-item {
-  background: #1E293B;
-  border: 1px solid #334155;
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
@@ -1650,7 +1651,7 @@ body.modal-open { overflow:hidden !important; }
 }
 
 .premium-history-item:hover {
-  border-color: #475569;
+  border-color: var(--primary);
 }
 
 .premium-history-item-left {
@@ -1668,7 +1669,7 @@ body.modal-open { overflow:hidden !important; }
 
 .premium-history-meta {
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--text2);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1997,26 +1998,7 @@ select option {
   opacity: 1;
 }
 
-/* Premium modal inputs — always fully white, regardless of mode */
-.premium-modal-body input,
-.premium-modal-body select,
-.premium-modal-body textarea,
-.premium-input,
-.premium-select,
-.premium-textarea {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  background-color: #1a2235 !important;
-}
 
-.premium-modal-body input::placeholder,
-.premium-modal-body textarea::placeholder,
-.premium-input::placeholder,
-.premium-textarea::placeholder {
-  color: rgba(255,255,255,0.38) !important;
-  -webkit-text-fill-color: rgba(255,255,255,0.38) !important;
-  opacity: 1;
-}
 
 /* Readonly / disabled inputs */
 .dark input:disabled,
