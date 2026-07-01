@@ -1488,8 +1488,23 @@ def attendance_summary():
 
     summary = []
     for e in emps:
+        emp_effective = effective_days
+        jd_str = e.get('joining_date')
+        if jd_str:
+            try:
+                jy, jm, jd = map(int, jd_str.split('-'))
+                if jy == year and jm == month_num:
+                    if year == current_date.year and month_num == current_date.month:
+                        emp_effective = max(min(current_date.day, 30) - jd + 1, 0)
+                    else:
+                        emp_effective = max(30 - jd + 1, 0)
+                elif (year < jy) or (year == jy and month_num < jm):
+                    emp_effective = 0
+            except:
+                pass
+
         absent_days = absent_map.get(e['id'], 0)
-        present_days = max(effective_days - absent_days, 0)
+        present_days = max(emp_effective - absent_days, 0)
         summary.append({
             'id': e['id'],
             'name': e['name'],
@@ -1660,9 +1675,9 @@ def salary():
                     jy, jm, jd = map(int, jd_str.split('-'))
                     if jy == year and jm == month_num:
                         if year == current_date.year and month_num == current_date.month:
-                            emp_effective = max(min(current_date.day, 30) - jd, 0)
+                            emp_effective = max(min(current_date.day, 30) - jd + 1, 0)
                         else:
-                            emp_effective = max(30 - jd, 0)
+                            emp_effective = max(30 - jd + 1, 0)
                     elif (year < jy) or (year == jy and month_num < jm):
                         emp_effective = 0
                 except:
@@ -1702,9 +1717,9 @@ def salary():
                 jy, jm, jd = map(int, jd_str.split('-'))
                 if jy == year and jm == month_num:
                     if year == current_date.year and month_num == current_date.month:
-                        emp_effective = max(min(current_date.day, 30) - jd, 0)
+                        emp_effective = max(min(current_date.day, 30) - jd + 1, 0)
                     else:
-                        emp_effective = max(30 - jd, 0)
+                        emp_effective = max(30 - jd + 1, 0)
                 elif (year < jy) or (year == jy and month_num < jm):
                     emp_effective = 0
             except:
